@@ -140,14 +140,15 @@ export default function Home() {
         <TouchableOpacity
           style={styles.quickCard}
           activeOpacity={0.85}
-          testID="favorites-card"
+          onPress={() => router.push("/ride")}
+          testID="track-ride-card"
         >
           <View style={styles.quickIcon}>
-            <Ionicons name="star" size={18} color={colors.accent} />
+            <Ionicons name="pulse" size={18} color={colors.accent} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.quickTitle}>Saved places</Text>
-            <Text style={styles.quickSub}>Home, work & favorites</Text>
+            <Text style={styles.quickTitle}>Track a live ride</Text>
+            <Text style={styles.quickSub}>See your driver on the map</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
         </TouchableOpacity>

@@ -46,18 +46,21 @@ export default function Driver() {
         </View>
 
         {/* Online toggle card */}
-        <View
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => router.push("/driver-dashboard")}
           style={[
             styles.toggleCard,
             online && styles.toggleCardOn,
           ]}
+          testID="open-dashboard-button"
         >
           <View style={{ flex: 1 }}>
             <Text style={[styles.toggleLabel, online && { color: colors.accent }]}>
               {online ? "YOU'RE ONLINE" : "YOU'RE OFFLINE"}
             </Text>
             <Text style={styles.toggleSub}>
-              {online ? "Accepting ride requests" : "Go online to receive rides"}
+              {online ? "Tap to open dashboard" : "Go online to receive rides"}
             </Text>
           </View>
           <Switch
@@ -68,7 +71,7 @@ export default function Driver() {
             ios_backgroundColor="#2A2C30"
             testID="online-toggle"
           />
-        </View>
+        </TouchableOpacity>
 
         {/* Profile */}
         <View style={styles.profileCard}>

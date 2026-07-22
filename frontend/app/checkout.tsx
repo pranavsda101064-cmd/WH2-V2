@@ -29,7 +29,7 @@ export default function Checkout() {
   const pay = () => {
     setDone(true);
     setTimeout(() => {
-      router.replace("/(tabs)/home");
+      router.replace("/ride");
     }, 1400);
   };
 

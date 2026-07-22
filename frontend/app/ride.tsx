@@ -15,6 +15,8 @@ import { StatusBar } from "expo-status-bar";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import { colors, radius } from "@/src/theme";
+import { api } from "@/src/api";
+import { storage } from "@/src/utils/storage";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -48,10 +50,15 @@ export default function Ride() {
     const t = setInterval(() => {
       setEta((e) => {
         if (e > 1) return e - 1;
-        // phase transitions
-        setPhase((p) =>
-          p === "arriving" ? "onboard" : p === "onboard" ? "arrived" : "arrived",
-        );
+        setPhase((p) => {
+          const next: Phase =
+            p === "arriving" ? "onboard" : p === "onboard" ? "arrived" : "arrived";
+          // push status to backend (best-effort, silent)
+          storage.getItem<string>("active_ride_id", "").then((rideId) => {
+            if (rideId) api.updateRideStatus(rideId, next).catch(() => {});
+          });
+          return next;
+        });
         return 6;
       });
     }, 3500);

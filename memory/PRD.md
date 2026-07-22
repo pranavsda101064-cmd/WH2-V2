@@ -1,41 +1,42 @@
 # Sakleshpura Tourist Ride App — PRD
 
 ## Overview
-UI-only mobile app (Expo/React Native) for a tourist ride-hailing service in Sakleshpura, Karnataka. Uber-style dark aesthetic, single accent color (electric blue). All data is mock; no backend or real auth. User will wire the backend separately.
+Mobile ride-hailing app for tourists in Sakleshpura, Karnataka. Uber-style dark UI (Expo/React Native) + FastAPI/MongoDB backend. Frontend keeps mock data as automatic fallback whenever the backend is unreachable.
 
-## Screens Delivered
-1. **Landing (`/`)** — Cinematic misty Western-Ghats background, "WHERE TO ?!" masked behind hills gradient, single Get-started CTA.
-2. **Auth (`/auth`)** — Customer/Driver toggle, phone-number + OTP flow, subtle glass bottom-sheet.
-3. **Home tab (`/home`)** — Auto-playing 30vh package carousel (10 tours), Plan Your Trip card, Track-live-ride shortcut, horizontal past-trips list.
-4. **Trips tab (`/trips`)** — Full list of past rides with fare and status.
-5. **Profile tab (`/profile`)** — Customer profile, stats, settings rows (incl. "Switch to Driver").
-6. **Driver (`/driver`)** — Online/offline glowing toggle → opens dashboard on tap, profile card, personal info, verified documents (Aadhaar, DL, permit), vehicle details.
-7. **Driver Dashboard (`/driver-dashboard`)** — Online toggle, today's earnings/trips/hours, live incoming ride requests with rider info, fare, route, accept/decline actions.
-8. **Plan trip (`/plan`)** — Mock SVG map with 3 pins & blue route line, destination input, reorderable stops list.
-9. **Vehicles (`/vehicles`)** — Sedan / SUV / Traveller / Premium with fares & selected-state blue border.
-10. **Checkout (`/checkout`)** — Trip recap, fare breakdown, Card + UPI only (no cash), Pay CTA → routes to ride tracking.
-11. **Ride in Progress (`/ride`)** — Live SVG map with animated blue pulsing car pin, phased state (arriving → onboard → arrived), driver card with call/message, trip step progress, Safety & Cancel actions.
-12. **Rating (`/rating`)** — Driver info, 5-star selector, contextual compliment chips, note field, tip presets (0/50/100/200), Submit + Tip CTA.
+## Screens
+1. **Landing (`/`)** — misty forest bg with "WHERE TO ?!" masked behind hills, Get-started CTA.
+2. **Auth (`/auth`)** — Customer/Driver toggle, phone + OTP (mock).
+3. **Home (`/home`)** — 30vh auto-playing package carousel (fetched from `/api/packages`), Plan Your Trip, Track live ride, previous trips (from `/api/rides`).
+4. **Trips (`/trips`)** — full ride history (`/api/rides`).
+5. **Profile (`/profile`)** — customer profile, "Switch to Driver".
+6. **Driver (`/driver`)** — glowing online toggle opens dashboard, docs, vehicle info.
+7. **Driver Dashboard (`/driver-dashboard`)** — earnings/trips/hours (`/api/driver/stats`), incoming requests (`/api/driver/requests`), accept → creates ride.
+8. **Plan (`/plan`)** — SVG mock map, stops list, reorder.
+9. **Vehicles (`/vehicles`)** — from `/api/vehicles`, selects → stores in local storage.
+10. **Checkout (`/checkout`)** — fare breakdown, Card/UPI only, Pay creates a ride via `POST /api/rides`.
+11. **Ride (`/ride`)** — animated blue pulsing car pin, phase auto-advances and pushes status via `PATCH /api/rides/{id}/status`.
+12. **Rating (`/rating`)** — 5-star + compliments + tip, submits via `POST /api/ratings`, marks ride completed.
 
-## Navigation Flows
-- Customer: Landing → Auth → Home → Plan → Vehicles → Checkout → Ride → Rating → Home
-- Driver: Auth → Driver profile → Driver Dashboard → Accept request → Ride
+## Backend (FastAPI + MongoDB)
+All routes under `/api`:
+- `GET /packages` – list 10 tour packages (seeded)
+- `GET /vehicles` – list vehicle types (seeded)
+- `POST /rides` – create ride
+- `GET /rides` – list rides (per user)
+- `GET /rides/{id}` – fetch one
+- `PATCH /rides/{id}/status` – arriving | onboard | arrived | completed | cancelled
+- `POST /ratings` – submit rating + tip (also flips ride to completed)
+- `GET /driver/requests` – incoming ride requests (seeded)
+- `POST /driver/requests/{id}/accept` – accept → creates ride, removes from queue
+- `GET /driver/stats` – earnings/trips/hours (aggregated from completed rides)
+
+Collections: `packages`, `vehicles`, `rides`, `ratings`, `driver_requests`.
+Idempotent seeding on startup — inserts only when a collection is empty.
+No auth yet (kept out per original brief so the user can wire their own).
+No real payment gateway — checkout records payment_method + fare only.
+
+## Frontend API Client
+`/app/frontend/src/api.ts` — a `fetch` wrapper (`api.listPackages`, `api.createRide`, `api.updateRideStatus`, …). Every call has a bundled mock fallback so the UI never breaks if the backend is down.
 
 ## Design System
-- Pure dark theme (#000 base, #111 surface).
-- Single accent: electric blue `#1E6BFF` — used only on CTAs, toggle glow, selected border, route line, active tab, animated car pulse.
-- Blur used lightly only on auth sheet.
-- Bottom fixed nav (Home / Trips / Profile).
-- Safe-area handled everywhere via `react-native-safe-area-context`.
-- All interactive elements have kebab-case `testID`s.
-
-## Mock Data
-- 10 tour packages with Unsplash imagery
-- 4 past trips
-- 4 vehicles
-- 1 driver profile
-- 3 incoming ride requests
-
-## Tech
-- Expo Router (file-based), Reanimated, expo-blur, expo-linear-gradient, react-native-svg.
-- No backend, no auth, no payment gateway — pure UI ready to be wired.
+Pure dark (#000 / #111 surfaces), single electric-blue accent `#1E6BFF` on CTAs, toggles, selected borders, route line, animated pulses, active tab. Glass/blur only on auth sheet. Fixed bottom nav, all safe-area aware, kebab-case `testID`s.

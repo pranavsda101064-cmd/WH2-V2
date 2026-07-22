@@ -16,7 +16,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { colors, radius } from "@/src/theme";
-import { packages, pastTrips } from "@/src/data/mock";
+import { pastTrips as mockTrips } from "@/src/data/mock";
+import { api, Package, Ride } from "@/src/api";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 32;
@@ -27,9 +28,18 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
   const [active, setActive] = useState(0);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [trips, setTrips] = useState<Ride[]>([]);
+
+  // Fetch from backend (falls back to mock inside api client)
+  useEffect(() => {
+    api.listPackages().then(setPackages);
+    api.listRides().then(setTrips);
+  }, []);
 
   // Auto-play carousel
   useEffect(() => {
+    if (packages.length === 0) return;
     const t = setInterval(() => {
       setActive((prev) => {
         const next = (prev + 1) % packages.length;
@@ -41,7 +51,7 @@ export default function Home() {
       });
     }, 4000);
     return () => clearInterval(t);
-  }, []);
+  }, [packages.length]);
 
   return (
     <View style={styles.root} testID="home-screen">
@@ -162,31 +172,37 @@ export default function Home() {
         </View>
 
         <FlatList
-          data={pastTrips}
+          data={trips.slice(0, 6)}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 16 }}
           ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
           keyExtractor={(t) => t.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.tripCard}
-              activeOpacity={0.85}
-              testID={`past-trip-${item.id}`}
-            >
-              <Image source={{ uri: item.image }} style={styles.tripImg} />
-              <LinearGradient
-                colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.85)"]}
-                style={styles.tripShade}
-              />
-              <View style={styles.tripBody}>
-                <Text style={styles.tripTitle} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text style={styles.tripDate}>{item.date}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
+          renderItem={({ item, index }) => {
+            const mock = mockTrips[index % mockTrips.length];
+            const title = item.stops?.[0]?.label ?? mock.title;
+            return (
+              <TouchableOpacity
+                style={styles.tripCard}
+                activeOpacity={0.85}
+                testID={`past-trip-${item.id}`}
+              >
+                <Image source={{ uri: mock.image }} style={styles.tripImg} />
+                <LinearGradient
+                  colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.85)"]}
+                  style={styles.tripShade}
+                />
+                <View style={styles.tripBody}>
+                  <Text style={styles.tripTitle} numberOfLines={1}>
+                    {title}
+                  </Text>
+                  <Text style={styles.tripDate}>
+                    ₹{item.fare.toLocaleString("en-IN")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       </ScrollView>
     </View>

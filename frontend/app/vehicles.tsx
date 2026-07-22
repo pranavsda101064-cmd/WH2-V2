@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   ScrollView,
@@ -12,14 +12,30 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
 import { colors, radius } from "@/src/theme";
-import { vehicles } from "@/src/data/mock";
+import { api, Vehicle } from "@/src/api";
+import { storage } from "@/src/utils/storage";
 
 export default function Vehicles() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [selected, setSelected] = useState<string>(vehicles[0].id);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [selected, setSelected] = useState<string>("v1");
 
-  const chosen = vehicles.find((v) => v.id === selected)!;
+  useEffect(() => {
+    api.listVehicles().then((v) => {
+      setVehicles(v);
+      if (v[0]) setSelected(v[0].id);
+    });
+  }, []);
+
+  const chosen = vehicles.find((v) => v.id === selected);
+
+  const proceed = async () => {
+    if (!chosen) return;
+    await storage.setItem("checkout_vehicle_id", chosen.id);
+    await storage.setItem("checkout_fare", chosen.fare);
+    router.push("/checkout");
+  };
 
   return (
     <View style={styles.root} testID="vehicles-screen">
@@ -86,14 +102,16 @@ export default function Vehicles() {
       {/* Bottom bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.barLabel}>{chosen.name} · Cash-free</Text>
+          <Text style={styles.barLabel}>
+            {chosen ? `${chosen.name} · Cash-free` : "Loading…"}
+          </Text>
           <Text style={styles.barFare}>
-            ₹{chosen.fare.toLocaleString("en-IN")}
+            {chosen ? `₹${chosen.fare.toLocaleString("en-IN")}` : "—"}
           </Text>
         </View>
         <TouchableOpacity
           style={styles.barBtn}
-          onPress={() => router.push("/checkout")}
+          onPress={proceed}
           testID="vehicles-continue-button"
           activeOpacity={0.85}
         >

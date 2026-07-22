@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   ScrollView,
@@ -12,6 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
 import { colors, radius } from "@/src/theme";
+import { api } from "@/src/api";
+import { storage } from "@/src/utils/storage";
 
 type PayMethod = "card" | "upi";
 
@@ -20,14 +22,36 @@ export default function Checkout() {
   const insets = useSafeAreaInsets();
   const [method, setMethod] = useState<PayMethod>("card");
   const [done, setDone] = useState(false);
+  const [vehicleId, setVehicleId] = useState("v1");
+  const [baseFare, setBaseFare] = useState(2199);
 
-  const base = 2199;
+  useEffect(() => {
+    (async () => {
+      const v = await storage.getItem<string>("checkout_vehicle_id", "v1");
+      const f = await storage.getItem<number>("checkout_fare", 2199);
+      if (v) setVehicleId(v);
+      if (f) setBaseFare(f);
+    })();
+  }, []);
+
+  const base = baseFare;
   const stopsFee = 200;
   const gst = Math.round((base + stopsFee) * 0.05);
   const total = base + stopsFee + gst;
 
-  const pay = () => {
+  const pay = async () => {
     setDone(true);
+    const ride = await api.createRide({
+      vehicle_id: vehicleId,
+      stops: [
+        { label: "Sakleshpura Bus Stand", sub: "Pickup point" },
+        { label: "Manjarabad Fort", sub: "Stop 1" },
+        { label: "Bisle Ghat Viewpoint", sub: "Final stop · 46 km" },
+      ],
+      fare: total,
+      payment_method: method,
+    });
+    await storage.setItem("active_ride_id", ride.id);
     setTimeout(() => {
       router.replace("/ride");
     }, 1400);

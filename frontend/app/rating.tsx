@@ -15,6 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
 import { colors, radius } from "@/src/theme";
+import { api } from "@/src/api";
+import { storage } from "@/src/utils/storage";
 
 const TIP_PRESETS = [0, 50, 100, 200];
 const COMPLIMENTS = [
@@ -40,8 +42,20 @@ export default function Rating() {
       prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
     );
 
-  const submit = () => {
+  const submit = async () => {
     setSubmitted(true);
+    const rideId = await storage.getItem<string>("active_ride_id", "");
+    if (rideId) {
+      api
+        .submitRating({
+          ride_id: rideId,
+          stars,
+          tags,
+          note: note || undefined,
+          tip,
+        })
+        .catch(() => {});
+    }
     setTimeout(() => router.replace("/(tabs)/home"), 1400);
   };
 

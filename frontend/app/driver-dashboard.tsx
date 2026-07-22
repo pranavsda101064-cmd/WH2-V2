@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   ScrollView,
@@ -13,48 +13,36 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
 import { colors, radius } from "@/src/theme";
-
-const requests = [
-  {
-    id: "r1",
-    pickup: "Sakleshpura Bus Stand",
-    drop: "Bisle Ghat Viewpoint",
-    distance: "46 km",
-    duration: "1h 40m",
-    fare: 2199,
-    rider: "Aditi S.",
-    rating: 4.9,
-    tag: "3 stops",
-  },
-  {
-    id: "r2",
-    pickup: "Green Route Homestay",
-    drop: "Manjarabad Fort",
-    distance: "12 km",
-    duration: "22 min",
-    fare: 899,
-    rider: "Rohit K.",
-    rating: 4.8,
-    tag: "Direct",
-  },
-  {
-    id: "r3",
-    pickup: "Coffee Estate Retreat",
-    drop: "Hanbal Falls",
-    distance: "18 km",
-    duration: "32 min",
-    fare: 1499,
-    rider: "Priya M.",
-    rating: 5.0,
-    tag: "2 stops",
-  },
-];
+import { api, DriverRequest, DriverStats } from "@/src/api";
+import { storage } from "@/src/utils/storage";
 
 export default function DriverDashboard() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [online, setOnline] = useState(true);
-  const [selected, setSelected] = useState<string | null>("r1");
+  const [selected, setSelected] = useState<string | null>(null);
+  const [requests, setRequests] = useState<DriverRequest[]>([]);
+  const [stats, setStats] = useState<DriverStats>({
+    earnings: 3420,
+    trips: 6,
+    hours: 7.4,
+  });
+
+  useEffect(() => {
+    api.listDriverRequests().then((r) => {
+      setRequests(r);
+      if (r[0]) setSelected(r[0].id);
+    });
+    api.driverStats().then(setStats);
+  }, []);
+
+  const accept = async (id: string) => {
+    const ride = await api.acceptRequest(id).catch(() => null);
+    if (ride?.id) await storage.setItem("active_ride_id", ride.id);
+    // Remove locally so it disappears from queue immediately
+    setRequests((prev) => prev.filter((x) => x.id !== id));
+    router.push("/ride");
+  };
 
   return (
     <View style={styles.root} testID="driver-dashboard">
@@ -110,11 +98,11 @@ export default function DriverDashboard() {
 
         {/* Today stats */}
         <View style={styles.statsRow}>
-          <Stat label="Earnings" value="₹3,420" accent />
+          <Stat label="Earnings" value={`₹${stats.earnings.toLocaleString("en-IN")}`} accent />
           <View style={styles.statDivider} />
-          <Stat label="Trips" value="6" />
+          <Stat label="Trips" value={String(stats.trips)} />
           <View style={styles.statDivider} />
-          <Stat label="Hours" value="7.4" />
+          <Stat label="Hours" value={stats.hours.toFixed(1)} />
         </View>
 
         {/* Incoming */}
@@ -189,7 +177,7 @@ export default function DriverDashboard() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.acceptBtn}
-                      onPress={() => router.push("/ride")}
+                      onPress={() => accept(r.id)}
                       testID={`accept-${r.id}`}
                     >
                       <Text style={styles.acceptText}>Accept ride</Text>

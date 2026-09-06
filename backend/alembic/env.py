@@ -8,7 +8,7 @@ from alembic import context
 
 from config import get_settings
 from database import Base
-from models import User, Package, Vehicle, Ride, Rating, DriverRequest  # noqa: F401
+from models import User, Package, Vehicle, Ride, Rating, DriverRequest, DriverProfile, DriverDocument, DriverVehicle  # noqa: F401
 
 config = context.config
 settings = get_settings()

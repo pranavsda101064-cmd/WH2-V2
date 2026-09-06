@@ -333,6 +333,3 @@ export const api = {
   listVehiclesDriver: () =>
     req<DriverVehicle[]>("/driver/vehicles", undefined, []),
 };
-
-// Driver profile is still local (no auth yet).
-export const driverProfile = mockDriver;

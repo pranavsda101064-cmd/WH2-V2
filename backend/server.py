@@ -353,6 +353,11 @@ async def google_auth(request: Request, payload: GoogleAuthRequest, db: AsyncSes
         if not email:
             raise HTTPException(401, detail="No email in Google token")
 
+        aud = claims.get("aud")
+        if not settings.GOOGLE_WEB_CLIENT_ID or aud != settings.GOOGLE_WEB_CLIENT_ID:
+            logger.warning("google_auth aud mismatch", extra={"aud": aud})
+            raise HTTPException(401, detail="Invalid Google token audience")
+
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
         if not user:

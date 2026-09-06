@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     # App
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
+    GOOGLE_WEB_CLIENT_ID: str = ""
 
     model_config = {
         "env_file": ".env",

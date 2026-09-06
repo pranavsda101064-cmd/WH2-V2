@@ -33,5 +33,7 @@ services:
         value: INFO
       - key: SENTRY_DSN
         sync: false
+      - key: GOOGLE_WEB_CLIENT_ID
+        value: "524688489029-h02hs91ufjcsu1l6805dks6l724o4klp.apps.googleusercontent.com"
       - key: PYTHON_VERSION
         value: "3.11"

@@ -7,6 +7,7 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
 
+import httpx
 import sentry_sdk
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -327,6 +328,52 @@ async def login(request: Request, payload: UserLogin, db: AsyncSession = Depends
 @api_router.get("/auth/me", response_model=UserOut)
 async def get_me(current_user: User = Depends(get_current_user)):
     return UserOut(id=str(current_user.id), email=current_user.email, role=current_user.role)
+
+
+# ---------- Google Auth ----------
+class GoogleAuthRequest(BaseModel):
+    id_token: str = Field(..., max_length=2048)
+    role: Literal["customer", "driver"] = "customer"
+
+
+@api_router.post("/auth/google", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def google_auth(request: Request, payload: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                "https://oauth2.googleapis.com/tokeninfo",
+                params={"id_token": payload.id_token},
+                timeout=10.0,
+            )
+        if resp.status_code != 200:
+            raise HTTPException(401, detail="Invalid Google token")
+        claims = resp.json()
+        email = claims.get("email")
+        if not email:
+            raise HTTPException(401, detail="No email in Google token")
+
+        result = await db.execute(select(User).where(User.email == email))
+        user = result.scalar_one_or_none()
+        if not user:
+            user = User(
+                email=email,
+                hashed_password=hash_password(uuid.uuid4().hex),
+                role=payload.role,
+            )
+            db.add(user)
+            await db.flush()
+
+        token = create_access_token(str(user.id), user.email, user.role)
+        return TokenResponse(
+            access_token=token,
+            user={"id": str(user.id), "email": user.email, "role": user.role},
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("google_auth failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Google auth failed")
 
 
 # ---------- Health check ----------

@@ -162,6 +162,18 @@ export const api = {
     await clearUserEmail();
   },
 
+  googleAuth: async (idToken: string, role: "customer" | "driver" = "customer") => {
+    const data = await req<{ access_token: string; user: { email: string; role: string } }>(
+      "/auth/google",
+      { method: "POST", body: JSON.stringify({ id_token: idToken, role }) },
+    );
+    if (data?.access_token) {
+      await setToken(data.access_token);
+      await setUserEmail(data.user.email);
+    }
+    return data;
+  },
+
   // Packages
   listPackages: async () => {
     const cached = await getCached<Package[]>("packages");

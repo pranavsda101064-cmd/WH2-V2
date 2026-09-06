@@ -16,12 +16,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import * as AuthSession from "expo-auth-session";
+import * as Crypto from "expo-crypto";
 
 import { colors, radius } from "@/src/theme";
 import { api } from "@/src/api";
 
 const BG =
   "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1400&q=80";
+
+const GOOGLE_WEB_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 
 type Role = "customer" | "driver";
 
@@ -32,7 +36,31 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_WEB_CLIENT_ID,
+      redirectUri: AuthSession.makeRedirectUri({ scheme: "where2" }),
+      scopes: ["openid", "profile", "email"],
+      usePKCE: true,
+    },
+    async (res) => {
+      if (res.type === "success" && res.authentication) {
+        setGoogleLoading(true);
+        try {
+          await api.googleAuth(res.authentication.idToken, role);
+          if (role === "driver") router.replace("/driver-onboarding");
+          else router.replace("/(tabs)/home");
+        } catch {
+          setError("Google sign-in failed");
+        } finally {
+          setGoogleLoading(false);
+        }
+      }
+    },
+  );
 
   const onContinue = async () => {
     if (!email.trim() || !password.trim()) {
@@ -159,13 +187,38 @@ export default function Auth() {
             style={[styles.cta, loading && styles.ctaDisabled]}
             onPress={onContinue}
             activeOpacity={0.85}
-            disabled={loading}
+            disabled={loading || googleLoading}
             testID="auth-continue-button"
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.ctaText}>Sign in</Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Google Sign In */}
+          <TouchableOpacity
+            style={[styles.googleBtn, googleLoading && styles.ctaDisabled]}
+            onPress={() => promptAsync()}
+            activeOpacity={0.85}
+            disabled={loading || googleLoading}
+            testID="google-sign-in-button"
+          >
+            {googleLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 10 }} />
+                <Text style={styles.googleText}>Continue with Google</Text>
+              </>
             )}
           </TouchableOpacity>
 
@@ -275,6 +328,32 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   ctaText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  dividerText: {
+    color: colors.textDim,
+    fontSize: 13,
+    marginHorizontal: 14,
+  },
+  googleBtn: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    height: 56,
+    borderRadius: radius.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  googleText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   legal: {
     color: colors.textDim,
     fontSize: 12,

@@ -58,6 +58,7 @@ export default function Auth() {
       scopes: ["openid", "profile", "email"],
       responseType: AuthSession.ResponseType.IdToken,
       extraParams: nonce ? { nonce } : undefined,
+      usePKCE: false,
     },
     googleDiscovery,
   );

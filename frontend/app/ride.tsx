@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   Animated,
-  Dimensions,
   Easing,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -12,28 +16,29 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import { colors, radius } from "@/src/theme";
-import { api } from "@/src/api";
+import { api, Ride, RideStop } from "@/src/api";
 import { storage } from "@/src/utils/storage";
+import { LoadingScreen } from "@/src/components/loading";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
-
-const PINS = [
-  { x: 0.18, y: 0.72, label: "Pickup" },
-  { x: 0.5, y: 0.42, label: "Stop" },
-  { x: 0.82, y: 0.25, label: "Drop" },
-];
-
-type Phase = "arriving" | "onboard" | "arrived";
+const POLL_INTERVAL = 5000;
+const MAP_HEIGHT = "52%";
 
 export default function Ride() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [phase, setPhase] = useState<Phase>("arriving");
-  const [eta, setEta] = useState(4);
+  const [ride, setRide] = useState<Ride | null>(null);
+  const [driverLoc, setDriverLoc] = useState<{
+    lat: number | null;
+    lng: number | null;
+  }>({ lat: null, lng: null });
+  const [loading, setLoading] = useState(true);
+  const [showPin, setShowPin] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState("");
   const pulse = useRef(new Animated.Value(0)).current;
+  const rideIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     Animated.loop(
@@ -47,51 +52,115 @@ export default function Ride() {
   }, [pulse]);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setEta((e) => {
-        if (e > 1) return e - 1;
-        setPhase((p) => {
-          const next: Phase =
-            p === "arriving" ? "onboard" : p === "onboard" ? "arrived" : "arrived";
-          // push status to backend (best-effort, silent)
-          storage.getItem<string>("active_ride_id", "").then((rideId) => {
-            if (rideId) api.updateRideStatus(rideId, next).catch(() => {});
-          });
-          return next;
-        });
-        return 6;
-      });
-    }, 3500);
-    return () => clearInterval(t);
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const rideId = await storage.getItem<string>("active_ride_id", "");
+        if (!rideId || cancelled) return;
+        rideIdRef.current = rideId;
+
+        const r = await api.getRide(rideId);
+        if (!cancelled) {
+          setRide(r);
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+
+    return () => { cancelled = true; };
   }, []);
 
-  const status =
-    phase === "arriving"
+  useEffect(() => {
+    if (!rideIdRef.current) return;
+
+    const poll = setInterval(async () => {
+      try {
+        const [r, loc] = await Promise.all([
+          api.getRide(rideIdRef.current!),
+          api.getDriverLocation(rideIdRef.current!),
+        ]);
+        setRide(r);
+        if (loc.lat && loc.lng) {
+          setDriverLoc({ lat: loc.lat, lng: loc.lng });
+        }
+      } catch {
+        // silent
+      }
+    }, POLL_INTERVAL);
+
+    return () => clearInterval(poll);
+  }, [rideIdRef.current]);
+
+  const handleVerifyPin = async () => {
+    if (!rideIdRef.current || pinInput.length !== 4) return;
+    setPinError("");
+    try {
+      await api.verifyRidePin(rideIdRef.current, pinInput);
+      setShowPin(false);
+      setRide((prev) => (prev ? { ...prev, status: "onboard" } : prev));
+    } catch {
+      setPinError("Invalid PIN. Try again.");
+    }
+  };
+
+  const handleShare = async () => {
+    if (!ride) return;
+    try {
+      await Share.share({
+        message: `Track my Where2 ride: https://where2-wdu6.onrender.com/api/rides/${ride.id}/share`,
+      });
+    } catch {}
+  };
+
+  const handleSOS = () => {
+    Linking.openURL("tel:112");
+  };
+
+  if (loading) return <LoadingScreen />;
+
+  const stops: RideStop[] = ride?.stops || [];
+  const status = ride?.status || "arriving";
+
+  const statusLabel =
+    status === "arriving"
       ? "Driver is on the way"
-      : phase === "onboard"
+      : status === "onboard"
         ? "On the way to your destination"
-        : "You've arrived";
+        : status === "arrived"
+          ? "You've arrived"
+          : status === "completed"
+            ? "Ride complete"
+            : "Ride";
 
-  const carPos = phase === "arriving" ? PINS[0] : phase === "onboard" ? PINS[1] : PINS[2];
-
-  const scale = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 3],
-  });
-  const opacity = pulse.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.5, 0],
-  });
+  const pickup = stops[0];
+  const drop = stops[stops.length - 1];
 
   return (
     <View style={styles.root} testID="ride-screen">
       <StatusBar style="light" />
+
+      {/* Map area — placeholder on web */}
       <View style={styles.map}>
-        <MockMap
-          carPos={carPos}
-          pulseScale={scale}
-          pulseOpacity={opacity}
-        />
+        {Platform.OS === "web" ? (
+          <View style={styles.mapPlaceholder}>
+            <Ionicons name="map-outline" size={48} color={colors.textDim} />
+            <Text style={styles.mapPlaceholderText}>Live map</Text>
+          </View>
+        ) : (
+          <View style={styles.mapPlaceholder}>
+            <Ionicons name="location" size={32} color={colors.accent} />
+            <Text style={styles.mapPlaceholderText}>
+              {driverLoc.lat
+                ? `Driver at ${driverLoc.lat.toFixed(4)}, ${driverLoc.lng?.toFixed(4)}`
+                : "Waiting for driver location..."}
+            </Text>
+          </View>
+        )}
+
         <View style={[styles.mapTop, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
             style={styles.mapIcon}
@@ -103,27 +172,79 @@ export default function Ride() {
           <View style={styles.etaPill}>
             <View style={styles.etaDot} />
             <Text style={styles.etaText}>
-              {phase === "arrived" ? "ARRIVED" : `${eta} MIN AWAY`}
+              {status === "arriving" ? "DRIVER ON THE WAY" : status === "onboard" ? "IN TRANSIT" : status.toUpperCase()}
             </Text>
           </View>
-          <TouchableOpacity style={styles.mapIcon} testID="ride-share">
+          <TouchableOpacity style={styles.mapIcon} onPress={handleShare} testID="ride-share">
             <Ionicons name="share-outline" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Sheet */}
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
+      <ScrollView
+        style={styles.sheet}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.grabber} />
 
-        <Text style={styles.kicker}>{status.toUpperCase()}</Text>
-        <Text style={styles.headline}>
-          {phase === "arriving"
-            ? `Arriving in ${eta} min`
-            : phase === "onboard"
-              ? `${eta} min to destination`
-              : "Ride complete"}
-        </Text>
+        <Text style={styles.kicker}>{statusLabel.toUpperCase()}</Text>
+
+        {pickup && drop && (
+          <Text style={styles.headline}>
+            {pickup.label} → {drop.label}
+          </Text>
+        )}
+
+        {/* Ride PIN display (rider sees this when arriving) */}
+        {status === "arriving" && ride?.ride_pin && (
+          <TouchableOpacity
+            style={styles.pinCard}
+            onPress={() => setShowPin(!showPin)}
+          >
+            <Ionicons name="key-outline" size={18} color={colors.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pinLabel}>Your ride PIN</Text>
+              <Text style={styles.pinValue}>{showPin ? ride.ride_pin : "••••"}</Text>
+            </View>
+            <Text style={styles.pinHint}>Tap to {showPin ? "hide" : "reveal"}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* PIN input for driver */}
+        {status === "arriving" && showPin && (
+          <View style={styles.pinInputGroup}>
+            <Text style={styles.pinInputLabel}>Enter rider's PIN to start ride:</Text>
+            <View style={styles.pinInputRow}>
+              {[0, 1, 2, 3].map((i) => (
+                <Pressable
+                  key={i}
+                  style={[
+                    styles.pinDigit,
+                    pinInput[i] && styles.pinDigitFilled,
+                  ]}
+                  onPress={() => {
+                    // Simple: clear and re-enter
+                    setPinInput("");
+                    setPinError("");
+                  }}
+                >
+                  <Text style={styles.pinDigitText}>
+                    {pinInput[i] || "•"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            {pinError ? <Text style={styles.pinError}>{pinError}</Text> : null}
+            <TouchableOpacity
+              style={styles.pinSubmitBtn}
+              onPress={handleVerifyPin}
+            >
+              <Text style={styles.pinSubmitText}>Start Ride</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Driver card */}
         <View style={styles.driverCard}>
@@ -131,14 +252,11 @@ export default function Ride() {
             <Ionicons name="person" size={22} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.driverName}>Ravi Kumar</Text>
+            <Text style={styles.driverName}>Driver</Text>
             <View style={styles.driverMeta}>
-              <Ionicons name="star" size={11} color="#fff" />
-              <Text style={styles.driverRating}>4.87</Text>
-              <Text style={styles.driverDot}> · </Text>
-              <Text style={styles.driverPlate}>KA 13 X 4421</Text>
+              <Ionicons name="car-sport" size={12} color="#fff" />
+              <Text style={styles.driverPlate}>{ride?.vehicle_id || "—"}</Text>
             </View>
-            <Text style={styles.driverCar}>Silver SUV · Ertiga</Text>
           </View>
           <View style={styles.actionRow}>
             <TouchableOpacity style={styles.actBtn} testID="ride-message">
@@ -146,46 +264,44 @@ export default function Ride() {
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actBtn, styles.actBtnAccent]}
-              testID="ride-call"
+              onPress={handleSOS}
+              testID="ride-sos"
             >
-              <Ionicons name="call" size={18} color="#fff" />
+              <Ionicons name="alert-circle" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Trip progress */}
         <View style={styles.progressRow}>
-          <View style={[styles.progStep, styles.progStepDone]}>
-            <Text style={styles.progText}>Pickup</Text>
-          </View>
-          <View
-            style={[
-              styles.progLine,
-              (phase === "onboard" || phase === "arrived") && styles.progLineDone,
-            ]}
-          />
-          <View
-            style={[
-              styles.progStep,
-              (phase === "onboard" || phase === "arrived") && styles.progStepDone,
-            ]}
-          >
-            <Text style={styles.progText}>Manjarabad</Text>
-          </View>
-          <View
-            style={[styles.progLine, phase === "arrived" && styles.progLineDone]}
-          />
-          <View
-            style={[
-              styles.progStep,
-              phase === "arrived" && styles.progStepDone,
-            ]}
-          >
-            <Text style={styles.progText}>Bisle Ghat</Text>
-          </View>
+          {stops.map((stop, i) => (
+            <View key={i} style={{ flexDirection: "row", alignItems: "center", flex: i === stops.length - 1 ? 0 : 1 }}>
+              <View
+                style={[
+                  styles.progStep,
+                  status === "onboard" || status === "arrived" || status === "completed"
+                    ? styles.progStepDone
+                    : null,
+                ]}
+              >
+                <Text style={styles.progText} numberOfLines={1}>
+                  {stop.label}
+                </Text>
+              </View>
+              {i < stops.length - 1 && (
+                <View
+                  style={[
+                    styles.progLine,
+                    (status === "onboard" || status === "arrived" || status === "completed") &&
+                      styles.progLineDone,
+                  ]}
+                />
+              )}
+            </View>
+          ))}
         </View>
 
-        {phase === "arrived" ? (
+        {status === "completed" ? (
           <TouchableOpacity
             style={styles.doneBtn}
             onPress={() => router.replace("/rating")}
@@ -197,9 +313,17 @@ export default function Ride() {
           </TouchableOpacity>
         ) : (
           <View style={styles.bottomActions}>
-            <TouchableOpacity style={styles.secondaryBtn} testID="ride-safety">
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleSOS} testID="ride-safety">
               <Ionicons name="shield-checkmark-outline" size={16} color="#fff" />
-              <Text style={styles.secondaryText}>Safety</Text>
+              <Text style={styles.secondaryText}>SOS</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.secondaryBtn, styles.shareBtn]}
+              onPress={handleShare}
+              testID="ride-share-btn"
+            >
+              <Ionicons name="share-outline" size={16} color="#fff" />
+              <Text style={styles.secondaryText}>Share Trip</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.secondaryBtn, styles.cancelBtn]}
@@ -207,111 +331,11 @@ export default function Ride() {
               testID="ride-cancel"
             >
               <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
-              <Text style={[styles.secondaryText, { color: colors.danger }]}>
-                Cancel
-              </Text>
+              <Text style={[styles.secondaryText, { color: colors.danger }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         )}
-      </View>
-    </View>
-  );
-}
-
-function MockMap({
-  carPos,
-  pulseScale,
-  pulseOpacity,
-}: {
-  carPos: { x: number; y: number };
-  pulseScale: Animated.AnimatedInterpolation<number>;
-  pulseOpacity: Animated.AnimatedInterpolation<number>;
-}) {
-  const [dims, setDims] = useState({
-    w: SCREEN_W,
-    h: Math.round(SCREEN_H * 0.55),
-  });
-  const { w, h } = dims;
-  const pts = PINS.map((p) => ({ x: p.x * w, y: p.y * h }));
-  const pathD = `M ${pts[0].x} ${pts[0].y} Q ${(pts[0].x + pts[1].x) / 2 + 20} ${pts[1].y + 30}, ${pts[1].x} ${pts[1].y} T ${pts[2].x} ${pts[2].y}`;
-  const car = { x: carPos.x * w, y: carPos.y * h };
-
-  return (
-    <View
-      style={StyleSheet.absoluteFill}
-      onLayout={(e) =>
-        setDims({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })
-      }
-    >
-      <Svg width={w} height={h} style={{ position: "absolute", left: 0, top: 0 }}>
-        {[...Array(10)].map((_, i) => (
-          <Line
-            key={"h" + i}
-            x1={0}
-            y1={(h / 10) * i + 10}
-            x2={w}
-            y2={(h / 10) * i + 20}
-            stroke="#1B1D22"
-            strokeWidth={1}
-          />
-        ))}
-        {[...Array(10)].map((_, i) => (
-          <Line
-            key={"v" + i}
-            x1={(w / 10) * i + 15}
-            y1={0}
-            x2={(w / 10) * i - 15}
-            y2={h}
-            stroke="#1B1D22"
-            strokeWidth={1}
-          />
-        ))}
-        <Path
-          d={pathD}
-          stroke={colors.accent}
-          strokeWidth={3.5}
-          strokeLinecap="round"
-          fill="none"
-        />
-        {pts.map((p, i) => (
-          <Circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={7}
-            fill={i === pts.length - 1 ? colors.accent : "#fff"}
-            stroke="#000"
-            strokeWidth={2}
-          />
-        ))}
-      </Svg>
-
-      {/* Animated car pin */}
-      <View
-        style={{
-          position: "absolute",
-          left: car.x - 20,
-          top: car.y - 20,
-          width: 40,
-          height: 40,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-        pointerEvents="none"
-      >
-        <Animated.View
-          style={[
-            styles.pulse,
-            {
-              transform: [{ scale: pulseScale }],
-              opacity: pulseOpacity,
-            },
-          ]}
-        />
-        <View style={styles.carPin}>
-          <Ionicons name="car-sport" size={16} color="#fff" />
-        </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -319,10 +343,17 @@ function MockMap({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   map: {
-    height: "55%",
+    height: MAP_HEIGHT as unknown as number,
     backgroundColor: "#0B0D10",
     overflow: "hidden",
   },
+  mapPlaceholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  mapPlaceholderText: { color: colors.textDim, fontSize: 13 },
   mapTop: {
     position: "absolute",
     left: 0,
@@ -364,23 +395,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   etaText: { color: "#fff", fontSize: 12, fontWeight: "700", letterSpacing: 1 },
-  carPin: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#fff",
-  },
-  pulse: {
-    position: "absolute",
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.accent,
-  },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -413,6 +427,52 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginTop: 4,
   },
+  pinCard: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  pinLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
+  pinValue: { color: "#fff", fontSize: 22, fontWeight: "800", letterSpacing: 6 },
+  pinHint: { color: colors.textDim, fontSize: 11 },
+  pinInputGroup: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pinInputLabel: { color: colors.textMuted, fontSize: 12, marginBottom: 10 },
+  pinInputRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
+  pinDigit: {
+    width: 50,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 2,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinDigitFilled: { borderColor: colors.accent },
+  pinDigitText: { color: "#fff", fontSize: 24, fontWeight: "800" },
+  pinError: { color: colors.danger, fontSize: 12, marginTop: 8, textAlign: "center" },
+  pinSubmitBtn: {
+    marginTop: 14,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pinSubmitText: { color: "#fff", fontSize: 14, fontWeight: "700" },
   driverCard: {
     marginTop: 16,
     padding: 14,
@@ -433,11 +493,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   driverName: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  driverMeta: { flexDirection: "row", alignItems: "center", marginTop: 3 },
-  driverRating: { color: "#fff", fontSize: 12, marginLeft: 3 },
-  driverDot: { color: colors.textDim, fontSize: 12 },
+  driverMeta: { flexDirection: "row", alignItems: "center", marginTop: 3, gap: 6 },
   driverPlate: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
-  driverCar: { color: colors.textDim, fontSize: 11, marginTop: 2 },
   actionRow: { flexDirection: "row", gap: 8 },
   actBtn: {
     width: 42,
@@ -449,7 +506,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  actBtnAccent: { backgroundColor: colors.accent, borderColor: colors.accent },
+  actBtnAccent: { backgroundColor: colors.danger, borderColor: colors.danger },
   progressRow: {
     marginTop: 20,
     flexDirection: "row",
@@ -465,6 +522,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
+    maxWidth: 100,
   },
   progStepDone: {
     backgroundColor: "rgba(30,107,255,0.15)",
@@ -476,21 +534,23 @@ const styles = StyleSheet.create({
     height: 2,
     backgroundColor: colors.border,
     borderRadius: 1,
+    marginHorizontal: 4,
   },
   progLineDone: { backgroundColor: colors.accent },
-  bottomActions: { flexDirection: "row", gap: 10, marginTop: 20 },
+  bottomActions: { flexDirection: "row", gap: 8, marginTop: 20 },
   secondaryBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
     height: 48,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
+  shareBtn: { borderColor: "rgba(30,107,255,0.35)" },
   cancelBtn: { borderColor: "rgba(228,72,60,0.35)" },
   secondaryText: { color: "#fff", fontSize: 13, fontWeight: "700" },
   doneBtn: {

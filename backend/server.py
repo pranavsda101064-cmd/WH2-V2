@@ -195,6 +195,7 @@ class RideOut(BaseModel):
     payment_method: Literal["card", "upi"]
     tip: int = 0
     status: Literal["arriving", "onboard", "arrived", "completed", "cancelled"] = "arriving"
+    ride_pin: Optional[str] = None
     created_at: str
 
 
@@ -250,6 +251,7 @@ def ride_to_out(ride: RideModel) -> RideOut:
         payment_method=ride.payment_method,
         tip=ride.tip,
         status=ride.status,
+        ride_pin=ride.ride_pin,
         created_at=ride.created_at.isoformat() if ride.created_at else "",
     )
 
@@ -442,6 +444,7 @@ async def create_ride(
     try:
         ride_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
+        ride_pin = f"{int.from_bytes(os.urandom(2), 'big') % 10000:04d}"
 
         ride = RideModel(
             id=ride_id,
@@ -452,6 +455,7 @@ async def create_ride(
             payment_method=payload.payment_method,
             tip=payload.tip or 0,
             status="arriving",
+            ride_pin=ride_pin,
             created_at=now,
         )
         db.add(ride)
@@ -467,6 +471,7 @@ async def create_ride(
             payment_method=ride.payment_method,
             tip=ride.tip,
             status=ride.status,
+            ride_pin=ride.ride_pin,
             created_at=ride.created_at.isoformat(),
         )
     except HTTPException:
@@ -1025,6 +1030,113 @@ async def driver_stats(
     except Exception as exc:
         logger.error("driver_stats failed", extra={"error": str(exc)})
         raise HTTPException(500, detail="Failed to fetch driver stats")
+
+
+# ---------- Static files (uploads) ----------
+
+# ---------- Driver Location Tracking ----------
+class DriverLocationUpdate(BaseModel):
+    ride_id: str = Field(..., max_length=36)
+    lat: float = Field(..., ge=-90, le=90)
+    lng: float = Field(..., ge=-180, le=180)
+    heading: Optional[float] = Field(None, ge=0, le=360)
+    speed: Optional[float] = Field(None, ge=0)
+
+
+@api_router.post("/driver/location")
+@limiter.limit("30/minute")
+async def update_driver_location(
+    request: Request,
+    payload: DriverLocationUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    result = await db.execute(
+        select(RideModel).where(
+            RideModel.id == payload.ride_id,
+            RideModel.driver_id == str(current_user.id),
+        )
+    )
+    ride = result.scalar_one_or_none()
+    if not ride:
+        raise HTTPException(404, detail="Ride not found or not assigned to you")
+
+    ride.driver_lat = payload.lat
+    ride.driver_lng = payload.lng
+    ride.driver_heading = payload.heading
+    ride.driver_speed = payload.speed
+    ride.location_updated_at = datetime.now(timezone.utc)
+    await db.flush()
+    return {"status": "ok"}
+
+
+@api_router.get("/rides/{ride_id}/driver-location")
+async def get_driver_location(
+    ride_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
+    ride = result.scalar_one_or_none()
+    if not ride:
+        raise HTTPException(404, detail="Ride not found")
+    return {
+        "lat": ride.driver_lat,
+        "lng": ride.driver_lng,
+        "heading": ride.driver_heading,
+        "speed": ride.driver_speed,
+        "updated_at": ride.location_updated_at.isoformat() if ride.location_updated_at else None,
+    }
+
+
+# ---------- Ride PIN Verification ----------
+class RidePinVerify(BaseModel):
+    pin: str = Field(..., min_length=4, max_length=4)
+
+
+@api_router.post("/rides/{ride_id}/verify-pin")
+async def verify_ride_pin(
+    ride_id: str,
+    payload: RidePinVerify,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    result = await db.execute(
+        select(RideModel).where(
+            RideModel.id == ride_id,
+            RideModel.driver_id == str(current_user.id),
+        )
+    )
+    ride = result.scalar_one_or_none()
+    if not ride:
+        raise HTTPException(404, detail="Ride not found")
+    if ride.ride_pin != payload.pin:
+        raise HTTPException(400, detail="Invalid PIN")
+    ride.status = "onboard"
+    await db.flush()
+    return {"status": "ok", "message": "Ride started"}
+
+
+# ---------- Trip Sharing ----------
+@api_router.get("/rides/{ride_id}/share")
+async def share_ride(
+    ride_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
+    ride = result.scalar_one_or_none()
+    if not ride:
+        raise HTTPException(404, detail="Ride not found")
+    return {
+        "ride_id": ride.id,
+        "status": ride.status,
+        "driver_lat": ride.driver_lat,
+        "driver_lng": ride.driver_lng,
+        "stops": ride.stops,
+        "fare": ride.fare,
+    }
 
 
 # ---------- Static files (uploads) ----------

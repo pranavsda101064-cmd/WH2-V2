@@ -16,6 +16,7 @@ import { colors, radius } from "@/src/theme";
 import { api, DriverRequest, DriverStats } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
+import { useLocationTracker } from "@/src/hooks/use-location-tracker";
 
 const POLL_INTERVAL = 10000;
 
@@ -28,6 +29,8 @@ export default function DriverDashboard() {
   const [stats, setStats] = useState<DriverStats>({ earnings: 0, trips: 0, hours: 0 });
   const [loading, setLoading] = useState(true);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useLocationTracker();
 
   const fetchRequests = useCallback(async () => {
     try {

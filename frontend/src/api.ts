@@ -73,12 +73,14 @@ export type RideStop = { label: string; sub?: string; lat?: number; lng?: number
 export type Ride = {
   id: string;
   user_id: string;
+  driver_id?: string;
   vehicle_id: string;
   stops: RideStop[];
   fare: number;
   payment_method: "card" | "upi";
   tip: number;
   status: "arriving" | "onboard" | "arrived" | "completed" | "cancelled";
+  ride_pin?: string;
   created_at: string;
 };
 
@@ -244,6 +246,9 @@ export const api = {
       body: JSON.stringify({ status }),
     }),
 
+  getRide: (id: string) =>
+    req<Ride>(`/rides/${id}`),
+
   // Ratings
   submitRating: (body: {
     ride_id: string;
@@ -332,4 +337,29 @@ export const api = {
 
   listVehiclesDriver: () =>
     req<DriverVehicle[]>("/driver/vehicles", undefined, []),
+
+  // Driver Location Tracking
+  updateDriverLocation: (rideId: string, lat: number, lng: number, heading?: number, speed?: number) =>
+    req<{ status: string }>("/driver/location", {
+      method: "POST",
+      body: JSON.stringify({ ride_id: rideId, lat, lng, heading, speed }),
+    }),
+
+  getDriverLocation: (rideId: string) =>
+    req<{ lat: number | null; lng: number | null; heading: number | null; speed: number | null; updated_at: string | null }>(
+      `/rides/${rideId}/driver-location`,
+    ),
+
+  // Ride PIN Verification
+  verifyRidePin: (rideId: string, pin: string) =>
+    req<{ status: string; message: string }>(`/rides/${rideId}/verify-pin`, {
+      method: "POST",
+      body: JSON.stringify({ pin }),
+    }),
+
+  // Trip Sharing
+  shareRide: (rideId: string) =>
+    req<{ ride_id: string; status: string; driver_lat: number | null; driver_lng: number | null; stops: RideStop[]; fare: number }>(
+      `/rides/${rideId}/share`,
+    ),
 };

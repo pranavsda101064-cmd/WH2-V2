@@ -83,6 +83,13 @@ class Ride(Base):
     )
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
 
+    driver_lat = Column(Float, nullable=True)
+    driver_lng = Column(Float, nullable=True)
+    driver_heading = Column(Float, nullable=True)
+    driver_speed = Column(Float, nullable=True)
+    location_updated_at = Column(DateTime(timezone=True), nullable=True)
+    ride_pin = Column(String(4), nullable=True)
+
     user = relationship("User", back_populates="rides", foreign_keys=[user_id])
     rating = relationship("Rating", back_populates="ride", uselist=False)
 

@@ -38,7 +38,7 @@ export default function Auth() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+  const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
     selectAccount: true,
   });
@@ -46,13 +46,13 @@ export default function Auth() {
   useEffect(() => {
     if (!response) return;
     if (response.type === "success") {
-      const idToken = response.params?.id_token;
-      if (!idToken) {
-        setError("No ID token received from Google");
+      const accessToken = response.authentication?.accessToken;
+      if (!accessToken) {
+        setError("No access token received from Google");
         return;
       }
       setGoogleLoading(true);
-      api.googleAuth(idToken, role)
+      api.googleAuth(accessToken, role)
         .then(() => {
           if (role === "driver") router.replace("/driver-onboarding");
           else router.replace("/(tabs)/home");

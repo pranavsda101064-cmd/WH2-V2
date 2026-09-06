@@ -164,10 +164,10 @@ export const api = {
     await clearUserEmail();
   },
 
-  googleAuth: async (idToken: string, role: "customer" | "driver" = "customer") => {
+  googleAuth: async (token: string, role: "customer" | "driver" = "customer") => {
     const data = await req<{ access_token: string; user: { email: string; role: string } }>(
       "/auth/google",
-      { method: "POST", body: JSON.stringify({ id_token: idToken, role }) },
+      { method: "POST", body: JSON.stringify({ token, role }) },
     );
     if (data?.access_token) {
       await setToken(data.access_token);

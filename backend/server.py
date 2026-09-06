@@ -334,7 +334,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 # ---------- Google Auth ----------
 class GoogleAuthRequest(BaseModel):
-    id_token: str = Field(..., max_length=2048)
+    token: str = Field(..., max_length=4096)
     role: Literal["customer", "driver"] = "customer"
 
 
@@ -344,21 +344,18 @@ async def google_auth(request: Request, payload: GoogleAuthRequest, db: AsyncSes
     try:
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                "https://oauth2.googleapis.com/tokeninfo",
-                params={"id_token": payload.id_token},
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {payload.token}"},
                 timeout=10.0,
             )
         if resp.status_code != 200:
             raise HTTPException(401, detail="Invalid Google token")
-        claims = resp.json()
-        email = claims.get("email")
+        profile = resp.json()
+        email = profile.get("email")
         if not email:
-            raise HTTPException(401, detail="No email in Google token")
-
-        aud = claims.get("aud")
-        if not settings.GOOGLE_WEB_CLIENT_ID or aud != settings.GOOGLE_WEB_CLIENT_ID:
-            logger.warning("google_auth aud mismatch", extra={"aud": aud})
-            raise HTTPException(401, detail="Invalid Google token audience")
+            raise HTTPException(401, detail="No email in Google profile")
+        if not profile.get("email_verified", False):
+            raise HTTPException(401, detail="Google email not verified")
 
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()

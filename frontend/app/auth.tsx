@@ -16,8 +16,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import * as AuthSession from "expo-auth-session";
-import * as Crypto from "expo-crypto";
+import * as Google from "expo-auth-session/providers/google";
 
 import { colors, radius } from "@/src/theme";
 import { api } from "@/src/api";
@@ -26,13 +25,6 @@ const BG =
   "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1400&q=80";
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
-const GOOGLE_REDIRECT_URI = "https://auth.expo.io/@prannare/frontend";
-
-const googleDiscovery = {
-  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-  tokenEndpoint: "https://oauth2.googleapis.com/token",
-  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
-};
 
 type Role = "customer" | "driver";
 
@@ -45,23 +37,11 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const [nonce, setNonce] = useState("");
 
-  useEffect(() => {
-    Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, Math.random().toString()).then(setNonce);
-  }, []);
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GOOGLE_WEB_CLIENT_ID,
-      redirectUri: GOOGLE_REDIRECT_URI,
-      scopes: ["openid", "profile", "email"],
-      responseType: AuthSession.ResponseType.IdToken,
-      extraParams: nonce ? { nonce } : undefined,
-      usePKCE: false,
-    },
-    googleDiscovery,
-  );
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    selectAccount: true,
+  });
 
   useEffect(() => {
     if (!response) return;

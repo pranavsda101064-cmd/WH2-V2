@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
+    Boolean,
     Column,
     DateTime,
     Enum,
@@ -32,6 +33,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     role = Column(Enum("customer", "driver", name="user_role"), nullable=False, default="customer")
+    profile_completed = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
     rides = relationship("Ride", back_populates="user", foreign_keys="Ride.user_id")
@@ -184,3 +186,18 @@ class DriverVehicle(Base):
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
     driver = relationship("DriverProfile", back_populates="vehicles")
+
+
+class CustomerProfile(Base):
+    __tablename__ = "customer_profiles"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), unique=True, nullable=False, index=True)
+    full_name = Column(String(255), nullable=False)
+    phone = Column(String(20), nullable=False)
+    gender = Column(Enum("male", "female", "other", name="gender_type"), nullable=True)
+    avatar_url = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+
+    user = relationship("User", foreign_keys=[user_id])

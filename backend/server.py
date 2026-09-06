@@ -37,6 +37,7 @@ from models import DriverRequest as DriverRequestModel
 from models import DriverProfile as DriverProfileModel
 from models import DriverDocument as DriverDocumentModel
 from models import DriverVehicle as DriverVehicleModel
+from models import CustomerProfile as CustomerProfileModel
 from models import Package as PackageModel
 from models import Rating as RatingModel
 from models import Ride as RideModel
@@ -297,7 +298,7 @@ async def register(request: Request, payload: RegisterRequest, db: AsyncSession 
         token = create_access_token(str(user.id), user.email, user.role)
         return TokenResponse(
             access_token=token,
-            user={"id": str(user.id), "email": user.email, "role": user.role},
+            user={"id": str(user.id), "email": user.email, "role": user.role, "profile_completed": user.profile_completed},
         )
     except HTTPException:
         raise
@@ -318,7 +319,7 @@ async def login(request: Request, payload: UserLogin, db: AsyncSession = Depends
         token = create_access_token(str(user.id), user.email, user.role)
         return TokenResponse(
             access_token=token,
-            user={"id": str(user.id), "email": user.email, "role": user.role},
+            user={"id": str(user.id), "email": user.email, "role": user.role, "profile_completed": user.profile_completed},
         )
     except HTTPException:
         raise
@@ -371,13 +372,148 @@ async def google_auth(request: Request, payload: GoogleAuthRequest, db: AsyncSes
         token = create_access_token(str(user.id), user.email, user.role)
         return TokenResponse(
             access_token=token,
-            user={"id": str(user.id), "email": user.email, "role": user.role},
+            user={
+                "id": str(user.id),
+                "email": user.email,
+                "role": user.role,
+                "profile_completed": user.profile_completed,
+                "name": profile.get("name", ""),
+            },
         )
     except HTTPException:
         raise
     except Exception as exc:
         logger.error("google_auth failed", extra={"error": str(exc)})
         raise HTTPException(500, detail="Google auth failed")
+
+
+# ---------- Customer Profile ----------
+class ProfileCreate(BaseModel):
+    full_name: str = Field(..., max_length=255)
+    phone: str = Field(..., max_length=20)
+    gender: Optional[Literal["male", "female", "other"]] = None
+    avatar_url: Optional[str] = Field(None, max_length=500)
+
+
+class ProfileOut(BaseModel):
+    id: str
+    user_id: str
+    full_name: str
+    phone: str
+    gender: Optional[str] = None
+    avatar_url: Optional[str] = None
+    created_at: str
+
+
+@api_router.get("/profile", response_model=ProfileOut)
+async def get_profile(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await db.execute(
+            select(CustomerProfileModel).where(CustomerProfileModel.user_id == str(current_user.id))
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            raise HTTPException(404, detail="Profile not found")
+        return ProfileOut(
+            id=profile.id,
+            user_id=str(profile.user_id),
+            full_name=profile.full_name,
+            phone=profile.phone,
+            gender=profile.gender,
+            avatar_url=profile.avatar_url,
+            created_at=profile.created_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("get_profile failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch profile")
+
+
+@api_router.post("/profile", response_model=ProfileOut)
+@limiter.limit("10/minute")
+async def create_or_update_profile(
+    request: Request,
+    payload: ProfileCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await db.execute(
+            select(CustomerProfileModel).where(CustomerProfileModel.user_id == str(current_user.id))
+        )
+        profile = result.scalar_one_or_none()
+
+        if profile:
+            profile.full_name = payload.full_name
+            profile.phone = payload.phone
+            profile.gender = payload.gender
+            if payload.avatar_url:
+                profile.avatar_url = payload.avatar_url
+        else:
+            profile = CustomerProfileModel(
+                user_id=str(current_user.id),
+                full_name=payload.full_name,
+                phone=payload.phone,
+                gender=payload.gender,
+                avatar_url=payload.avatar_url,
+            )
+            db.add(profile)
+
+        current_user.profile_completed = True
+        await db.flush()
+
+        return ProfileOut(
+            id=profile.id,
+            user_id=str(profile.user_id),
+            full_name=profile.full_name,
+            phone=profile.phone,
+            gender=profile.gender,
+            avatar_url=profile.avatar_url,
+            created_at=profile.created_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("create_or_update_profile failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to save profile")
+
+
+@api_router.post("/profile/avatar")
+@limiter.limit("10/minute")
+async def upload_avatar(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await db.execute(
+            select(CustomerProfileModel).where(CustomerProfileModel.user_id == str(current_user.id))
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            raise HTTPException(400, detail="Create profile first")
+
+        ext = os.path.splitext(file.filename or "avatar.jpg")[1] or ".jpg"
+        filename = f"avatar_{current_user.id}{ext}"
+        filepath = os.path.join(UPLOADS_DIR, filename)
+        content = await file.read()
+        with open(filepath, "wb") as f:
+            f.write(content)
+
+        profile.avatar_url = f"/uploads/{filename}"
+        await db.flush()
+
+        return {"avatar_url": profile.avatar_url}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("upload_avatar failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to upload avatar")
 
 
 # ---------- Health check ----------

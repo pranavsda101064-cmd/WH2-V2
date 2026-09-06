@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Google from "expo-auth-session/providers/google";
 
 import { colors, radius } from "@/src/theme";
-import { api } from "@/src/api";
+import { api, getProfileCompleted } from "@/src/api";
 
 const BG =
   "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1400&q=80";
@@ -53,9 +53,13 @@ export default function Auth() {
       }
       setGoogleLoading(true);
       api.googleAuth(accessToken, role)
-        .then(() => {
-          if (role === "driver") router.replace("/driver-onboarding");
-          else router.replace("/(tabs)/home");
+        .then(async () => {
+          if (role === "driver") {
+            router.replace("/driver-onboarding");
+          } else {
+            const completed = await getProfileCompleted();
+            router.replace(completed ? "/(tabs)/home" : "/profile-setup");
+          }
         })
         .catch(() => setError("Google sign-in failed"))
         .finally(() => setGoogleLoading(false));
@@ -73,13 +77,17 @@ export default function Auth() {
     setLoading(true);
     try {
       await api.login(email.trim(), password);
-      if (role === "driver") router.replace("/driver-dashboard");
-      else router.replace("/(tabs)/home");
+      if (role === "driver") {
+        router.replace("/driver-dashboard");
+      } else {
+        const completed = await getProfileCompleted();
+        router.replace(completed ? "/(tabs)/home" : "/profile-setup");
+      }
     } catch {
       try {
         await api.register(email.trim(), password, role);
         if (role === "driver") router.replace("/driver-onboarding");
-        else router.replace("/(tabs)/home");
+        else router.replace("/profile-setup");
       } catch {
         setError("Invalid email or password");
       }

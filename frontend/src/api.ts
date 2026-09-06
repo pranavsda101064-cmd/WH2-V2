@@ -14,6 +14,8 @@ import { getCached, setCache } from "@/src/utils/cache";
 const BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
 const TOKEN_KEY = "auth_token";
 const USER_EMAIL_KEY = "auth_user_email";
+const PROFILE_COMPLETED_KEY = "profile_completed";
+const USER_NAME_KEY = "user_name";
 
 // ---- Token helpers ----
 export async function getToken(): Promise<string | null> {
@@ -38,6 +40,22 @@ export async function setUserEmail(email: string): Promise<void> {
 
 export async function clearUserEmail(): Promise<void> {
   await storage.removeItem(USER_EMAIL_KEY);
+}
+
+export async function getProfileCompleted(): Promise<boolean> {
+  return (await storage.getItem<boolean>(PROFILE_COMPLETED_KEY, false)) || false;
+}
+
+export async function setProfileCompleted(val: boolean): Promise<void> {
+  await storage.setItem(PROFILE_COMPLETED_KEY, val);
+}
+
+export async function getUserName(): Promise<string> {
+  return (await storage.getItem<string>(USER_NAME_KEY, "")) || "";
+}
+
+export async function setUserName(name: string): Promise<void> {
+  await storage.setItem(USER_NAME_KEY, name);
 }
 
 // ---- Internal request helper ----
@@ -132,29 +150,41 @@ export type DriverVehicle = {
   created_at: string;
 };
 
+export type CustomerProfile = {
+  id: string;
+  user_id: string;
+  full_name: string;
+  phone: string;
+  gender: "male" | "female" | "other" | null;
+  avatar_url: string | null;
+  created_at: string;
+};
+
 // ---- Endpoints ----
 export const api = {
   // Auth
   register: async (email: string, password: string, role: "customer" | "driver" = "customer") => {
-    const data = await req<{ access_token: string; user: { email: string; role: string } }>(
+    const data = await req<{ access_token: string; user: { email: string; role: string; profile_completed: boolean } }>(
       "/auth/register",
       { method: "POST", body: JSON.stringify({ email, password, role }) },
     );
     if (data?.access_token) {
       await setToken(data.access_token);
       await setUserEmail(email);
+      await setProfileCompleted(data.user.profile_completed);
     }
     return data;
   },
 
   login: async (email: string, password: string) => {
-    const data = await req<{ access_token: string; user: { email: string } }>(
+    const data = await req<{ access_token: string; user: { email: string; profile_completed: boolean } }>(
       "/auth/login",
       { method: "POST", body: JSON.stringify({ email, password }) },
     );
     if (data?.access_token) {
       await setToken(data.access_token);
       await setUserEmail(email);
+      await setProfileCompleted(data.user.profile_completed);
     }
     return data;
   },
@@ -162,16 +192,20 @@ export const api = {
   logout: async () => {
     await clearToken();
     await clearUserEmail();
+    await setProfileCompleted(false);
+    await setUserName("");
   },
 
   googleAuth: async (token: string, role: "customer" | "driver" = "customer") => {
-    const data = await req<{ access_token: string; user: { email: string; role: string } }>(
+    const data = await req<{ access_token: string; user: { email: string; role: string; profile_completed: boolean; name: string } }>(
       "/auth/google",
       { method: "POST", body: JSON.stringify({ token, role }) },
     );
     if (data?.access_token) {
       await setToken(data.access_token);
       await setUserEmail(data.user.email);
+      await setProfileCompleted(data.user.profile_completed);
+      if (data.user.name) await setUserName(data.user.name);
     }
     return data;
   },
@@ -362,4 +396,29 @@ export const api = {
     req<{ ride_id: string; status: string; driver_lat: number | null; driver_lng: number | null; stops: RideStop[]; fare: number }>(
       `/rides/${rideId}/share`,
     ),
+
+  // Customer Profile
+  getProfile: () =>
+    req<CustomerProfile>("/profile", undefined, undefined as CustomerProfile | undefined),
+
+  updateProfile: (body: { full_name: string; phone: string; gender?: string; avatar_url?: string }) =>
+    req<CustomerProfile>("/profile", { method: "POST", body: JSON.stringify(body) }),
+
+  uploadAvatar: async (file: { uri: string; type: string; name: string }) => {
+    const token = await getToken();
+    const formData = new FormData();
+    formData.append("file", {
+      uri: file.uri,
+      type: file.type,
+      name: file.name,
+    } as any);
+    const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+    const res = await fetch(`${BASE_URL}/api/profile/avatar`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+    return res.json() as Promise<{ avatar_url: string }>;
+  },
 };

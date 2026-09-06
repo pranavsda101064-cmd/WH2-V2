@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
 import { colors, radius } from "@/src/theme";
-import { api, getUserEmail } from "@/src/api";
+import { api, getUserEmail, getUserName } from "@/src/api";
 
 const rows: {
   icon: keyof typeof Ionicons.glyphMap;
@@ -35,10 +35,29 @@ export default function Profile() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
+  const [userName, setUserName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     getUserEmail().then(setUserEmail);
+    getUserName().then(setUserName);
+    api.getProfile().then((p) => {
+      if (p) {
+        setUserName(p.full_name);
+        setAvatarUrl(p.avatar_url);
+      }
+    }).catch(() => {});
   }, []);
+
+  const displayName = userName || "Explorer";
+
+  const getAvatarSource = () => {
+    if (avatarUrl && avatarUrl.startsWith("http")) return { uri: avatarUrl };
+    if (avatarUrl && avatarUrl.startsWith("/")) {
+      return { uri: `${process.env.EXPO_PUBLIC_BACKEND_URL}${avatarUrl}` };
+    }
+    return { uri: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=200&q=70" };
+  };
 
   return (
     <View style={styles.root} testID="profile-screen">
@@ -57,14 +76,9 @@ export default function Profile() {
         </View>
 
         <View style={styles.card}>
-          <Image
-            source={{
-              uri: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=200&q=70",
-            }}
-            style={styles.avatar}
-          />
+          <Image source={getAvatarSource()} style={styles.avatar} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.name}>Explorer</Text>
+            <Text style={styles.name}>{displayName}</Text>
             <Text style={styles.phone}>{userEmail || "Not signed in"}</Text>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={12} color="#fff" />
@@ -73,7 +87,7 @@ export default function Profile() {
           </View>
           <TouchableOpacity
             style={styles.editBtn}
-            onPress={() => router.push("/auth")}
+            onPress={() => router.push("/profile-setup")}
             testID="edit-profile-button"
           >
             <Text style={styles.editText}>Edit</Text>
@@ -98,21 +112,18 @@ export default function Profile() {
                 else if (row.label === "Sign out") {
                   await api.logout();
                   router.replace("/");
+                } else if (row.label === "Personal information") {
+                  router.push("/profile-setup");
                 }
               }}
-              activeOpacity={0.7}
-              testID={`profile-row-${row.label.replace(/\s+/g, "-").toLowerCase()}`}
             >
-              <View style={styles.rowIcon}>
-                <Ionicons name={row.icon} size={18} color={colors.textMuted} />
-              </View>
+              <Ionicons name={row.icon} size={20} color="#fff" />
               <Text style={styles.rowLabel}>{row.label}</Text>
+              {row.hint && <Text style={styles.rowHint}>{row.hint}</Text>}
               <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
             </TouchableOpacity>
           ))}
         </View>
-
-        <Text style={styles.version}>Sakleshpura Rides · v1.0</Text>
       </ScrollView>
     </View>
   );
@@ -120,7 +131,7 @@ export default function Profile() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <View style={{ flex: 1, alignItems: "center" }}>
+    <View style={styles.stat}>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -134,9 +145,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  h1: { color: "#fff", fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
+  h1: { color: "#fff", fontSize: 28, fontWeight: "800" },
   iconBtn: {
     width: 40,
     height: 40,
@@ -148,7 +159,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   card: {
-    marginHorizontal: 16,
+    marginHorizontal: 20,
     padding: 16,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
@@ -158,13 +169,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 14,
   },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
-  name: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surfaceAlt,
+  },
+  name: { color: "#fff", fontSize: 17, fontWeight: "700" },
   phone: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
-  ratingRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 },
-  rating: { color: "#fff", fontSize: 12 },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  rating: { color: colors.textMuted, fontSize: 12 },
   editBtn: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     height: 34,
     borderRadius: 17,
     borderWidth: 1,
@@ -174,22 +190,22 @@ const styles = StyleSheet.create({
   },
   editText: { color: "#fff", fontSize: 13, fontWeight: "600" },
   statsRow: {
-    marginHorizontal: 16,
-    marginTop: 12,
+    flexDirection: "row",
+    marginHorizontal: 20,
+    marginTop: 16,
     padding: 16,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    flexDirection: "row",
-    alignItems: "center",
   },
-  statDivider: { width: 1, height: 28, backgroundColor: colors.border },
-  statValue: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  statLabel: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
+  stat: { flex: 1, alignItems: "center" },
+  statValue: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  statLabel: { color: colors.textMuted, fontSize: 12, marginTop: 4 },
+  statDivider: { width: 1, backgroundColor: colors.border },
   list: {
-    marginHorizontal: 16,
-    marginTop: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -199,24 +215,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    height: 54,
-    paddingHorizontal: 14,
     gap: 12,
+    paddingHorizontal: 16,
+    height: 52,
   },
   rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  rowIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowLabel: { flex: 1, color: "#fff", fontSize: 14, fontWeight: "500" },
-  version: {
-    color: colors.textDim,
-    textAlign: "center",
-    fontSize: 11,
-    marginTop: 24,
-  },
+  rowLabel: { flex: 1, color: "#fff", fontSize: 15, fontWeight: "500" },
+  rowHint: { color: colors.textDim, fontSize: 13 },
 });

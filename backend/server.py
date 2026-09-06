@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Req
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from pythonjsonlogger import json as jsonlogger
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
@@ -187,7 +187,7 @@ class RideCreate(BaseModel):
 class RideOut(BaseModel):
     id: str
     user_id: str
-    driver_id: Optional[str] = "driver-ravi"
+    driver_id: Optional[str] = None
     vehicle_id: str
     stops: List[RideStop]
     fare: int
@@ -270,7 +270,7 @@ async def root():
 
 # ---------- Auth ----------
 class RegisterRequest(BaseModel):
-    email: str
+    email: EmailStr
     password: str
     role: Literal["customer", "driver"] = "customer"
 
@@ -395,7 +395,7 @@ async def create_ride(
             id=ride_id,
             user_id=str(current_user.id),
             vehicle_id=payload.vehicle_id,
-            stops=[{"label": s.label, "sub": s.sub} for s in payload.stops],
+            stops=[{"label": s.label, "sub": s.sub, "lat": s.lat, "lng": s.lng} for s in payload.stops],
             fare=payload.fare,
             payment_method=payload.payment_method,
             tip=payload.tip or 0,
@@ -501,6 +501,8 @@ async def create_rating(
         ride = result.scalar_one_or_none()
         if not ride:
             raise HTTPException(404, detail="Ride not found")
+        if str(ride.user_id) != str(current_user.id):
+            raise HTTPException(403, detail="You can only rate your own rides")
 
         rating = RatingModel(
             id=str(uuid.uuid4()),
@@ -873,11 +875,24 @@ async def accept_request(
         if not req:
             raise HTTPException(404, detail="Request not found")
 
+        profile_result = await db.execute(
+            select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
+        )
+        profile = profile_result.scalar_one_or_none()
+        vehicle_id = "v1"
+        if profile:
+            veh_result = await db.execute(
+                select(DriverVehicleModel).where(DriverVehicleModel.driver_id == profile.id).limit(1)
+            )
+            veh = veh_result.scalar_one_or_none()
+            if veh:
+                vehicle_id = veh.id
+
         ride = RideModel(
             id=str(uuid.uuid4()),
             user_id=str(uuid.uuid4()),
             driver_id=str(current_user.id),
-            vehicle_id="v2",
+            vehicle_id=vehicle_id,
             stops=[
                 {"label": req.pickup, "sub": "Pickup"},
                 {"label": req.drop, "sub": "Drop-off"},

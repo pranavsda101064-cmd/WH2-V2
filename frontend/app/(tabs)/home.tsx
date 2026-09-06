@@ -219,9 +219,8 @@ export default function Home() {
           renderItem={({ item, index }) => {
             const mock = mockTrips[index % mockTrips.length];
             const title = item.stops?.[0]?.label ?? mock.title;
-  if (loading) return <LoadingScreen message="Loading rides..." />;
 
-  return (
+            return (
               <TouchableOpacity
                 style={styles.tripCard}
                 activeOpacity={0.85}

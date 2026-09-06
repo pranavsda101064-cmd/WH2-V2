@@ -34,13 +34,16 @@ export default function DriverDashboard() {
       const [r, s] = await Promise.all([api.listDriverRequests(), api.driverStats()]);
       setRequests(r);
       setStats(s);
-      if (r.length > 0 && !selected) setSelected(r[0].id);
     } catch {}
-  }, [selected]);
+  }, []);
 
   useEffect(() => {
     fetchRequests().finally(() => setLoading(false));
-  }, []);
+  }, [fetchRequests]);
+
+  useEffect(() => {
+    if (requests.length > 0 && !selected) setSelected(requests[0].id);
+  }, [requests, selected]);
 
   useEffect(() => {
     if (online) {

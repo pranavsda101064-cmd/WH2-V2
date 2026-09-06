@@ -68,7 +68,7 @@ async function req<T>(path: string, init?: RequestInit, fallback?: T): Promise<T
 export type Package = (typeof mockPackages)[number];
 export type Vehicle = (typeof mockVehicles)[number] & { icon: string };
 
-export type RideStop = { label: string; sub?: string };
+export type RideStop = { label: string; sub?: string; lat?: number; lng?: number };
 
 export type Ride = {
   id: string;

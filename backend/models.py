@@ -66,7 +66,7 @@ class Ride(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=False, index=True)
-    driver_id = Column(String(100), nullable=True, default="driver-ravi")
+    driver_id = Column(String(100), nullable=True)
     vehicle_id = Column(String(10), nullable=False)
     stops = Column(JSON, nullable=False)
     fare = Column(Integer, nullable=False)

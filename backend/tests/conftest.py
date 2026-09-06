@@ -53,3 +53,14 @@ async def auth_header(client: AsyncClient):
     })
     token = r.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def driver_header(client: AsyncClient):
+    r = await client.post("/api/auth/register", json={
+        "email": "driver@example.com",
+        "password": "password123",
+        "role": "driver",
+    })
+    token = r.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

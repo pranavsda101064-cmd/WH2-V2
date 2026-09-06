@@ -14,18 +14,23 @@ import { StatusBar } from "expo-status-bar";
 import { colors, radius } from "@/src/theme";
 import { api, Vehicle } from "@/src/api";
 import { storage } from "@/src/utils/storage";
+import { LoadingScreen } from "@/src/components/loading";
 
 export default function Vehicles() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selected, setSelected] = useState<string>("v1");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.listVehicles().then((v) => {
-      setVehicles(v);
-      if (v[0]) setSelected(v[0].id);
-    });
+    api.listVehicles()
+      .then((v) => {
+        setVehicles(v);
+        if (v[0]) setSelected(v[0].id);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const chosen = vehicles.find((v) => v.id === selected);
@@ -36,6 +41,8 @@ export default function Vehicles() {
     await storage.setItem("checkout_fare", chosen.fare);
     router.push("/checkout");
   };
+
+  if (loading) return <LoadingScreen message="Loading vehicles..." />;
 
   return (
     <View style={styles.root} testID="vehicles-screen">

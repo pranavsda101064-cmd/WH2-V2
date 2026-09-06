@@ -1,33 +1,155 @@
-from fastapi import FastAPI, APIRouter, HTTPException
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
 import logging
-from pathlib import Path
-from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
+import os
+import time
 import uuid
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
+from typing import List, Literal, Optional
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
+import sentry_sdk
+from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
+from pythonjsonlogger import json as jsonlogger
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
-
-app = FastAPI(title="Sakleshpura Rides API", version="1.0.0")
-api_router = APIRouter(prefix="/api")
-
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+from auth import (
+    UserCreate,
+    UserLogin,
+    TokenResponse,
+    UserOut,
+    create_access_token,
+    get_current_user,
+    hash_password,
+    verify_password,
 )
+from config import get_settings
+from database import async_session_factory, get_db
+from models import DriverRequest as DriverRequestModel
+from models import DriverProfile as DriverProfileModel
+from models import DriverDocument as DriverDocumentModel
+from models import DriverVehicle as DriverVehicleModel
+from models import Package as PackageModel
+from models import Rating as RatingModel
+from models import Ride as RideModel
+from models import User
+from models import Vehicle as VehicleModel
+from seed import seed_database
+
+settings = get_settings()
+
+UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+
+# ---------- Rate limiting ----------
+limiter = Limiter(key_func=get_remote_address)
+
+# ---------- Request ID context ----------
+request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
+
+# ---------- Structured logging ----------
+handler = logging.StreamHandler()
+handler.setFormatter(
+    jsonlogger.JsonFormatter(
+        fmt="%(asctime)s %(levelname)s %(name)s %(message)s",
+        rename_fields={"asctime": "timestamp", "levelname": "level", "name": "logger"},
+    )
+)
+logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL), handlers=[handler])
 logger = logging.getLogger(__name__)
 
 
-# ---------- Models ----------
-class Package(BaseModel):
+# ---------- Lifespan ----------
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if settings.SENTRY_DSN:
+        sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENVIRONMENT)
+        logger.info("Sentry initialized.")
+    logger.info("Starting Sakleshpura Rides API...")
+    if settings.ENVIRONMENT == "development":
+        async with async_session_factory() as session:
+            await seed_database(session)
+        logger.info("Database seeded (if empty). Ready.")
+    else:
+        logger.info("Production mode — skipping seed. Ready.")
+    yield
+    logger.info("Shutting down.")
+
+
+# ---------- App ----------
+app = FastAPI(
+    title="Sakleshpura Rides API",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": f"Rate limit exceeded: {exc.detail}"},
+    )
+
+# ---------- CORS ----------
+allowed_origins = [o.strip() for o in settings.ALLOWED_ORIGINS.split(",")]
+app.add_middleware(
+    CORSMiddleware,
+    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ---------- Global exception handler ----------
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "unhandled error",
+        exc_info=True,
+        extra={
+            "request_id": request_id_ctx.get("-"),
+            "method": request.method,
+            "path": request.url.path,
+            "error": str(exc),
+        },
+    )
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+# ---------- Request logging middleware ----------
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.perf_counter()
+    req_id = str(uuid.uuid4())[:8]
+    request_id_ctx.set(req_id)
+    response = await call_next(request)
+    elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
+    logger.info(
+        "request completed",
+        extra={
+            "request_id": req_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status": response.status_code,
+            "duration_ms": elapsed_ms,
+            "client": request.client.host if request.client else "unknown",
+        },
+    )
+    return response
+
+
+# ---------- Pydantic schemas (API contract — unchanged) ----------
+class PackageOut(BaseModel):
     id: str
     title: str
     subtitle: str
@@ -37,7 +159,7 @@ class Package(BaseModel):
     image: str
 
 
-class Vehicle(BaseModel):
+class VehicleOut(BaseModel):
     id: str
     name: str
     desc: str
@@ -48,22 +170,23 @@ class Vehicle(BaseModel):
 
 
 class RideStop(BaseModel):
-    label: str
-    sub: Optional[str] = None
+    label: str = Field(..., max_length=255)
+    sub: Optional[str] = Field(None, max_length=255)
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
 
 class RideCreate(BaseModel):
-    user_id: str = "explorer"
-    vehicle_id: str
-    stops: List[RideStop]
-    fare: int
+    vehicle_id: str = Field(..., max_length=10)
+    stops: List[RideStop] = Field(..., min_length=1, max_length=10)
+    fare: int = Field(..., ge=0, le=100000)
     payment_method: Literal["card", "upi"]
-    tip: Optional[int] = 0
+    tip: Optional[int] = Field(0, ge=0, le=10000)
 
 
-class Ride(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    user_id: str = "explorer"
+class RideOut(BaseModel):
+    id: str
+    user_id: str
     driver_id: Optional[str] = "driver-ravi"
     vehicle_id: str
     stops: List[RideStop]
@@ -71,9 +194,7 @@ class Ride(BaseModel):
     payment_method: Literal["card", "upi"]
     tip: int = 0
     status: Literal["arriving", "onboard", "arrived", "completed", "cancelled"] = "arriving"
-    created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: str
 
 
 class RideStatusUpdate(BaseModel):
@@ -81,21 +202,24 @@ class RideStatusUpdate(BaseModel):
 
 
 class RatingCreate(BaseModel):
-    ride_id: str
+    ride_id: str = Field(..., max_length=36)
     stars: int = Field(ge=1, le=5)
-    tags: List[str] = []
+    tags: List[str] = Field(default=[], max_length=10)
+    note: Optional[str] = Field(None, max_length=500)
+    tip: Optional[int] = Field(0, ge=0, le=10000)
+
+
+class RatingOut(BaseModel):
+    id: str
+    ride_id: str
+    stars: int
+    tags: List[str]
     note: Optional[str] = None
-    tip: Optional[int] = 0
+    tip: int = 0
+    created_at: str
 
 
-class Rating(RatingCreate):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    created_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
-
-
-class DriverRequest(BaseModel):
+class DriverRequestOut(BaseModel):
     id: str
     pickup: str
     drop: str
@@ -113,168 +237,731 @@ class DriverStats(BaseModel):
     hours: float
 
 
-# ---------- Seed data ----------
-PACKAGES = [
-    {"id": "p1", "title": "Misty Coffee Estates", "subtitle": "Full-day estate walk", "price": 2499, "duration": "8 hrs", "stops": 4, "image": "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1200&q=70"},
-    {"id": "p2", "title": "Bisle Ghat Viewpoint", "subtitle": "Sunrise ridge drive", "price": 1899, "duration": "5 hrs", "stops": 3, "image": "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1200&q=70"},
-    {"id": "p3", "title": "Manjarabad Fort", "subtitle": "Star-shaped heritage", "price": 1499, "duration": "4 hrs", "stops": 2, "image": "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=70"},
-    {"id": "p4", "title": "Hills & Homestays", "subtitle": "Overnight coffee stay", "price": 4999, "duration": "24 hrs", "stops": 5, "image": "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=70"},
-    {"id": "p5", "title": "Hanbal Waterfall Trail", "subtitle": "Monsoon cascade", "price": 1799, "duration": "5 hrs", "stops": 2, "image": "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=1200&q=70"},
-    {"id": "p6", "title": "Shanti Falls & Green Route", "subtitle": "Rainforest loop", "price": 2199, "duration": "6 hrs", "stops": 3, "image": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=70"},
-    {"id": "p7", "title": "Kukke Subrahmanya Temple", "subtitle": "Sacred hill drive", "price": 2899, "duration": "10 hrs", "stops": 3, "image": "https://images.unsplash.com/photo-1587922546925-160ad1cd3b2a?auto=format&fit=crop&w=1200&q=70"},
-    {"id": "p8", "title": "Mookanamane Falls", "subtitle": "Off-road adventure", "price": 2299, "duration": "6 hrs", "stops": 2, "image": "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1200&q=70"},
-    {"id": "p9", "title": "Sakleshpur Sunset Point", "subtitle": "Golden hour ridge", "price": 1299, "duration": "3 hrs", "stops": 1, "image": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=70"},
-    {"id": "p10", "title": "Green Route Railway Walk", "subtitle": "Abandoned viaducts", "price": 2599, "duration": "7 hrs", "stops": 4, "image": "https://images.unsplash.com/photo-1418065460487-3956c3465ee2?auto=format&fit=crop&w=1200&q=70"},
-]
-
-VEHICLES = [
-    {"id": "v1", "name": "Sedan", "desc": "Comfortable, AC", "seats": 4, "fare": 2199, "eta": "3 min", "icon": "car-outline"},
-    {"id": "v2", "name": "SUV", "desc": "Extra space, hill-ready", "seats": 6, "fare": 2899, "eta": "5 min", "icon": "car-sport-outline"},
-    {"id": "v3", "name": "Traveller", "desc": "Group minivan", "seats": 12, "fare": 4499, "eta": "8 min", "icon": "bus-outline"},
-    {"id": "v4", "name": "Premium", "desc": "Executive class", "seats": 4, "fare": 3499, "eta": "6 min", "icon": "car-outline"},
-]
-
-DRIVER_REQUESTS = [
-    {"id": "r1", "pickup": "Sakleshpura Bus Stand", "drop": "Bisle Ghat Viewpoint", "distance": "46 km", "duration": "1h 40m", "fare": 2199, "rider": "Aditi S.", "rating": 4.9, "tag": "3 stops"},
-    {"id": "r2", "pickup": "Green Route Homestay", "drop": "Manjarabad Fort", "distance": "12 km", "duration": "22 min", "fare": 899, "rider": "Rohit K.", "rating": 4.8, "tag": "Direct"},
-    {"id": "r3", "pickup": "Coffee Estate Retreat", "drop": "Hanbal Falls", "distance": "18 km", "duration": "32 min", "fare": 1499, "rider": "Priya M.", "rating": 5.0, "tag": "2 stops"},
-]
+# ---------- Helpers ----------
+def ride_to_out(ride: RideModel) -> RideOut:
+    return RideOut(
+        id=ride.id,
+        user_id=str(ride.user_id),
+        driver_id=ride.driver_id,
+        vehicle_id=ride.vehicle_id,
+        stops=[RideStop(**s) for s in (ride.stops or [])],
+        fare=ride.fare,
+        payment_method=ride.payment_method,
+        tip=ride.tip,
+        status=ride.status,
+        created_at=ride.created_at.isoformat() if ride.created_at else "",
+    )
 
 
-@app.on_event("startup")
-async def seed_db():
-    """Idempotent seed — only inserts if the collection is empty."""
-    if await db.packages.count_documents({}) == 0:
-        await db.packages.insert_many([{**p} for p in PACKAGES])
-        logger.info("Seeded packages")
-    if await db.vehicles.count_documents({}) == 0:
-        await db.vehicles.insert_many([{**v} for v in VEHICLES])
-        logger.info("Seeded vehicles")
-    if await db.driver_requests.count_documents({}) == 0:
-        await db.driver_requests.insert_many([{**r} for r in DRIVER_REQUESTS])
-        logger.info("Seeded driver_requests")
+def calculate_fare(vehicle_fare: int, num_stops: int) -> int:
+    stops_fee = 200 if num_stops > 1 else 0
+    gst = round((vehicle_fare + stops_fee) * 0.05)
+    return vehicle_fare + stops_fee + gst
 
 
-# ---------- Routes ----------
+# ---------- Router ----------
+api_router = APIRouter(prefix="/api")
+
+
 @api_router.get("/")
 async def root():
     return {"service": "sakleshpura-rides", "status": "ok"}
 
 
-@api_router.get("/packages", response_model=List[Package])
-async def list_packages():
-    docs = await db.packages.find({}, {"_id": 0}).to_list(100)
-    return [Package(**d) for d in docs]
+# ---------- Auth ----------
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    role: Literal["customer", "driver"] = "customer"
 
 
-@api_router.get("/vehicles", response_model=List[Vehicle])
-async def list_vehicles():
-    docs = await db.vehicles.find({}, {"_id": 0}).to_list(100)
-    return [Vehicle(**d) for d in docs]
+@api_router.post("/auth/register", response_model=TokenResponse)
+@limiter.limit("5/minute")
+async def register(request: Request, payload: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(select(User).where(User.email == payload.email))
+        if result.scalar_one_or_none():
+            raise HTTPException(400, detail="Email already registered")
+
+        user = User(
+            email=payload.email,
+            hashed_password=hash_password(payload.password),
+            role=payload.role,
+        )
+        db.add(user)
+        await db.flush()
+
+        token = create_access_token(str(user.id), user.email, user.role)
+        return TokenResponse(
+            access_token=token,
+            user={"id": str(user.id), "email": user.email, "role": user.role},
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("register failed", extra={"error": str(exc), "email": payload.email})
+        raise HTTPException(500, detail="Registration failed")
 
 
-@api_router.post("/rides", response_model=Ride)
-async def create_ride(payload: RideCreate):
-    ride = Ride(**payload.dict())
-    await db.rides.insert_one(ride.dict())
-    return ride
+@api_router.post("/auth/login", response_model=TokenResponse)
+@limiter.limit("10/minute")
+async def login(request: Request, payload: UserLogin, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(select(User).where(User.email == payload.email))
+        user = result.scalar_one_or_none()
+        if not user or not verify_password(payload.password, user.hashed_password):
+            raise HTTPException(401, detail="Invalid email or password")
+
+        token = create_access_token(str(user.id), user.email, user.role)
+        return TokenResponse(
+            access_token=token,
+            user={"id": str(user.id), "email": user.email, "role": user.role},
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("login failed", extra={"error": str(exc), "email": payload.email})
+        raise HTTPException(500, detail="Login failed")
 
 
-@api_router.get("/rides", response_model=List[Ride])
-async def list_rides(user_id: str = "explorer"):
-    docs = (
-        await db.rides.find({"user_id": user_id}, {"_id": 0})
-        .sort("created_at", -1)
-        .to_list(200)
-    )
-    return [Ride(**d) for d in docs]
+@api_router.get("/auth/me", response_model=UserOut)
+async def get_me(current_user: User = Depends(get_current_user)):
+    return UserOut(id=str(current_user.id), email=current_user.email, role=current_user.role)
 
 
-@api_router.get("/rides/{ride_id}", response_model=Ride)
-async def get_ride(ride_id: str):
-    doc = await db.rides.find_one({"id": ride_id}, {"_id": 0})
-    if not doc:
-        raise HTTPException(404, "Ride not found")
-    return Ride(**doc)
+# ---------- Health check ----------
+@app.get("/health")
+async def health(db: AsyncSession = Depends(get_db)):
+    try:
+        await db.execute(select(func.count()).select_from(PackageModel))
+        return {"status": "healthy", "database": "connected"}
+    except Exception as exc:
+        logger.error("health check failed", extra={"error": str(exc)})
+        raise HTTPException(503, detail="Service unhealthy")
 
 
-@api_router.patch("/rides/{ride_id}/status", response_model=Ride)
-async def update_ride_status(ride_id: str, payload: RideStatusUpdate):
-    result = await db.rides.find_one_and_update(
-        {"id": ride_id},
-        {"$set": {"status": payload.status}},
-        projection={"_id": 0},
-        return_document=True,
-    )
-    if not result:
-        raise HTTPException(404, "Ride not found")
-    return Ride(**result)
+# ---------- Packages ----------
+@api_router.get("/packages", response_model=List[PackageOut])
+@limiter.limit("60/minute")
+async def list_packages(request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(select(PackageModel))
+        packages = result.scalars().all()
+        return [
+            PackageOut(
+                id=p.id, title=p.title, subtitle=p.subtitle,
+                price=p.price, duration=p.duration, stops=p.stops, image=p.image,
+            )
+            for p in packages
+        ]
+    except Exception as exc:
+        logger.error("list_packages failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch packages")
 
 
-@api_router.post("/ratings", response_model=Rating)
-async def create_rating(payload: RatingCreate):
-    rating = Rating(**payload.dict())
-    await db.ratings.insert_one(rating.dict())
-    # Also mark ride completed
-    await db.rides.update_one(
-        {"id": payload.ride_id}, {"$set": {"status": "completed", "tip": payload.tip or 0}}
-    )
-    return rating
+# ---------- Vehicles ----------
+@api_router.get("/vehicles", response_model=List[VehicleOut])
+@limiter.limit("60/minute")
+async def list_vehicles(request: Request, db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(select(VehicleModel))
+        vehicles = result.scalars().all()
+        return [
+            VehicleOut(
+                id=v.id, name=v.name, desc=v.desc,
+                seats=v.seats, fare=v.fare, eta=v.eta, icon=v.icon,
+            )
+            for v in vehicles
+        ]
+    except Exception as exc:
+        logger.error("list_vehicles failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch vehicles")
 
 
-@api_router.get("/driver/requests", response_model=List[DriverRequest])
-async def list_driver_requests():
-    docs = await db.driver_requests.find({}, {"_id": 0}).to_list(100)
-    return [DriverRequest(**d) for d in docs]
+# ---------- Rides ----------
+@api_router.post("/rides", response_model=RideOut)
+@limiter.limit("20/minute")
+async def create_ride(
+    request: Request,
+    payload: RideCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        ride_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc)
+
+        ride = RideModel(
+            id=ride_id,
+            user_id=str(current_user.id),
+            vehicle_id=payload.vehicle_id,
+            stops=[{"label": s.label, "sub": s.sub} for s in payload.stops],
+            fare=payload.fare,
+            payment_method=payload.payment_method,
+            tip=payload.tip or 0,
+            status="arriving",
+            created_at=now,
+        )
+        db.add(ride)
+        await db.flush()
+
+        return RideOut(
+            id=ride.id,
+            user_id=ride.user_id,
+            driver_id=ride.driver_id,
+            vehicle_id=ride.vehicle_id,
+            stops=[RideStop(**s) for s in ride.stops],
+            fare=ride.fare,
+            payment_method=ride.payment_method,
+            tip=ride.tip,
+            status=ride.status,
+            created_at=ride.created_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("create_ride failed", extra={"error": str(exc), "user_id": str(current_user.id)})
+        raise HTTPException(500, detail="Failed to create ride")
 
 
-@api_router.post("/driver/requests/{req_id}/accept", response_model=Ride)
-async def accept_request(req_id: str):
-    req = await db.driver_requests.find_one({"id": req_id}, {"_id": 0})
-    if not req:
-        raise HTTPException(404, "Request not found")
-    ride = Ride(
-        vehicle_id="v2",
-        stops=[
-            RideStop(label=req["pickup"], sub="Pickup"),
-            RideStop(label=req["drop"], sub="Drop-off"),
-        ],
-        fare=req["fare"],
-        payment_method="card",
-        status="arriving",
-    )
-    await db.rides.insert_one(ride.dict())
-    # Remove from queue
-    await db.driver_requests.delete_one({"id": req_id})
-    return ride
+@api_router.get("/rides", response_model=List[RideOut])
+@limiter.limit("30/minute")
+async def list_rides(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await db.execute(
+            select(RideModel)
+            .where(RideModel.user_id == str(current_user.id))
+            .order_by(RideModel.created_at.desc())
+            .limit(200)
+        )
+        rides = result.scalars().all()
+        return [ride_to_out(r) for r in rides]
+    except Exception as exc:
+        logger.error("list_rides failed", extra={"error": str(exc), "user_id": str(current_user.id)})
+        raise HTTPException(500, detail="Failed to fetch rides")
+
+
+@api_router.get("/rides/{ride_id}", response_model=RideOut)
+async def get_ride(
+    ride_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
+        ride = result.scalar_one_or_none()
+        if not ride:
+            raise HTTPException(404, detail="Ride not found")
+        return ride_to_out(ride)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("get_ride failed", extra={"error": str(exc), "ride_id": ride_id})
+        raise HTTPException(500, detail="Failed to fetch ride")
+
+
+@api_router.patch("/rides/{ride_id}/status", response_model=RideOut)
+async def update_ride_status(
+    ride_id: str,
+    payload: RideStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
+        ride = result.scalar_one_or_none()
+        if not ride:
+            raise HTTPException(404, detail="Ride not found")
+        ride.status = payload.status
+        await db.flush()
+        return ride_to_out(ride)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("update_ride_status failed", extra={"error": str(exc), "ride_id": ride_id})
+        raise HTTPException(500, detail="Failed to update ride status")
+
+
+# ---------- Ratings ----------
+@api_router.post("/ratings", response_model=RatingOut)
+@limiter.limit("10/minute")
+async def create_rating(
+    request: Request,
+    payload: RatingCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        # Verify ride exists
+        result = await db.execute(select(RideModel).where(RideModel.id == payload.ride_id))
+        ride = result.scalar_one_or_none()
+        if not ride:
+            raise HTTPException(404, detail="Ride not found")
+
+        rating = RatingModel(
+            id=str(uuid.uuid4()),
+            ride_id=payload.ride_id,
+            stars=payload.stars,
+            tags=payload.tags or [],
+            note=payload.note,
+            tip=payload.tip or 0,
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(rating)
+
+        # Mark ride completed
+        ride.status = "completed"
+        ride.tip = payload.tip or 0
+        await db.flush()
+
+        return RatingOut(
+            id=rating.id,
+            ride_id=rating.ride_id,
+            stars=rating.stars,
+            tags=rating.tags,
+            note=rating.note,
+            tip=rating.tip,
+            created_at=rating.created_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("create_rating failed", extra={"error": str(exc), "ride_id": payload.ride_id})
+        raise HTTPException(500, detail="Failed to submit rating")
+
+
+# ---------- Driver Onboarding ----------
+def require_driver(user: User):
+    if user.role != "driver":
+        raise HTTPException(403, detail="Driver access required")
+
+
+class DriverProfileCreate(BaseModel):
+    full_name: str = Field(..., max_length=255)
+    phone: str = Field(..., max_length=20)
+    dob: Optional[str] = None
+    address: Optional[str] = None
+
+
+class DriverProfileOut(BaseModel):
+    id: str
+    user_id: str
+    full_name: str
+    phone: str
+    dob: Optional[str] = None
+    address: Optional[str] = None
+    photo_url: Optional[str] = None
+    status: str
+    created_at: str
+
+
+class DriverDocumentOut(BaseModel):
+    id: str
+    doc_type: str
+    file_path: str
+    verification_status: str
+    notes: Optional[str] = None
+    created_at: str
+
+
+class DriverVehicleCreate(BaseModel):
+    vehicle_type: Literal["sedan", "suv", "hatchback", "auto", "bike"]
+    make: Optional[str] = Field(None, max_length=100)
+    model: Optional[str] = Field(None, max_length=100)
+    year: Optional[int] = None
+    reg_number: str = Field(..., max_length=20)
+    seats: int = Field(4, ge=1, le=10)
+
+
+class DriverVehicleOut(BaseModel):
+    id: str
+    driver_id: str
+    vehicle_type: str
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    reg_number: str
+    seats: int
+    photo_url: Optional[str] = None
+    created_at: str
+
+
+@api_router.post("/driver/profile", response_model=DriverProfileOut)
+@limiter.limit("10/minute")
+async def create_driver_profile(
+    request: Request,
+    payload: DriverProfileCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(
+            select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            raise HTTPException(400, detail="Driver profile already exists")
+
+        profile = DriverProfileModel(
+            user_id=str(current_user.id),
+            full_name=payload.full_name,
+            phone=payload.phone,
+            dob=payload.dob,
+            address=payload.address,
+            status="pending",
+        )
+        db.add(profile)
+        await db.flush()
+
+        return DriverProfileOut(
+            id=profile.id,
+            user_id=profile.user_id,
+            full_name=profile.full_name,
+            phone=profile.phone,
+            dob=profile.dob,
+            address=profile.address,
+            photo_url=profile.photo_url,
+            status=profile.status,
+            created_at=profile.created_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("create_driver_profile failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to create driver profile")
+
+
+@api_router.get("/driver/profile", response_model=DriverProfileOut)
+async def get_driver_profile(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(
+            select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            raise HTTPException(404, detail="Driver profile not found")
+
+        return DriverProfileOut(
+            id=profile.id,
+            user_id=profile.user_id,
+            full_name=profile.full_name,
+            phone=profile.phone,
+            dob=profile.dob,
+            address=profile.address,
+            photo_url=profile.photo_url,
+            status=profile.status,
+            created_at=profile.created_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("get_driver_profile failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch driver profile")
+
+
+@api_router.post("/driver/documents", response_model=DriverDocumentOut)
+@limiter.limit("20/minute")
+async def upload_document(
+    request: Request,
+    doc_type: str = Query(...),
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(
+            select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            raise HTTPException(400, detail="Create driver profile first")
+
+        ext = os.path.splitext(file.filename or "doc")[1] or ".jpg"
+        filename = f"{profile.id}_{doc_type}_{uuid.uuid4().hex[:8]}{ext}"
+        filepath = os.path.join(UPLOADS_DIR, filename)
+        content = await file.read()
+        with open(filepath, "wb") as f:
+            f.write(content)
+
+        doc = DriverDocumentModel(
+            driver_id=profile.id,
+            doc_type=doc_type,
+            file_path=f"/uploads/{filename}",
+            verification_status="pending",
+        )
+        db.add(doc)
+        await db.flush()
+
+        return DriverDocumentOut(
+            id=doc.id,
+            doc_type=doc.doc_type,
+            file_path=doc.file_path,
+            verification_status=doc.verification_status,
+            notes=doc.notes,
+            created_at=doc.created_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("upload_document failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to upload document")
+
+
+@api_router.get("/driver/documents", response_model=List[DriverDocumentOut])
+async def list_documents(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(
+            select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            return []
+
+        result = await db.execute(
+            select(DriverDocumentModel).where(DriverDocumentModel.driver_id == profile.id)
+        )
+        docs = result.scalars().all()
+        return [
+            DriverDocumentOut(
+                id=d.id,
+                doc_type=d.doc_type,
+                file_path=d.file_path,
+                verification_status=d.verification_status,
+                notes=d.notes,
+                created_at=d.created_at.isoformat(),
+            )
+            for d in docs
+        ]
+    except Exception as exc:
+        logger.error("list_documents failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch documents")
+
+
+@api_router.post("/driver/vehicles", response_model=DriverVehicleOut)
+@limiter.limit("10/minute")
+async def create_vehicle(
+    request: Request,
+    payload: DriverVehicleCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(
+            select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            raise HTTPException(400, detail="Create driver profile first")
+
+        vehicle = DriverVehicleModel(
+            driver_id=profile.id,
+            vehicle_type=payload.vehicle_type,
+            make=payload.make,
+            model=payload.model,
+            year=payload.year,
+            reg_number=payload.reg_number,
+            seats=payload.seats,
+        )
+        db.add(vehicle)
+        await db.flush()
+
+        return DriverVehicleOut(
+            id=vehicle.id,
+            driver_id=vehicle.driver_id,
+            vehicle_type=vehicle.vehicle_type,
+            make=vehicle.make,
+            model=vehicle.model,
+            year=vehicle.year,
+            reg_number=vehicle.reg_number,
+            seats=vehicle.seats,
+            photo_url=vehicle.photo_url,
+            created_at=vehicle.created_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("create_vehicle failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to create vehicle")
+
+
+@api_router.get("/driver/vehicles", response_model=List[DriverVehicleOut])
+async def list_vehicles(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(
+            select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            return []
+
+        result = await db.execute(
+            select(DriverVehicleModel).where(DriverVehicleModel.driver_id == profile.id)
+        )
+        vehicles = result.scalars().all()
+        return [
+            DriverVehicleOut(
+                id=v.id,
+                driver_id=v.driver_id,
+                vehicle_type=v.vehicle_type,
+                make=v.make,
+                model=v.model,
+                year=v.year,
+                reg_number=v.reg_number,
+                seats=v.seats,
+                photo_url=v.photo_url,
+                created_at=v.created_at.isoformat(),
+            )
+            for v in vehicles
+        ]
+    except Exception as exc:
+        logger.error("list_vehicles failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch vehicles")
+
+
+# ---------- Driver Ride Operations ----------
+@api_router.get("/driver/requests", response_model=List[DriverRequestOut])
+async def list_driver_requests(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(select(DriverRequestModel))
+        requests = result.scalars().all()
+        return [
+            DriverRequestOut(
+                id=r.id, pickup=r.pickup, drop=r.drop,
+                distance=r.distance, duration=r.duration, fare=r.fare,
+                rider=r.rider, rating=r.rating, tag=r.tag,
+            )
+            for r in requests
+        ]
+    except Exception as exc:
+        logger.error("list_driver_requests failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch driver requests")
+
+
+@api_router.post("/driver/requests/{req_id}/accept", response_model=RideOut)
+async def accept_request(
+    req_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(select(DriverRequestModel).where(DriverRequestModel.id == req_id))
+        req = result.scalar_one_or_none()
+        if not req:
+            raise HTTPException(404, detail="Request not found")
+
+        ride = RideModel(
+            id=str(uuid.uuid4()),
+            user_id=str(uuid.uuid4()),
+            driver_id=str(current_user.id),
+            vehicle_id="v2",
+            stops=[
+                {"label": req.pickup, "sub": "Pickup"},
+                {"label": req.drop, "sub": "Drop-off"},
+            ],
+            fare=req.fare,
+            payment_method="card",
+            status="arriving",
+            created_at=datetime.now(timezone.utc),
+        )
+        db.add(ride)
+        await db.delete(req)
+        await db.flush()
+
+        return RideOut(
+            id=ride.id,
+            user_id=ride.user_id,
+            driver_id=ride.driver_id,
+            vehicle_id=ride.vehicle_id,
+            stops=[RideStop(**s) for s in ride.stops],
+            fare=ride.fare,
+            payment_method=ride.payment_method,
+            tip=ride.tip,
+            status=ride.status,
+            created_at=ride.created_at.isoformat(),
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("accept_request failed", extra={"error": str(exc), "req_id": req_id})
+        raise HTTPException(500, detail="Failed to accept request")
+
+
+@api_router.post("/driver/requests/{req_id}/decline")
+async def decline_request(
+    req_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(select(DriverRequestModel).where(DriverRequestModel.id == req_id))
+        req = result.scalar_one_or_none()
+        if not req:
+            raise HTTPException(404, detail="Request not found")
+        await db.delete(req)
+        await db.flush()
+        return {"status": "declined"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("decline_request failed", extra={"error": str(exc), "req_id": req_id})
+        raise HTTPException(500, detail="Failed to decline request")
 
 
 @api_router.get("/driver/stats", response_model=DriverStats)
-async def driver_stats():
-    completed = await db.rides.count_documents({"status": "completed"})
-    earnings_agg = await db.rides.aggregate(
-        [{"$match": {"status": "completed"}}, {"$group": {"_id": None, "sum": {"$sum": "$fare"}}}]
-    ).to_list(1)
-    earnings = earnings_agg[0]["sum"] if earnings_agg else 3420
-    # Static-ish demo numbers when no rides yet
-    if completed == 0:
-        return DriverStats(earnings=3420, trips=6, hours=7.4)
-    return DriverStats(
-        earnings=earnings, trips=completed, hours=round(completed * 1.2, 1)
-    )
+async def driver_stats(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(
+            select(
+                func.count().label("trips"),
+                func.coalesce(func.sum(RideModel.fare), 0).label("earnings"),
+            ).where(
+                RideModel.driver_id == str(current_user.id),
+                RideModel.status == "completed",
+            )
+        )
+        row = result.one()
+        trips = row.trips
+        earnings = int(row.earnings)
+
+        if trips == 0:
+            return DriverStats(earnings=0, trips=0, hours=0.0)
+        return DriverStats(earnings=earnings, trips=trips, hours=round(trips * 1.2, 1))
+    except Exception as exc:
+        logger.error("driver_stats failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch driver stats")
 
 
+# ---------- Static files (uploads) ----------
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
+# ---------- Include router ----------
 app.include_router(api_router)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()

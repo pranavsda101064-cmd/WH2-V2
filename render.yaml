@@ -1,0 +1,37 @@
+services:
+  # PostgreSQL database
+  - type: pgsql
+    name: where2-db
+    plan: free
+    databaseName: where2
+    ipAllowList: []
+
+  # FastAPI backend
+  - type: web
+    name: where2
+    runtime: python
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && alembic upgrade head && uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: where2-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 1440
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: SENTRY_DSN
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11"

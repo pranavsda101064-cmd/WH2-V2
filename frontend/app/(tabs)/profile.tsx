@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   ScrollView,
@@ -12,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
 import { colors, radius } from "@/src/theme";
+import { api, getUserEmail } from "@/src/api";
 
 const rows: {
   icon: keyof typeof Ionicons.glyphMap;
@@ -32,6 +34,11 @@ const rows: {
 export default function Profile() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    getUserEmail().then(setUserEmail);
+  }, []);
 
   return (
     <View style={styles.root} testID="profile-screen">
@@ -58,7 +65,7 @@ export default function Profile() {
           />
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>Explorer</Text>
-            <Text style={styles.phone}>+91 98765 43210</Text>
+            <Text style={styles.phone}>{userEmail || "Not signed in"}</Text>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={12} color="#fff" />
               <Text style={styles.rating}>4.92 rider rating</Text>
@@ -86,9 +93,12 @@ export default function Profile() {
             <TouchableOpacity
               key={row.label}
               style={[styles.row, i < rows.length - 1 && styles.rowDivider]}
-              onPress={() => {
+              onPress={async () => {
                 if (row.action === "driver") router.push("/driver");
-                else if (row.label === "Sign out") router.replace("/");
+                else if (row.label === "Sign out") {
+                  await api.logout();
+                  router.replace("/");
+                }
               }}
               activeOpacity={0.7}
               testID={`profile-row-${row.label.replace(/\s+/g, "-").toLowerCase()}`}

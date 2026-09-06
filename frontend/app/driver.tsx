@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   Image,
@@ -15,11 +15,57 @@ import { StatusBar } from "expo-status-bar";
 
 import { colors, radius } from "@/src/theme";
 import { driverProfile } from "@/src/data/mock";
+import { api, DriverProfile, DriverDocument } from "@/src/api";
+import { LoadingScreen } from "@/src/components/loading";
+
+const DOC_TYPES = [
+  { key: "aadhaar", label: "Aadhaar Card" },
+  { key: "pan", label: "PAN Card" },
+  { key: "driving_license", label: "Driving License" },
+  { key: "psv_badge", label: "PSV Badge" },
+] as const;
 
 export default function Driver() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [online, setOnline] = useState(true);
+  const [profile, setProfile] = useState<DriverProfile | null>(null);
+  const [documents, setDocuments] = useState<DriverDocument[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([api.getDriverProfile(), api.listDocuments()])
+      .then(([p, d]) => { setProfile(p); setDocuments(d); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <LoadingScreen message="Loading profile..." />;
+
+  if (!profile) {
+    return (
+      <View style={styles.root}>
+        <StatusBar style="light" />
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
+          <Ionicons name="person-add-outline" size={48} color={colors.textMuted} />
+          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "800", marginTop: 16 }}>Complete Your Profile</Text>
+          <Text style={{ color: colors.textMuted, fontSize: 14, marginTop: 8, textAlign: "center" }}>
+            Set up your driver profile, upload documents, and register your vehicle to start earning.
+          </Text>
+          <TouchableOpacity
+            style={{ marginTop: 24, backgroundColor: colors.accent, paddingHorizontal: 32, height: 52, borderRadius: radius.md, flexDirection: "row", alignItems: "center", gap: 8 }}
+            onPress={() => router.push("/driver-onboarding")}
+          >
+            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Start Onboarding</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={{ marginTop: 16 }} onPress={() => router.replace("/")}>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Back to login</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root} testID="driver-screen">
@@ -77,16 +123,16 @@ export default function Driver() {
         <View style={styles.profileCard}>
           <Image
             source={{
-              uri: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=70",
+              uri: profile.photo_url || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=70",
             }}
             style={styles.avatar}
           />
           <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{driverProfile.name}</Text>
+            <Text style={styles.name}>{profile.full_name}</Text>
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={12} color="#fff" />
-              <Text style={styles.rating}>{driverProfile.rating.toFixed(2)}</Text>
-              <Text style={styles.tripCount}>· {driverProfile.trips} trips</Text>
+              <Text style={styles.rating}>—</Text>
+              <Text style={styles.tripCount}>· {profile.status}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.uploadBtn} testID="upload-photo-button">
@@ -96,16 +142,25 @@ export default function Driver() {
 
         {/* Personal */}
         <Section title="Personal information">
-          <Field label="Full name" value={driverProfile.name} />
-          <Field label="Contact number" value={driverProfile.phone} />
-          <Field label="Address" value={driverProfile.address} last />
+          <Field label="Full name" value={profile.full_name} />
+          <Field label="Contact number" value={profile.phone} />
+          <Field label="Address" value={profile.address || "—"} last />
         </Section>
 
         {/* Documents */}
         <Section title="Documents">
-          <Field label="Aadhaar" value={driverProfile.aadhaar} verified />
-          <Field label="Driving license" value={driverProfile.license} verified />
-          <Field label="Permit" value={driverProfile.permit} verified last />
+          {DOC_TYPES.map((doc, i) => {
+            const found = documents.find((d) => d.doc_type === doc.key);
+            return (
+              <Field
+                key={doc.key}
+                label={doc.label}
+                value={found ? (found.verification_status === "verified" ? "Verified" : "Under Review") : "Not uploaded"}
+                verified={found?.verification_status === "verified"}
+                last={i === DOC_TYPES.length - 1}
+              />
+            );
+          })}
         </Section>
 
         {/* Vehicle */}
@@ -114,6 +169,13 @@ export default function Driver() {
           <Field label="Registration" value={driverProfile.vehicle.reg} />
           <Field label="Seats" value={String(driverProfile.vehicle.seats)} last />
         </Section>
+
+        <TouchableOpacity
+          style={{ marginTop: 20, alignItems: "center", paddingVertical: 14 }}
+          onPress={() => router.push("/driver-onboarding")}
+        >
+          <Text style={{ color: colors.accent, fontSize: 14, fontWeight: "600" }}>Update Profile & Documents</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.signOutBtn}

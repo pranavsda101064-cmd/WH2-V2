@@ -14,14 +14,22 @@ import { StatusBar } from "expo-status-bar";
 import { colors, radius } from "@/src/theme";
 import { pastTrips as mockTrips } from "@/src/data/mock";
 import { api, Ride } from "@/src/api";
+import { LoadingScreen } from "@/src/components/loading";
+import { FadeIn } from "@/src/components/fade-in";
 
 export default function Trips() {
   const insets = useSafeAreaInsets();
   const [trips, setTrips] = useState<Ride[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.listRides().then(setTrips);
+    api.listRides()
+      .then(setTrips)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
+
+  if (loading) return <LoadingScreen message="Loading trips..." />;
 
   return (
     <View style={styles.root} testID="trips-screen">
@@ -44,7 +52,8 @@ export default function Trips() {
           const title = item.stops?.[0]?.label ?? mock.title;
           const isCompleted = item.status === "completed";
           return (
-            <TouchableOpacity
+            <FadeIn delay={index * 60}>
+              <TouchableOpacity
               style={styles.card}
               activeOpacity={0.85}
               testID={`trip-item-${item.id}`}
@@ -75,6 +84,7 @@ export default function Trips() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
             </TouchableOpacity>
+            </FadeIn>
           );
         }}
       />

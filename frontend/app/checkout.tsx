@@ -10,51 +10,96 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
 
 import { colors, radius } from "@/src/theme";
 import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
+import { LoadingScreen } from "@/src/components/loading";
 
 type PayMethod = "card" | "upi";
+
+type LocationData = { lat: number; lng: number; label: string };
+
+const DEFAULT_PICKUP = "Sakleshpura Bus Stand";
+const DEFAULT_DROPOFF = "Bisle Ghat Viewpoint";
 
 export default function Checkout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [method, setMethod] = useState<PayMethod>("card");
   const [done, setDone] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [error, setError] = useState("");
   const [vehicleId, setVehicleId] = useState("v1");
   const [baseFare, setBaseFare] = useState(2199);
+  const [pickup, setPickup] = useState<LocationData | null>(null);
+  const [dropoff, setDropoff] = useState<LocationData | null>(null);
+  const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
 
   useEffect(() => {
     (async () => {
       const v = await storage.getItem<string>("checkout_vehicle_id", "v1");
       const f = await storage.getItem<number>("checkout_fare", 2199);
+      const pRaw = await storage.getItem<string | null>("pickup_location", null);
+      const dRaw = await storage.getItem<string | null>("dropoff_location", null);
       if (v) setVehicleId(v);
       if (f) setBaseFare(f);
+      if (pRaw) setPickup(JSON.parse(pRaw));
+      if (dRaw) setDropoff(JSON.parse(dRaw));
     })();
   }, []);
 
+  useEffect(() => {
+    if (pickup && dropoff) {
+      const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}?overview=full&geometries=geojson`;
+      fetch(url)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.routes?.[0]?.geometry?.coordinates) {
+            setRouteCoords(
+              data.routes[0].geometry.coordinates.map((c: [number, number]) => ({
+                latitude: c[1],
+                longitude: c[0],
+              })),
+            );
+          }
+        })
+        .catch(() => {});
+    }
+  }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
+
+  const pickupLabel = pickup?.label || DEFAULT_PICKUP;
+  const dropoffLabel = dropoff?.label || DEFAULT_DROPOFF;
   const base = baseFare;
   const stopsFee = 200;
   const gst = Math.round((base + stopsFee) * 0.05);
   const total = base + stopsFee + gst;
 
   const pay = async () => {
-    setDone(true);
-    const ride = await api.createRide({
-      vehicle_id: vehicleId,
-      stops: [
-        { label: "Sakleshpura Bus Stand", sub: "Pickup point" },
-        { label: "Manjarabad Fort", sub: "Stop 1" },
-        { label: "Bisle Ghat Viewpoint", sub: "Final stop · 46 km" },
-      ],
-      fare: total,
-      payment_method: method,
-    });
-    await storage.setItem("active_ride_id", ride.id);
-    setTimeout(() => {
-      router.replace("/ride");
-    }, 1400);
+    setPaying(true);
+    setError("");
+    try {
+      const stops = [
+        { label: pickupLabel, sub: "Pickup point", lat: pickup?.lat ?? undefined, lng: pickup?.lng ?? undefined },
+        { label: dropoffLabel, sub: "Drop-off", lat: dropoff?.lat ?? undefined, lng: dropoff?.lng ?? undefined },
+      ];
+      const ride = await api.createRide({
+        vehicle_id: vehicleId,
+        stops,
+        fare: total,
+        payment_method: method,
+      });
+      await storage.setItem("active_ride_id", ride.id);
+      await storage.removeItem("pickup_location");
+      await storage.removeItem("dropoff_location");
+      setDone(true);
+      setTimeout(() => router.replace("/ride"), 1400);
+    } catch {
+      setError("Payment failed. Please try again.");
+    } finally {
+      setPaying(false);
+    }
   };
 
   if (done) {
@@ -91,22 +136,53 @@ export default function Checkout() {
           paddingHorizontal: 16,
         }}
       >
+        {/* Mini route map */}
+        {pickup && dropoff && (
+          <View style={styles.miniMapContainer}>
+            <MapView
+              style={styles.miniMap}
+              provider={PROVIDER_DEFAULT}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              pitchEnabled={false}
+              rotateEnabled={false}
+              initialRegion={{
+                latitude: (pickup.lat + dropoff.lat) / 2,
+                longitude: (pickup.lng + dropoff.lng) / 2,
+                latitudeDelta: Math.abs(pickup.lat - dropoff.lat) * 2.5 || 0.05,
+                longitudeDelta: Math.abs(pickup.lng - dropoff.lng) * 2.5 || 0.05,
+              }}
+            >
+              <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor={colors.accent} />
+              <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor={colors.danger} />
+              {routeCoords.length > 0 && (
+                <Polyline coordinates={routeCoords} strokeColor={colors.accent} strokeWidth={3} />
+              )}
+            </MapView>
+          </View>
+        )}
+
         {/* Route recap */}
         <View style={styles.card}>
           <Text style={styles.cardHead}>Trip</Text>
-          <RouteRow
-            first
-            color="#fff"
-            label="Sakleshpura Bus Stand"
-            sub="Pickup point"
-          />
-          <RouteRow color={colors.textMuted} label="Manjarabad Fort" sub="Stop 1" />
-          <RouteRow
-            last
-            color={colors.accent}
-            label="Bisle Ghat Viewpoint"
-            sub="Final stop · 46 km"
-          />
+          <TouchableOpacity onPress={() => router.push("/location-picker?target=pickup")}>
+            <RouteRow
+              first
+              color="#fff"
+              label={pickupLabel}
+              sub={pickup ? "GPS location set" : "Tap to set pickup"}
+              editable
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/location-picker?target=dropoff")}>
+            <RouteRow
+              last
+              color={colors.accent}
+              label={dropoffLabel}
+              sub={dropoff ? "GPS location set" : "Tap to set drop-off"}
+              editable
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Vehicle */}
@@ -161,6 +237,9 @@ export default function Checkout() {
         <Text style={styles.legal}>
           Card & UPI only. Cash payments are not accepted.
         </Text>
+        {error ? (
+          <Text style={{ color: colors.danger, fontSize: 13, marginTop: 8, marginLeft: 4 }}>{error}</Text>
+        ) : null}
       </ScrollView>
 
       {/* Pay bar */}
@@ -170,12 +249,13 @@ export default function Checkout() {
           <Text style={styles.barTotal}>₹{total.toLocaleString("en-IN")}</Text>
         </View>
         <TouchableOpacity
-          style={styles.payBtn}
+          style={[styles.payBtn, paying && { opacity: 0.6 }]}
           onPress={pay}
           activeOpacity={0.85}
+          disabled={paying}
           testID="pay-button"
         >
-          <Text style={styles.payText}>Pay</Text>
+          <Text style={styles.payText}>{paying ? "Processing..." : "Pay"}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -188,12 +268,14 @@ function RouteRow({
   color,
   label,
   sub,
+  editable,
 }: {
   first?: boolean;
   last?: boolean;
   color: string;
   label: string;
   sub: string;
+  editable?: boolean;
 }) {
   return (
     <View style={styles.routeRow}>
@@ -215,6 +297,9 @@ function RouteRow({
         <Text style={styles.routeLabel}>{label}</Text>
         <Text style={styles.routeSub}>{sub}</Text>
       </View>
+      {editable && (
+        <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
+      )}
     </View>
   );
 }
@@ -267,6 +352,15 @@ function MethodBtn({
 }
 
 const styles = StyleSheet.create({
+  miniMapContainer: {
+    height: 180,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  miniMap: { flex: 1 },
   root: { flex: 1, backgroundColor: colors.bg },
   top: {
     flexDirection: "row",

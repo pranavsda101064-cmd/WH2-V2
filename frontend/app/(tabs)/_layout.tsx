@@ -35,7 +35,7 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? "home" : "home-outline"} color={color} />
+            <TabIcon name={focused ? "home" : "home-outline"} color={color as string} />
           ),
         }}
       />
@@ -46,7 +46,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
               name={focused ? "map" : "map-outline"}
-              color={color}
+              color={color as string}
             />
           ),
         }}
@@ -58,7 +58,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
               name={focused ? "person-circle" : "person-circle-outline"}
-              color={color}
+              color={color as string}
             />
           ),
         }}
@@ -76,7 +76,7 @@ function TabIcon({
 }) {
   return (
     <View style={{ alignItems: "center", justifyContent: "center" }}>
-      <Ionicons name={name} size={24} color={color} />
+      <Ionicons name={name} size={24} color={color as string} />
     </View>
   );
 }

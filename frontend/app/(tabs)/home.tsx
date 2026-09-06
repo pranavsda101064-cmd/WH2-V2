@@ -18,6 +18,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors, radius } from "@/src/theme";
 import { pastTrips as mockTrips } from "@/src/data/mock";
 import { api, Package, Ride } from "@/src/api";
+import { storage } from "@/src/utils/storage";
+import { LoadingScreen } from "@/src/components/loading";
+import { FadeIn } from "@/src/components/fade-in";
+import { TOURIST_PLACES } from "@/src/utils/location";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 32;
@@ -30,11 +34,14 @@ export default function Home() {
   const [active, setActive] = useState(0);
   const [packages, setPackages] = useState<Package[]>([]);
   const [trips, setTrips] = useState<Ride[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Fetch from backend (falls back to mock inside api client)
   useEffect(() => {
-    api.listPackages().then(setPackages);
-    api.listRides().then(setTrips);
+    Promise.all([api.listPackages(), api.listRides()])
+      .then(([p, t]) => { setPackages(p); setTrips(t); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   // Auto-play carousel
@@ -146,6 +153,37 @@ export default function Home() {
           <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </TouchableOpacity>
 
+        {/* Popular tourist spots */}
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>Popular places to visit</Text>
+        </View>
+        <FlatList
+          data={TOURIST_PLACES.slice(0, 6)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+          ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
+          keyExtractor={(item) => item.name}
+          renderItem={({ item }) => (
+            <FadeIn delay={100}>
+              <TouchableOpacity
+                style={styles.spotCard}
+                activeOpacity={0.85}
+                onPress={() => {
+                  storage.setItem("dropoff_location", JSON.stringify({ lat: item.lat, lng: item.lng, label: item.name }));
+                  router.push("/location-picker?target=dropoff");
+                }}
+              >
+                <View style={styles.spotTag}>
+                  <Text style={styles.spotTagText}>{item.tag}</Text>
+                </View>
+                <Text style={styles.spotName}>{item.name}</Text>
+                <Text style={styles.spotDesc} numberOfLines={1}>{item.description}</Text>
+              </TouchableOpacity>
+            </FadeIn>
+          )}
+        />
+
         {/* Quick access card */}
         <TouchableOpacity
           style={styles.quickCard}
@@ -181,7 +219,9 @@ export default function Home() {
           renderItem={({ item, index }) => {
             const mock = mockTrips[index % mockTrips.length];
             const title = item.stops?.[0]?.label ?? mock.title;
-            return (
+  if (loading) return <LoadingScreen message="Loading rides..." />;
+
+  return (
               <TouchableOpacity
                 style={styles.tripCard}
                 activeOpacity={0.85}
@@ -234,7 +274,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: colors.surface,
   },
-  cardImg: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  cardImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
   cardShade: {
     position: "absolute",
     left: 0,
@@ -336,6 +376,25 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { color: "#fff", fontSize: 17, fontWeight: "700" },
   sectionAction: { color: colors.accent, fontSize: 13, fontWeight: "600" },
+  spotCard: {
+    width: 150,
+    padding: 14,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  spotTag: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: "rgba(30,107,255,0.12)",
+    marginBottom: 8,
+  },
+  spotTagText: { color: colors.accent, fontSize: 10, fontWeight: "700", letterSpacing: 0.6 },
+  spotName: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  spotDesc: { color: colors.textMuted, fontSize: 12, marginTop: 4 },
   tripCard: {
     width: 200,
     height: 140,
@@ -343,7 +402,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     backgroundColor: colors.surface,
   },
-  tripImg: { ...StyleSheet.absoluteFillObject },
+  tripImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   tripShade: {
     position: "absolute",
     left: 0,

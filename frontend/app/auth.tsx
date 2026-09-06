@@ -12,11 +12,13 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { colors, radius } from "@/src/theme";
+import { api } from "@/src/api";
 
 const BG =
   "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1400&q=80";
@@ -27,17 +29,33 @@ export default function Auth() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [role, setRole] = useState<Role>("customer");
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"phone" | "otp">("phone");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const onContinue = () => {
-    if (step === "phone") {
-      setStep("otp");
+  const onContinue = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError("Please fill in all fields");
       return;
     }
-    if (role === "driver") router.replace("/driver");
-    else router.replace("/(tabs)/home");
+    setError("");
+    setLoading(true);
+    try {
+      await api.login(email.trim(), password);
+      if (role === "driver") router.replace("/driver-dashboard");
+      else router.replace("/(tabs)/home");
+    } catch {
+      try {
+        await api.register(email.trim(), password, role);
+        if (role === "driver") router.replace("/driver-onboarding");
+        else router.replace("/(tabs)/home");
+      } catch {
+        setError("Invalid email or password");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -102,53 +120,53 @@ export default function Auth() {
             </TouchableOpacity>
           </View>
 
-          {step === "phone" ? (
-            <>
-              <Text style={styles.label}>Phone number</Text>
-              <View style={styles.input}>
-                <Text style={styles.prefix}>+91</Text>
-                <TextInput
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholder="98765 43210"
-                  placeholderTextColor={colors.textDim}
-                  style={styles.inputText}
-                  maxLength={10}
-                  testID="phone-input"
-                />
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={styles.label}>Enter OTP</Text>
-              <Text style={styles.otpHint}>
-                We sent a code to +91 {phone || "98765 43210"}
-              </Text>
-              <View style={styles.input}>
-                <TextInput
-                  value={otp}
-                  onChangeText={setOtp}
-                  keyboardType="number-pad"
-                  placeholder="• • • • • •"
-                  placeholderTextColor={colors.textDim}
-                  style={[styles.inputText, styles.otpInput]}
-                  maxLength={6}
-                  testID="otp-input"
-                />
-              </View>
-            </>
-          )}
+          {/* Email */}
+          <Text style={styles.label}>Email</Text>
+          <View style={styles.input}>
+            <Ionicons name="mail-outline" size={18} color={colors.textDim} style={{ marginRight: 10 }} />
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholder="you@example.com"
+              placeholderTextColor={colors.textDim}
+              style={styles.inputText}
+              testID="email-input"
+            />
+          </View>
+
+          {/* Password */}
+          <Text style={styles.label}>Password</Text>
+          <View style={styles.input}>
+            <Ionicons name="lock-closed-outline" size={18} color={colors.textDim} style={{ marginRight: 10 }} />
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholder="Min 6 characters"
+              placeholderTextColor={colors.textDim}
+              style={styles.inputText}
+              testID="password-input"
+            />
+          </View>
+
+          {error ? (
+            <Text style={styles.error}>{error}</Text>
+          ) : null}
 
           <TouchableOpacity
-            style={styles.cta}
+            style={[styles.cta, loading && styles.ctaDisabled]}
             onPress={onContinue}
             activeOpacity={0.85}
+            disabled={loading}
             testID="auth-continue-button"
           >
-            <Text style={styles.ctaText}>
-              {step === "phone" ? "Continue" : "Verify & Sign in"}
-            </Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.ctaText}>Sign in</Text>
+            )}
           </TouchableOpacity>
 
           <Text style={[styles.legal, { marginBottom: insets.bottom + 12 }]}>
@@ -227,7 +245,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 10,
   },
-  otpHint: { color: colors.textMuted, fontSize: 13, marginBottom: 10, marginTop: -4 },
   input: {
     flexDirection: "row",
     alignItems: "center",
@@ -239,14 +256,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 20,
   },
-  prefix: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-    marginRight: 10,
-  },
   inputText: { flex: 1, color: "#fff", fontSize: 16 },
-  otpInput: { letterSpacing: 6, fontSize: 20, fontWeight: "700" },
+  error: {
+    color: colors.danger,
+    fontSize: 13,
+    marginBottom: 10,
+    marginTop: -12,
+  },
   cta: {
     backgroundColor: colors.accent,
     height: 56,
@@ -254,6 +270,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 4,
+  },
+  ctaDisabled: {
+    opacity: 0.6,
   },
   ctaText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   legal: {

@@ -18,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
 import { colors, radius } from "@/src/theme";
-import { api, Ride, RideStop } from "@/src/api";
+import { api, Ride as RideType, RideStop } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
 
@@ -28,7 +28,7 @@ const MAP_HEIGHT = "52%";
 export default function Ride() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [ride, setRide] = useState<Ride | null>(null);
+  const [ride, setRide] = useState<RideType | null>(null);
   const [driverLoc, setDriverLoc] = useState<{
     lat: number | null;
     lng: number | null;

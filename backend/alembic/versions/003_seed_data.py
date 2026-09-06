@@ -54,7 +54,7 @@ def upgrade() -> None:
     if result.scalar() == 0:
         for v in VEHICLES:
             conn.execute(sa.text(
-                "INSERT INTO vehicles (id, name, desc, seats, fare, eta, icon) "
+                "INSERT INTO vehicles (id, name, \"desc\", seats, fare, eta, icon) "
                 "VALUES (:id, :name, :desc, :seats, :fare, :eta, :icon)"
             ), {"id": v[0], "name": v[1], "desc": v[2], "seats": v[3], "fare": v[4], "eta": v[5], "icon": v[6]})
 

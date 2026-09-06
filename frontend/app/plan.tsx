@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,26 +13,18 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import { colors, radius } from "@/src/theme";
+import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder } from "@/src/components/map-view";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
-const MAP_H = Math.round(SCREEN_H * 0.32);
+const MAP_H_RATIO = 0.32;
 
-type Stop = { id: string; label: string; sub: string };
+type Stop = { id: string; label: string; sub: string; lat?: number; lng?: number };
 
 const initial: Stop[] = [
-  { id: "s1", label: "Sakleshpura Bus Stand", sub: "Pickup point" },
-  { id: "s2", label: "Manjarabad Fort", sub: "Stop 1 · 12 km" },
-  { id: "s3", label: "Bisle Ghat Viewpoint", sub: "Stop 2 · 34 km" },
-];
-
-// Pin positions on the mock map (0..1 of MAP_W and MAP_H)
-const PINS = [
-  { x: 0.18, y: 0.7, label: "Sakleshpura" },
-  { x: 0.42, y: 0.42, label: "Manjarabad" },
-  { x: 0.72, y: 0.28, label: "Bisle Ghat" },
+  { id: "s1", label: "Sakleshpura Bus Stand", sub: "Pickup point", lat: 12.9664, lng: 75.7818 },
+  { id: "s2", label: "Manjarabad Fort", sub: "Stop 1 · 12 km", lat: 12.9353, lng: 75.8029 },
+  { id: "s3", label: "Bisle Ghat Viewpoint", sub: "Stop 2 · 34 km", lat: 12.9784, lng: 76.0541 },
 ];
 
 export default function Plan() {
@@ -41,6 +32,27 @@ export default function Plan() {
   const insets = useSafeAreaInsets();
   const [stops, setStops] = useState<Stop[]>(initial);
   const [input, setInput] = useState("");
+  const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
+
+  useEffect(() => {
+    const valid = stops.filter((s) => s.lat && s.lng);
+    if (valid.length < 2) return;
+    const coords = valid.map((s) => `${s.lng},${s.lat}`).join(";");
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.routes?.[0]?.geometry?.coordinates) {
+          setRouteCoords(
+            data.routes[0].geometry.coordinates.map((c: [number, number]) => ({
+              latitude: c[1],
+              longitude: c[0],
+            })),
+          );
+        }
+      })
+      .catch(() => {});
+  }, [stops]);
 
   const addStop = () => {
     if (!input.trim()) return;
@@ -65,13 +77,43 @@ export default function Plan() {
     setStops(next);
   };
 
+  const validStops = stops.filter((s) => s.lat && s.lng);
+  const centerLat = validStops.length > 0 ? validStops.reduce((a, s) => a + s.lat!, 0) / validStops.length : 12.96;
+  const centerLng = validStops.length > 0 ? validStops.reduce((a, s) => a + s.lng!, 0) / validStops.length : 75.78;
+
   return (
     <View style={styles.root} testID="plan-screen">
       <StatusBar style="light" />
 
       {/* Map */}
-      <View style={[styles.map, { height: MAP_H + insets.top }]}>
-        <MockMap />
+      <View style={[styles.map, { height: Math.round(400 * MAP_H_RATIO) + insets.top }]}>
+        {Platform.OS !== "web" && MapView ? (
+          <MapView
+            style={StyleSheet.absoluteFill}
+            provider={PROVIDER_DEFAULT}
+            initialRegion={{
+              latitude: centerLat,
+              longitude: centerLng,
+              latitudeDelta: 0.15,
+              longitudeDelta: 0.15,
+            }}
+          >
+            {validStops.map((s, i) => (
+              <Marker
+                key={s.id}
+                coordinate={{ latitude: s.lat!, longitude: s.lng! }}
+                pinColor={i === 0 ? "#fff" : i === validStops.length - 1 ? colors.accent : colors.danger}
+                title={s.label}
+              />
+            ))}
+            {routeCoords.length > 0 && (
+              <Polyline coordinates={routeCoords} strokeColor={colors.accent} strokeWidth={3} />
+            )}
+          </MapView>
+        ) : (
+          <MapPlaceholder style={StyleSheet.absoluteFill} />
+        )}
+
         <View style={[styles.mapTop, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity
             style={styles.mapIcon}
@@ -206,98 +248,12 @@ export default function Plan() {
   );
 }
 
-function MockMap() {
-  const [dims, setDims] = useState({ w: SCREEN_W, h: MAP_H });
-  const { w, h } = dims;
-  const pts = PINS.map((p) => ({ x: p.x * w, y: p.y * h }));
-  const pathD = `M ${pts[0].x} ${pts[0].y} Q ${pts[0].x + 30} ${pts[1].y + 20}, ${pts[1].x} ${pts[1].y} T ${pts[2].x} ${pts[2].y}`;
-
-  return (
-    <View
-      style={StyleSheet.absoluteFill}
-      onLayout={(e) =>
-        setDims({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })
-      }
-    >
-      {/* Grid backdrop */}
-      <View style={styles.mapBg} />
-      <Svg width={w} height={h} style={{ position: "absolute", left: 0, top: 0 }}>
-        {/* Subtle "roads" */}
-        {[...Array(8)].map((_, i) => (
-          <Line
-            key={"h" + i}
-            x1={0}
-            y1={(h / 8) * i + 20}
-            x2={w}
-            y2={(h / 8) * i + 30}
-            stroke="#1B1D22"
-            strokeWidth={1}
-          />
-        ))}
-        {[...Array(8)].map((_, i) => (
-          <Line
-            key={"v" + i}
-            x1={(w / 8) * i + 10}
-            y1={0}
-            x2={(w / 8) * i - 10}
-            y2={h}
-            stroke="#1B1D22"
-            strokeWidth={1}
-          />
-        ))}
-        {/* Route */}
-        <Path
-          d={pathD}
-          stroke={colors.accent}
-          strokeWidth={3}
-          strokeLinecap="round"
-          fill="none"
-        />
-        {/* Pins */}
-        {pts.map((p, i) => (
-          <Circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={7}
-            fill={i === pts.length - 1 ? colors.accent : "#fff"}
-            stroke="#000"
-            strokeWidth={2}
-          />
-        ))}
-      </Svg>
-      {PINS.map((p, i) => (
-        <View
-          key={i}
-          style={[
-            styles.pinLabel,
-            {
-              left: Math.max(4, p.x * w - 40),
-              top: Math.max(4, p.y * h - 32),
-            },
-          ]}
-        >
-          <Text style={styles.pinText}>{p.label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   map: {
     backgroundColor: "#0E1013",
     width: "100%",
     overflow: "hidden",
-  },
-  mapBg: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#0B0D10",
   },
   mapTop: {
     position: "absolute",
@@ -331,18 +287,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   mapChipText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  pinLabel: {
-    position: "absolute",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    borderWidth: 1,
-    borderColor: colors.border,
-    width: 80,
-    alignItems: "center",
-  },
-  pinText: { color: "#fff", fontSize: 10, fontWeight: "600" },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,

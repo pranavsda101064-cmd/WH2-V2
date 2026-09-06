@@ -21,6 +21,7 @@ import { colors, radius } from "@/src/theme";
 import { api, Ride as RideType, RideStop } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
+import { MapView, Marker, PROVIDER_DEFAULT, MapPlaceholder } from "@/src/components/map-view";
 
 const POLL_INTERVAL = 5000;
 const MAP_HEIGHT = "52%";
@@ -143,13 +144,45 @@ export default function Ride() {
     <View style={styles.root} testID="ride-screen">
       <StatusBar style="light" />
 
-      {/* Map area — placeholder on web */}
+      {/* Map area */}
       <View style={styles.map}>
-        {Platform.OS === "web" ? (
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map-outline" size={48} color={colors.textDim} />
-            <Text style={styles.mapPlaceholderText}>Live map</Text>
-          </View>
+        {Platform.OS !== "web" && MapView && pickup && drop ? (
+          <MapView
+            style={StyleSheet.absoluteFill}
+            provider={PROVIDER_DEFAULT}
+            initialRegion={{
+              latitude: pickup.lat ?? 12.94,
+              longitude: pickup.lng ?? 75.77,
+              latitudeDelta: 0.08,
+              longitudeDelta: 0.08,
+            }}
+            showsUserLocation={false}
+          >
+            {pickup.lat && pickup.lng && (
+              <Marker
+                coordinate={{ latitude: pickup.lat, longitude: pickup.lng }}
+                pinColor={colors.accent}
+                title="Pickup"
+              />
+            )}
+            {drop.lat && drop.lng && (
+              <Marker
+                coordinate={{ latitude: drop.lat, longitude: drop.lng }}
+                pinColor={colors.danger}
+                title="Drop-off"
+              />
+            )}
+            {driverLoc.lat && driverLoc.lng && (
+              <Marker
+                coordinate={{ latitude: driverLoc.lat, longitude: driverLoc.lng }}
+                title="Driver"
+              >
+                <View style={styles.driverMarker}>
+                  <Ionicons name="car-sport" size={16} color="#fff" />
+                </View>
+              </Marker>
+            )}
+          </MapView>
         ) : (
           <View style={styles.mapPlaceholder}>
             <Ionicons name="location" size={32} color={colors.accent} />
@@ -354,6 +387,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mapPlaceholderText: { color: colors.textDim, fontSize: 13 },
+  driverMarker: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "#fff",
+  },
   mapTop: {
     position: "absolute",
     left: 0,

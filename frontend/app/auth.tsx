@@ -25,7 +25,7 @@ import { api } from "@/src/api";
 const BG =
   "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1400&q=80";
 
-const GOOGLE_WEB_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+const GOOGLE_WEB_CLIENT_ID = "524688489029-h02hs91ufjcsu1l6805dks6l724o4klp.apps.googleusercontent.com";
 
 type Role = "customer" | "driver";
 

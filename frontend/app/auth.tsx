@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { BlurView } from "expo-blur";
@@ -17,7 +17,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as AuthSession from "expo-auth-session";
-import * as Crypto from "expo-crypto";
 
 import { colors, radius } from "@/src/theme";
 import { api } from "@/src/api";
@@ -26,6 +25,12 @@ const BG =
   "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1400&q=80";
 
 const GOOGLE_WEB_CLIENT_ID = "524688489029-h02hs91ufjcsu1l6805dks6l724o4klp.apps.googleusercontent.com";
+
+const googleDiscovery = {
+  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenEndpoint: "https://oauth2.googleapis.com/token",
+  revocationEndpoint: "https://oauth2.googleapis.com/revoke",
+};
 
 type Role = "customer" | "driver";
 
@@ -39,28 +44,38 @@ export default function Auth() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
+
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: GOOGLE_WEB_CLIENT_ID,
-      redirectUri: AuthSession.makeRedirectUri({ scheme: "where2" }),
+      redirectUri,
       scopes: ["openid", "profile", "email"],
-      usePKCE: true,
+      responseType: AuthSession.ResponseType.IdToken,
     },
-    async (res) => {
-      if (res.type === "success" && res.authentication) {
-        setGoogleLoading(true);
-        try {
-          await api.googleAuth(res.authentication.idToken, role);
+    googleDiscovery,
+  );
+
+  useEffect(() => {
+    if (!response) return;
+    if (response.type === "success") {
+      const idToken = response.params?.id_token;
+      if (!idToken) {
+        setError("No ID token received from Google");
+        return;
+      }
+      setGoogleLoading(true);
+      api.googleAuth(idToken, role)
+        .then(() => {
           if (role === "driver") router.replace("/driver-onboarding");
           else router.replace("/(tabs)/home");
-        } catch {
-          setError("Google sign-in failed");
-        } finally {
-          setGoogleLoading(false);
-        }
-      }
-    },
-  );
+        })
+        .catch(() => setError("Google sign-in failed"))
+        .finally(() => setGoogleLoading(false));
+    } else if (response.type === "error") {
+      setError("Google sign-in failed: " + (response.error?.message || "unknown error"));
+    }
+  }, [response]);
 
   const onContinue = async () => {
     if (!email.trim() || !password.trim()) {
@@ -206,10 +221,10 @@ export default function Auth() {
 
           {/* Google Sign In */}
           <TouchableOpacity
-            style={[styles.googleBtn, googleLoading && styles.ctaDisabled]}
-            onPress={() => promptAsync()}
+            style={[styles.googleBtn, (googleLoading || !request) && styles.ctaDisabled]}
+            onPress={() => request && promptAsync()}
             activeOpacity={0.85}
-            disabled={loading || googleLoading}
+            disabled={loading || googleLoading || !request}
             testID="google-sign-in-button"
           >
             {googleLoading ? (

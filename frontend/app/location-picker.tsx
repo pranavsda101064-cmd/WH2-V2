@@ -12,8 +12,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
+import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder } from "@/src/components/map-view";
 import * as Location from "expo-location";
 
 import { colors, radius } from "@/src/theme";
@@ -31,7 +32,7 @@ export default function LocationPicker() {
   const router = useRouter();
   const { target } = useLocalSearchParams<{ target: "pickup" | "dropoff" }>();
   const insets = useSafeAreaInsets();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
   const [region, setRegion] = useState({
     ...SAKLESHPURA,
@@ -283,21 +284,25 @@ export default function LocationPicker() {
       )}
 
       {/* Map */}
-      <MapView
-        ref={mapRef}
-        style={styles.map}
-        region={region}
-        onRegionChangeComplete={setRegion}
-        onPress={handleMapPress}
-        showsUserLocation
-        showsMyLocationButton={false}
-        provider={PROVIDER_DEFAULT}
-      >
-        {marker && <Marker coordinate={marker} pinColor={outsideArea ? "#E4483C" : colors.accent} />}
-        {routeCoords.length > 0 && (
-          <Polyline coordinates={routeCoords} strokeColor={colors.accent} strokeWidth={4} />
-        )}
-      </MapView>
+      {Platform.OS !== "web" && MapView ? (
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          region={region}
+          onRegionChangeComplete={setRegion}
+          onPress={handleMapPress}
+          showsUserLocation
+          showsMyLocationButton={false}
+          provider={PROVIDER_DEFAULT}
+        >
+          {marker && <Marker coordinate={marker} pinColor={outsideArea ? "#E4483C" : colors.accent} />}
+          {routeCoords.length > 0 && (
+            <Polyline coordinates={routeCoords} strokeColor={colors.accent} strokeWidth={4} />
+          )}
+        </MapView>
+      ) : (
+        <MapPlaceholder style={styles.map} />
+      )}
 
       {/* My location FAB */}
       <TouchableOpacity style={[styles.fab, { bottom: insets.bottom + 160 }]} onPress={useMyLocation}>

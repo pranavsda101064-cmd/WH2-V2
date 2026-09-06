@@ -8,9 +8,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
+import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder } from "@/src/components/map-view";
 
 import { colors, radius } from "@/src/theme";
 import { api } from "@/src/api";
@@ -139,26 +140,30 @@ export default function Checkout() {
         {/* Mini route map */}
         {pickup && dropoff && (
           <View style={styles.miniMapContainer}>
-            <MapView
-              style={styles.miniMap}
-              provider={PROVIDER_DEFAULT}
-              scrollEnabled={false}
-              zoomEnabled={false}
-              pitchEnabled={false}
-              rotateEnabled={false}
-              initialRegion={{
-                latitude: (pickup.lat + dropoff.lat) / 2,
-                longitude: (pickup.lng + dropoff.lng) / 2,
-                latitudeDelta: Math.abs(pickup.lat - dropoff.lat) * 2.5 || 0.05,
-                longitudeDelta: Math.abs(pickup.lng - dropoff.lng) * 2.5 || 0.05,
-              }}
-            >
-              <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor={colors.accent} />
-              <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor={colors.danger} />
-              {routeCoords.length > 0 && (
-                <Polyline coordinates={routeCoords} strokeColor={colors.accent} strokeWidth={3} />
-              )}
-            </MapView>
+            {Platform.OS !== "web" && MapView ? (
+              <MapView
+                style={styles.miniMap}
+                provider={PROVIDER_DEFAULT}
+                scrollEnabled={false}
+                zoomEnabled={false}
+                pitchEnabled={false}
+                rotateEnabled={false}
+                initialRegion={{
+                  latitude: (pickup.lat + dropoff.lat) / 2,
+                  longitude: (pickup.lng + dropoff.lng) / 2,
+                  latitudeDelta: Math.abs(pickup.lat - dropoff.lat) * 2.5 || 0.05,
+                  longitudeDelta: Math.abs(pickup.lng - dropoff.lng) * 2.5 || 0.05,
+                }}
+              >
+                <Marker coordinate={{ latitude: pickup.lat, longitude: pickup.lng }} pinColor={colors.accent} />
+                <Marker coordinate={{ latitude: dropoff.lat, longitude: dropoff.lng }} pinColor={colors.danger} />
+                {routeCoords.length > 0 && (
+                  <Polyline coordinates={routeCoords} strokeColor={colors.accent} strokeWidth={3} />
+                )}
+              </MapView>
+            ) : (
+              <MapPlaceholder style={styles.miniMap} />
+            )}
           </View>
         )}
 

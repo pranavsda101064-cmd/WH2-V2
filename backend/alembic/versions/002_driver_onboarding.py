@@ -1,14 +1,14 @@
 """Add driver profile, document, and vehicle tables
 
 Revision ID: 002_driver_onboarding
-Revises: 001_initial_schema
+Revises: 001
 Create Date: 2026-09-06
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "002_driver_onboarding"
-down_revision = "001_initial_schema"
+down_revision = "001"
 branch_labels = None
 depends_on = None
 

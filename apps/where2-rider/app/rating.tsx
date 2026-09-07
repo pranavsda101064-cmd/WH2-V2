@@ -1,22 +1,29 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  Animated,
+  Dimensions,
+  Easing,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { colors, radius } from "@/src/theme";
 import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
+import { SpringPress } from "@/src/components/spring-press";
+import { FadeIn } from "@/src/components/fade-in";
+
+const { width: SCREEN_W } = Dimensions.get("window");
 
 const TIP_PRESETS = [0, 50, 100, 200];
 const COMPLIMENTS = [
@@ -27,6 +34,146 @@ const COMPLIMENTS = [
   { id: "c5", label: "Friendly", icon: "happy-outline" as const },
   { id: "c6", label: "On time", icon: "time-outline" as const },
 ];
+
+/* ── Confetti particle ──────────────────────────────────── */
+function ConfettiParticle({ delay, color, startX }: { delay: number; color: string; startX: number }) {
+  const translateY = useRef(new Animated.Value(0)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const rotate = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(translateY, {
+          toValue: -300 - Math.random() * 200,
+          duration: 1200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(translateX, {
+          toValue: (Math.random() - 0.5) * 200,
+          duration: 1200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 800,
+          delay: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(rotate, {
+          toValue: 1,
+          duration: 1200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        left: startX,
+        bottom: SCREEN_W * 0.5,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: color,
+        opacity,
+        transform: [
+          { translateY },
+          { translateX },
+          { rotate: rotate.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }) },
+        ],
+      }}
+    />
+  );
+}
+
+/* ── Animated star ──────────────────────────────────────── */
+function AnimatedStar({ index, selected, onPress }: { index: number; selected: boolean; onPress: () => void }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.35, friction: 4, tension: 300, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, friction: 6, useNativeDriver: true }),
+    ]).start();
+    onPress();
+  };
+
+  return (
+    <SpringPress onPress={handlePress} testID={`star-${index}`}>
+      <Animated.View style={{ transform: [{ scale }], padding: 4 }}>
+        <Ionicons
+          name={selected ? "star" : "star-outline"}
+          size={40}
+          color={selected ? colors.accent : colors.borderStrong}
+        />
+      </Animated.View>
+    </SpringPress>
+  );
+}
+
+/* ── Success screen with animated checkmark ─────────────── */
+function SuccessScreen() {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const checkOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.spring(scaleAnim, { toValue: 1, friction: 5, tension: 100, useNativeDriver: true }),
+      Animated.timing(checkOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  const confettiColors = [colors.accent, "#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#F7DC6F"];
+
+  return (
+    <View style={styles.done} testID="rating-success">
+      {/* Confetti */}
+      {Array.from({ length: 18 }).map((_, i) => (
+        <ConfettiParticle
+          key={i}
+          delay={i * 40}
+          color={confettiColors[i % confettiColors.length]}
+          startX={SCREEN_W * 0.3 + Math.random() * SCREEN_W * 0.4}
+        />
+      ))}
+
+      <Animated.View style={[styles.successCircle, { transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View style={{ opacity: checkOpacity }}>
+          <Ionicons name="checkmark" size={48} color="#fff" />
+        </Animated.View>
+      </Animated.View>
+      <Animated.Text style={[styles.doneTitle, { opacity: checkOpacity }]}>
+        Thanks for rating
+      </Animated.Text>
+      <Animated.Text style={[styles.doneSub, { opacity: checkOpacity }]}>
+        Your feedback helps us improve every ride
+      </Animated.Text>
+    </View>
+  );
+}
 
 export default function Rating() {
   const router = useRouter();
@@ -56,21 +203,11 @@ export default function Rating() {
         })
         .catch(() => {});
     }
-    setTimeout(() => router.replace("/(tabs)/home"), 1400);
+    setTimeout(() => router.replace("/(tabs)/home"), 2800);
   };
 
   if (submitted) {
-    return (
-      <View style={styles.done} testID="rating-success">
-        <View style={styles.successCircle}>
-          <Ionicons name="heart" size={40} color="#fff" />
-        </View>
-        <Text style={styles.doneTitle}>Thanks for rating</Text>
-        <Text style={styles.doneSub}>
-          Your feedback helps us improve every ride
-        </Text>
-      </View>
-    );
+    return <SuccessScreen />;
   }
 
   return (
@@ -88,13 +225,13 @@ export default function Rating() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity
+          <SpringPress
             style={styles.closeBtn}
             onPress={() => router.replace("/(tabs)/home")}
             testID="rating-close"
           >
             <Ionicons name="close" size={20} color="#fff" />
-          </TouchableOpacity>
+          </SpringPress>
 
           {/* Driver */}
           <View style={styles.driverBlock}>
@@ -110,110 +247,111 @@ export default function Rating() {
           {/* Stars */}
           <View style={styles.starsRow} testID="stars-row">
             {[1, 2, 3, 4, 5].map((n) => (
-              <TouchableOpacity
+              <AnimatedStar
                 key={n}
+                index={n}
+                selected={n <= stars}
                 onPress={() => setStars(n)}
-                style={styles.starBtn}
-                testID={`star-${n}`}
-              >
-                <Ionicons
-                  name={n <= stars ? "star" : "star-outline"}
-                  size={40}
-                  color={n <= stars ? colors.accent : colors.borderStrong}
-                />
-              </TouchableOpacity>
+              />
             ))}
           </View>
 
           {stars > 0 && (
-            <Text style={styles.starHint}>
-              {stars === 5
-                ? "Amazing! What made it great?"
-                : stars >= 4
-                  ? "Glad it was good — anything to highlight?"
-                  : stars >= 3
-                    ? "Thanks — how can we do better?"
-                    : "Sorry to hear that. Tell us what happened."}
-            </Text>
+            <FadeIn delay={100}>
+              <Text style={styles.starHint}>
+                {stars === 5
+                  ? "Amazing! What made it great?"
+                  : stars >= 4
+                    ? "Glad it was good — anything to highlight?"
+                    : stars >= 3
+                      ? "Thanks — how can we do better?"
+                      : "Sorry to hear that. Tell us what happened."}
+              </Text>
+            </FadeIn>
           )}
 
           {/* Compliments */}
           {stars > 0 && (
-            <View style={styles.tagsWrap} testID="compliment-tags">
-              {COMPLIMENTS.map((c) => {
-                const active = tags.includes(c.id);
-                return (
-                  <TouchableOpacity
-                    key={c.id}
-                    onPress={() => toggle(c.id)}
-                    style={[styles.tag, active && styles.tagActive]}
-                    testID={`tag-${c.id}`}
-                  >
-                    <Ionicons
-                      name={c.icon}
-                      size={14}
-                      color={active ? colors.accent : "#fff"}
-                    />
-                    <Text
-                      style={[styles.tagText, active && { color: colors.accent }]}
+            <FadeIn delay={150}>
+              <View style={styles.tagsWrap} testID="compliment-tags">
+                {COMPLIMENTS.map((c) => {
+                  const active = tags.includes(c.id);
+                  return (
+                    <SpringPress
+                      key={c.id}
+                      onPress={() => toggle(c.id)}
+                      style={[styles.tag, active && styles.tagActive]}
+                      testID={`tag-${c.id}`}
                     >
-                      {c.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                      <Ionicons
+                        name={c.icon}
+                        size={14}
+                        color={active ? colors.accent : "#fff"}
+                      />
+                      <Text
+                        style={[styles.tagText, active && { color: colors.accent }]}
+                      >
+                        {c.label}
+                      </Text>
+                    </SpringPress>
+                  );
+                })}
+              </View>
+            </FadeIn>
           )}
 
           {/* Note */}
-          <Text style={styles.section}>Add a note (optional)</Text>
-          <TextInput
-            value={note}
-            onChangeText={setNote}
-            multiline
-            placeholder="Anything else you want to share?"
-            placeholderTextColor={colors.textDim}
-            style={styles.noteInput}
-            testID="note-input"
-          />
+          <FadeIn delay={200}>
+            <Text style={styles.section}>Add a note (optional)</Text>
+            <TextInput
+              value={note}
+              onChangeText={setNote}
+              multiline
+              placeholder="Anything else you want to share?"
+              placeholderTextColor={colors.textDim}
+              style={styles.noteInput}
+              testID="note-input"
+            />
+          </FadeIn>
 
           {/* Tip */}
-          <Text style={styles.section}>Add a tip</Text>
-          <Text style={styles.sectionSub}>100% goes to your driver</Text>
-          <View style={styles.tipRow}>
-            {TIP_PRESETS.map((amt) => {
-              const active = tip === amt;
-              return (
-                <TouchableOpacity
-                  key={amt}
-                  onPress={() => setTip(amt)}
-                  style={[styles.tipBtn, active && styles.tipBtnActive]}
-                  testID={`tip-${amt}`}
-                >
-                  <Text
-                    style={[styles.tipText, active && { color: colors.accent }]}
+          <FadeIn delay={250}>
+            <Text style={styles.section}>Add a tip</Text>
+            <Text style={styles.sectionSub}>100% goes to your driver</Text>
+            <View style={styles.tipRow}>
+              {TIP_PRESETS.map((amt) => {
+                const active = tip === amt;
+                return (
+                  <SpringPress
+                    key={amt}
+                    onPress={() => setTip(amt)}
+                    style={[styles.tipBtn, active && styles.tipBtnActive]}
+                    testID={`tip-${amt}`}
                   >
-                    {amt === 0 ? "No tip" : `₹${amt}`}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                    <Text
+                      style={[styles.tipText, active && { color: colors.accent }]}
+                    >
+                      {amt === 0 ? "No tip" : `₹${amt}`}
+                    </Text>
+                  </SpringPress>
+                );
+              })}
+            </View>
+          </FadeIn>
         </ScrollView>
 
         {/* Submit */}
         <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
-          <TouchableOpacity
+          <SpringPress
             onPress={submit}
             disabled={stars === 0}
-            activeOpacity={0.85}
             style={[styles.submit, stars === 0 && styles.submitDisabled]}
             testID="submit-rating-button"
           >
             <Text style={styles.submitText}>
               {tip > 0 ? `Submit + Tip ₹${tip}` : "Submit rating"}
             </Text>
-          </TouchableOpacity>
+          </SpringPress>
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -261,7 +399,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 8,
   },
-  starBtn: { padding: 4 },
   starHint: {
     color: colors.textMuted,
     fontSize: 13,

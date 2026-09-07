@@ -10,7 +10,7 @@ import {
   Share,
   StyleSheet,
   Text,
-  TouchableOpacity,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,7 +21,8 @@ import { colors, radius } from "@/src/theme";
 import { api, Ride as RideType, RideStop } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
-import { MapView, Marker, PROVIDER_DEFAULT, MapPlaceholder } from "@/src/components/map-view";
+import { SpringPress } from "@/src/components/spring-press";
+import { MapView, Marker, PROVIDER_DEFAULT, DARK_MAP_STYLE } from "@/src/components/map-view";
 
 const POLL_INTERVAL = 5000;
 const MAP_HEIGHT = "52%";
@@ -38,19 +39,38 @@ export default function Ride() {
   const [showPin, setShowPin] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
-  const pulse = useRef(new Animated.Value(0)).current;
+  const [etaMinutes, setEtaMinutes] = useState(5);
+  const [activeRideId, setActiveRideId] = useState<string | null>(null);
   const rideIdRef = useRef<string | null>(null);
+  const pinRef = useRef<TextInput>(null);
+
+  // Smooth pulsing dot
+  const pulseScale = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.loop(
-      Animated.timing(pulse, {
-        toValue: 1,
-        duration: 1600,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(pulseScale, { toValue: 1.6, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(pulseScale, { toValue: 1, duration: 800, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(pulseOpacity, { toValue: 0.3, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          Animated.timing(pulseOpacity, { toValue: 1, duration: 800, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
+        ]),
+      ]),
     ).start();
-  }, [pulse]);
+  }, []);
+
+  // ETA countdown
+  useEffect(() => {
+    if (ride?.status !== "arriving") return;
+    const timer = setInterval(() => {
+      setEtaMinutes((prev) => (prev > 1 ? prev - 1 : 1));
+    }, 60000);
+    return () => clearInterval(timer);
+  }, [ride?.status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,6 +80,7 @@ export default function Ride() {
         const rideId = await storage.getItem<string>("active_ride_id", "");
         if (!rideId || cancelled) return;
         rideIdRef.current = rideId;
+        setActiveRideId(rideId);
 
         const r = await api.getRide(rideId);
         if (!cancelled) {
@@ -76,13 +97,13 @@ export default function Ride() {
   }, []);
 
   useEffect(() => {
-    if (!rideIdRef.current) return;
+    if (!activeRideId) return;
 
     const poll = setInterval(async () => {
       try {
         const [r, loc] = await Promise.all([
-          api.getRide(rideIdRef.current!),
-          api.getDriverLocation(rideIdRef.current!),
+          api.getRide(activeRideId),
+          api.getDriverLocation(activeRideId),
         ]);
         setRide(r);
         if (loc.lat && loc.lng) {
@@ -94,7 +115,7 @@ export default function Ride() {
     }, POLL_INTERVAL);
 
     return () => clearInterval(poll);
-  }, [rideIdRef.current]);
+  }, [activeRideId]);
 
   const handleVerifyPin = async () => {
     if (!rideIdRef.current || pinInput.length !== 4) return;
@@ -128,7 +149,7 @@ export default function Ride() {
 
   const statusLabel =
     status === "arriving"
-      ? "Driver is on the way"
+      ? `Arriving in ${etaMinutes} min`
       : status === "onboard"
         ? "On the way to your destination"
         : status === "arrived"
@@ -150,6 +171,7 @@ export default function Ride() {
           <MapView
             style={StyleSheet.absoluteFill}
             provider={PROVIDER_DEFAULT}
+            customMapStyle={DARK_MAP_STYLE}
             initialRegion={{
               latitude: pickup.lat ?? 12.94,
               longitude: pickup.lng ?? 75.77,
@@ -161,16 +183,22 @@ export default function Ride() {
             {pickup.lat && pickup.lng && (
               <Marker
                 coordinate={{ latitude: pickup.lat, longitude: pickup.lng }}
-                pinColor={colors.accent}
                 title="Pickup"
-              />
+              >
+                <View style={styles.pickupMarker}>
+                  <View style={styles.pickupDot} />
+                </View>
+              </Marker>
             )}
             {drop.lat && drop.lng && (
               <Marker
                 coordinate={{ latitude: drop.lat, longitude: drop.lng }}
-                pinColor={colors.danger}
                 title="Drop-off"
-              />
+              >
+                <View style={styles.dropMarker}>
+                  <View style={styles.dropDot} />
+                </View>
+              </Marker>
             )}
             {driverLoc.lat && driverLoc.lng && (
               <Marker
@@ -187,30 +215,34 @@ export default function Ride() {
           <View style={styles.mapPlaceholder}>
             <Ionicons name="location" size={32} color={colors.accent} />
             <Text style={styles.mapPlaceholderText}>
-              {driverLoc.lat
-                ? `Driver at ${driverLoc.lat.toFixed(4)}, ${driverLoc.lng?.toFixed(4)}`
+              {driverLoc.lat && driverLoc.lng
+                ? `Driver at ${driverLoc.lat.toFixed(4)}, ${driverLoc.lng.toFixed(4)}`
                 : "Waiting for driver location..."}
             </Text>
           </View>
         )}
 
         <View style={[styles.mapTop, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity
+          <SpringPress
             style={styles.mapIcon}
             onPress={() => router.back()}
             testID="ride-back"
           >
             <Ionicons name="chevron-back" size={20} color="#fff" />
-          </TouchableOpacity>
+          </SpringPress>
           <View style={styles.etaPill}>
-            <View style={styles.etaDot} />
+            <Animated.View style={[styles.etaDot, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]} />
             <Text style={styles.etaText}>
-              {status === "arriving" ? "DRIVER ON THE WAY" : status === "onboard" ? "IN TRANSIT" : status.toUpperCase()}
+              {status === "arriving"
+                ? `ARRIVING IN ${etaMinutes} MIN`
+                : status === "onboard"
+                  ? "IN TRANSIT"
+                  : status.toUpperCase()}
             </Text>
           </View>
-          <TouchableOpacity style={styles.mapIcon} onPress={handleShare} testID="ride-share">
+          <SpringPress style={styles.mapIcon} onPress={handleShare} testID="ride-share">
             <Ionicons name="share-outline" size={18} color="#fff" />
-          </TouchableOpacity>
+          </SpringPress>
         </View>
       </View>
 
@@ -230,9 +262,9 @@ export default function Ride() {
           </Text>
         )}
 
-        {/* Ride PIN display (rider sees this when arriving) */}
+        {/* Ride PIN display */}
         {status === "arriving" && ride?.ride_pin && (
-          <TouchableOpacity
+          <SpringPress
             style={styles.pinCard}
             onPress={() => setShowPin(!showPin)}
           >
@@ -242,40 +274,50 @@ export default function Ride() {
               <Text style={styles.pinValue}>{showPin ? ride.ride_pin : "••••"}</Text>
             </View>
             <Text style={styles.pinHint}>Tap to {showPin ? "hide" : "reveal"}</Text>
-          </TouchableOpacity>
+          </SpringPress>
         )}
 
-        {/* PIN input for driver */}
+        {/* PIN input */}
         {status === "arriving" && showPin && (
           <View style={styles.pinInputGroup}>
             <Text style={styles.pinInputLabel}>Enter rider's PIN to start ride:</Text>
-            <View style={styles.pinInputRow}>
-              {[0, 1, 2, 3].map((i) => (
-                <Pressable
-                  key={i}
-                  style={[
-                    styles.pinDigit,
-                    pinInput[i] && styles.pinDigitFilled,
-                  ]}
-                  onPress={() => {
-                    // Simple: clear and re-enter
-                    setPinInput("");
-                    setPinError("");
-                  }}
-                >
-                  <Text style={styles.pinDigitText}>
-                    {pinInput[i] || "•"}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+            <Pressable onPress={() => pinRef.current?.focus()}>
+              <View style={styles.pinInputRow}>
+                {[0, 1, 2, 3].map((i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.pinDigit,
+                      pinInput[i] && styles.pinDigitFilled,
+                    ]}
+                  >
+                    <Text style={styles.pinDigitText}>
+                      {pinInput[i] || "•"}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </Pressable>
+            <TextInput
+              ref={pinRef}
+              value={pinInput}
+              onChangeText={(t) => {
+                const digits = t.replace(/[^0-9]/g, "").slice(0, 4);
+                setPinInput(digits);
+                setPinError("");
+              }}
+              keyboardType="number-pad"
+              maxLength={4}
+              autoFocus
+              style={styles.pinHiddenInput}
+            />
             {pinError ? <Text style={styles.pinError}>{pinError}</Text> : null}
-            <TouchableOpacity
-              style={styles.pinSubmitBtn}
+            <SpringPress
+              style={[styles.pinSubmitBtn, pinInput.length !== 4 && { opacity: 0.5 }]}
               onPress={handleVerifyPin}
             >
               <Text style={styles.pinSubmitText}>Start Ride</Text>
-            </TouchableOpacity>
+            </SpringPress>
           </View>
         )}
 
@@ -290,18 +332,22 @@ export default function Ride() {
               <Ionicons name="car-sport" size={12} color="#fff" />
               <Text style={styles.driverPlate}>{ride?.vehicle_id || "—"}</Text>
             </View>
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={10} color={colors.accent} />
+              <Text style={styles.ratingText}>4.9</Text>
+            </View>
           </View>
           <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.actBtn} testID="ride-message">
+            <SpringPress style={styles.actBtn} testID="ride-message">
               <Ionicons name="chatbubble-outline" size={18} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
+            </SpringPress>
+            <SpringPress
               style={[styles.actBtn, styles.actBtnAccent]}
               onPress={handleSOS}
               testID="ride-sos"
             >
               <Ionicons name="alert-circle" size={18} color="#fff" />
-            </TouchableOpacity>
+            </SpringPress>
           </View>
         </View>
 
@@ -335,37 +381,36 @@ export default function Ride() {
         </View>
 
         {status === "completed" ? (
-          <TouchableOpacity
+          <SpringPress
             style={styles.doneBtn}
             onPress={() => router.replace("/rating")}
-            activeOpacity={0.85}
             testID="ride-complete-button"
           >
             <Text style={styles.doneText}>Rate your ride</Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
+          </SpringPress>
         ) : (
           <View style={styles.bottomActions}>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={handleSOS} testID="ride-safety">
+            <SpringPress style={styles.secondaryBtn} onPress={handleSOS} testID="ride-safety">
               <Ionicons name="shield-checkmark-outline" size={16} color="#fff" />
               <Text style={styles.secondaryText}>SOS</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </SpringPress>
+            <SpringPress
               style={[styles.secondaryBtn, styles.shareBtn]}
               onPress={handleShare}
               testID="ride-share-btn"
             >
               <Ionicons name="share-outline" size={16} color="#fff" />
               <Text style={styles.secondaryText}>Share Trip</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </SpringPress>
+            <SpringPress
               style={[styles.secondaryBtn, styles.cancelBtn]}
               onPress={() => router.replace("/(tabs)/home")}
               testID="ride-cancel"
             >
               <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
               <Text style={[styles.secondaryText, { color: colors.danger }]}>Cancel</Text>
-            </TouchableOpacity>
+            </SpringPress>
           </View>
         )}
       </ScrollView>
@@ -387,6 +432,38 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mapPlaceholderText: { color: colors.textDim, fontSize: 13 },
+  pickupMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(30,107,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pickupDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.accent,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  dropMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "rgba(228,72,60,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dropDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.danger,
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
   driverMarker: {
     width: 34,
     height: 34,
@@ -396,6 +473,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 3,
     borderColor: "#fff",
+    shadowColor: colors.accent,
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
   },
   mapTop: {
     position: "absolute",
@@ -413,7 +494,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(0,0,0,0.55)",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(255,255,255,0.1)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -424,9 +505,9 @@ const styles = StyleSheet.create({
     height: 34,
     paddingHorizontal: 14,
     borderRadius: 17,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: "rgba(0,0,0,0.75)",
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   etaDot: {
     width: 8,
@@ -437,7 +518,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 6,
   },
-  etaText: { color: "#fff", fontSize: 12, fontWeight: "700", letterSpacing: 1 },
+  etaText: { color: "#fff", fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -447,7 +528,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderColor: colors.border,
+    borderColor: "rgba(255,255,255,0.06)",
   },
   grabber: {
     alignSelf: "center",
@@ -506,6 +587,12 @@ const styles = StyleSheet.create({
   },
   pinDigitFilled: { borderColor: colors.accent },
   pinDigitText: { color: "#fff", fontSize: 24, fontWeight: "800" },
+  pinHiddenInput: {
+    position: "absolute",
+    opacity: 0,
+    width: 1,
+    height: 1,
+  },
   pinError: { color: colors.danger, fontSize: 12, marginTop: 8, textAlign: "center" },
   pinSubmitBtn: {
     marginTop: 14,
@@ -538,6 +625,18 @@ const styles = StyleSheet.create({
   driverName: { color: "#fff", fontSize: 15, fontWeight: "700" },
   driverMeta: { flexDirection: "row", alignItems: "center", marginTop: 3, gap: 6 },
   driverPlate: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: 4,
+    alignSelf: "flex-start",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    backgroundColor: "rgba(30,107,255,0.12)",
+  },
+  ratingText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   actionRow: { flexDirection: "row", gap: 8 },
   actBtn: {
     width: 42,

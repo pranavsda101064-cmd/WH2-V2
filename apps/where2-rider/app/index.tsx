@@ -5,17 +5,18 @@ import {
   ImageBackground,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { colors, radius } from "@/src/theme";
+import { SpringPress } from "@/src/components/spring-press";
+import { FadeIn } from "@/src/components/fade-in";
 
-// Coffee estate / misty Western Ghats forest.
+// Coffee plantation in Sakleshpura, Western Ghats.
 const BG =
-  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1400&q=80";
+  "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1400&q=80";
 
 export default function Landing() {
   const router = useRouter();
@@ -25,21 +26,23 @@ export default function Landing() {
     <View style={styles.root} testID="landing-screen">
       <StatusBar style="light" />
       <ImageBackground source={{ uri: BG }} style={styles.bg} resizeMode="cover">
-        {/* Sky darken top-down (subtle) */}
+        {/* Sky darken top-down */}
         <LinearGradient
           colors={["rgba(0,0,0,0.35)", "rgba(0,0,0,0)"]}
           style={styles.topFade}
           pointerEvents="none"
         />
 
-        {/* Headline — sits mid-screen so lower half is masked by hills gradient */}
+        {/* Headline — sits mid-screen */}
         <View style={styles.headlineWrap} pointerEvents="none">
-          <Text style={styles.headline} testID="landing-headline">
-            WHERE TO ?!
-          </Text>
+          <FadeIn delay={300} duration={800} direction="up" scale={{ from: 0.85, to: 1 }}>
+            <Text style={styles.headline} testID="landing-headline">
+              WHERE TO ?!
+            </Text>
+          </FadeIn>
         </View>
 
-        {/* Hills mask — solid dark base with soft top edge, masks bottom of headline */}
+        {/* Hills mask */}
         <LinearGradient
           colors={[
             "rgba(0,0,0,0)",
@@ -55,22 +58,30 @@ export default function Landing() {
 
         {/* Bottom content */}
         <View style={[styles.bottom, { paddingBottom: insets.bottom + 24 }]}>
-          <Text style={styles.tagline}>Sakleshpura · Karnataka</Text>
-          <Text style={styles.sub}>Curated tourist rides through the hills</Text>
+          <FadeIn delay={400} duration={600}>
+            <Text style={styles.tagline}>Sakleshpura · Karnataka</Text>
+          </FadeIn>
 
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.cta}
-            onPress={() => router.push("/auth")}
-            testID="landing-continue-button"
-          >
-            <Text style={styles.ctaText}>Get started</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
+          <FadeIn delay={600} duration={600}>
+            <Text style={styles.sub}>Curated tourist rides through the hills</Text>
+          </FadeIn>
 
-          <Text style={styles.legal}>
-            By continuing you agree to our Terms & Privacy Policy.
-          </Text>
+          <FadeIn delay={800} duration={600}>
+            <SpringPress
+              style={styles.cta}
+              onPress={() => router.push("/auth")}
+              testID="landing-continue-button"
+            >
+              <Text style={styles.ctaText}>Get started</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </SpringPress>
+          </FadeIn>
+
+          <FadeIn delay={1000} duration={600}>
+            <Text style={styles.legal}>
+              By continuing you agree to our Terms & Privacy Policy.
+            </Text>
+          </FadeIn>
         </View>
       </ImageBackground>
     </View>

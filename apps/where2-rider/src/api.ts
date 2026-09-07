@@ -3,7 +3,6 @@
 // silently falls back to bundled mock data so the UI never breaks.
 
 import {
-  driverProfile as mockDriver,
   packages as mockPackages,
   pastTrips as mockPastTrips,
   vehicles as mockVehicles,
@@ -157,6 +156,7 @@ export type CustomerProfile = {
   phone: string;
   gender: "male" | "female" | "other" | null;
   avatar_url: string | null;
+  address: string | null;
   created_at: string;
 };
 
@@ -334,15 +334,17 @@ export const api = {
     req<DriverProfile>("/driver/profile"),
 
   uploadDocument: async (docType: string, file: { uri: string; type: string; name: string }) => {
+    const DOC_BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
+    if (!DOC_BASE) throw new Error("Backend URL not configured");
     const token = await getToken();
+    if (!token) throw new Error("Not authenticated");
     const formData = new FormData();
     formData.append("file", {
       uri: file.uri,
       type: file.type,
       name: file.name,
     } as any);
-    const BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
-    const res = await fetch(`${BASE}/api/driver/documents?doc_type=${docType}`, {
+    const res = await fetch(`${DOC_BASE}/api/driver/documents?doc_type=${docType}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -401,18 +403,22 @@ export const api = {
   getProfile: () =>
     req<CustomerProfile>("/profile", undefined, undefined as CustomerProfile | undefined),
 
-  updateProfile: (body: { full_name: string; phone: string; gender?: string; avatar_url?: string }) =>
+  updateProfile: (body: { full_name: string; phone: string; gender?: string; avatar_url?: string; address?: string }) =>
     req<CustomerProfile>("/profile", { method: "POST", body: JSON.stringify(body) }),
 
   uploadAvatar: async (file: { uri: string; type: string; name: string }) => {
+    const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+    if (!BASE_URL) throw new Error("Backend URL not configured");
     const token = await getToken();
+    if (!token) throw new Error("Not authenticated");
+    const MIME_MAP: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const formData = new FormData();
     formData.append("file", {
       uri: file.uri,
-      type: file.type,
+      type: MIME_MAP[ext] || file.type || "image/jpeg",
       name: file.name,
     } as any);
-    const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
     const res = await fetch(`${BASE_URL}/api/profile/avatar`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },

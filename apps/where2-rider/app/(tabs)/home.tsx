@@ -8,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,11 +15,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { colors, radius } from "@/src/theme";
-import { pastTrips as mockTrips } from "@/src/data/mock";
-import { api, Package, Ride } from "@/src/api";
+import { pastTrips as mockTrips, savedRoutes } from "@/src/data/mock";
+import { api, Package, Ride, getUserName } from "@/src/api";
 import { storage } from "@/src/utils/storage";
-import { LoadingScreen } from "@/src/components/loading";
+import { HomeSkeleton } from "@/src/components/loading";
 import { FadeIn } from "@/src/components/fade-in";
+import { SpringPress } from "@/src/components/spring-press";
 import { TOURIST_PLACES } from "@/src/utils/location";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -35,6 +35,7 @@ export default function Home() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [trips, setTrips] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState("");
 
   // Fetch from backend (falls back to mock inside api client)
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function Home() {
       .then(([p, t]) => { setPackages(p); setTrips(t); })
       .catch(() => {})
       .finally(() => setLoading(false));
+    getUserName().then((n) => { if (n) setUserName(n); });
   }, []);
 
   // Auto-play carousel
@@ -60,6 +62,20 @@ export default function Home() {
     return () => clearInterval(t);
   }, [packages.length]);
 
+  if (loading) {
+    return (
+      <View style={styles.root}>
+        <StatusBar style="light" />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100, paddingTop: insets.top + 12 }}
+        >
+          <HomeSkeleton />
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root} testID="home-screen">
       <StatusBar style="light" />
@@ -72,12 +88,56 @@ export default function Home() {
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.hello}>Namaste,</Text>
-            <Text style={styles.name}>Explorer</Text>
+            <Text style={styles.name}>{userName || "Explorer"}</Text>
           </View>
-          <TouchableOpacity style={styles.iconBtn} testID="notifications-button">
+          <SpringPress style={styles.iconBtn} onPress={() => router.push("/notifications")} testID="notifications-button">
             <Ionicons name="notifications-outline" size={20} color="#fff" />
-          </TouchableOpacity>
+          </SpringPress>
         </View>
+
+        {/* Where to? search bar */}
+        <SpringPress
+          style={[styles.searchBar, { marginHorizontal: 16, marginTop: 4 }]}
+          onPress={() => router.push("/location-picker?target=dropoff")}
+          testID="search-bar"
+        >
+          <View style={styles.searchDot} />
+          <Text style={styles.searchText}>Where to?</Text>
+          <View style={styles.searchIconRight}>
+            <Ionicons name="time-outline" size={16} color={colors.textDim} />
+          </View>
+        </SpringPress>
+
+        {/* Quick Routes */}
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>Quick routes</Text>
+        </View>
+        <FlatList
+          data={savedRoutes}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+          ItemSeparatorComponent={() => <View style={{ width: 10 }} />}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <FadeIn delay={80}>
+              <SpringPress
+                style={styles.routeCard}
+                onPress={() => router.push("/location-picker?target=dropoff")}
+              >
+                <View style={styles.routeIcon}>
+                  <Ionicons name={item.icon} size={18} color={colors.accent} />
+                </View>
+                <Text style={styles.routeFrom} numberOfLines={1}>{item.from}</Text>
+                <Text style={styles.routeTo} numberOfLines={1}>{item.to}</Text>
+                <View style={styles.routeTag}>
+                  <Ionicons name="navigate-outline" size={10} color={colors.accent} />
+                  <Text style={styles.routeTagText}>{item.tag}</Text>
+                </View>
+              </SpringPress>
+            </FadeIn>
+          )}
+        />
 
         {/* 30vh Carousel */}
         <View style={{ height: CAROUSEL_H }} testID="package-carousel">
@@ -99,8 +159,7 @@ export default function Home() {
               setActive(i);
             }}
             renderItem={({ item }) => (
-              <TouchableOpacity
-                activeOpacity={0.9}
+              <SpringPress
                 style={[styles.card, { width: CARD_W, height: CAROUSEL_H - 16 }]}
                 onPress={() => router.push("/plan")}
                 testID={`package-card-${item.id}`}
@@ -121,7 +180,7 @@ export default function Home() {
                     ₹{item.price.toLocaleString("en-IN")}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </SpringPress>
             )}
           />
         </View>
@@ -137,10 +196,9 @@ export default function Home() {
         </View>
 
         {/* Plan Your Trip */}
-        <TouchableOpacity
+        <SpringPress
           style={styles.actionCard}
           onPress={() => router.push("/plan")}
-          activeOpacity={0.85}
           testID="plan-trip-button"
         >
           <View style={styles.actionIcon}>
@@ -151,7 +209,7 @@ export default function Home() {
             <Text style={styles.actionSub}>Add stops, choose a ride, go</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        </TouchableOpacity>
+        </SpringPress>
 
         {/* Popular tourist spots */}
         <View style={styles.sectionHead}>
@@ -166,11 +224,10 @@ export default function Home() {
           keyExtractor={(item) => item.name}
           renderItem={({ item }) => (
             <FadeIn delay={100}>
-              <TouchableOpacity
+              <SpringPress
                 style={styles.spotCard}
-                activeOpacity={0.85}
-                onPress={() => {
-                  storage.setItem("dropoff_location", JSON.stringify({ lat: item.lat, lng: item.lng, label: item.name }));
+                onPress={async () => {
+                  await storage.setItem("dropoff_location", JSON.stringify({ lat: item.lat, lng: item.lng, label: item.name }));
                   router.push("/location-picker?target=dropoff");
                 }}
               >
@@ -179,15 +236,14 @@ export default function Home() {
                 </View>
                 <Text style={styles.spotName}>{item.name}</Text>
                 <Text style={styles.spotDesc} numberOfLines={1}>{item.description}</Text>
-              </TouchableOpacity>
+              </SpringPress>
             </FadeIn>
           )}
         />
 
         {/* Quick access card */}
-        <TouchableOpacity
+        <SpringPress
           style={styles.quickCard}
-          activeOpacity={0.85}
           onPress={() => router.push("/ride")}
           testID="track-ride-card"
         >
@@ -199,14 +255,14 @@ export default function Home() {
             <Text style={styles.quickSub}>See your driver on the map</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
-        </TouchableOpacity>
+        </SpringPress>
 
         {/* Previous Trips */}
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Your previous trips</Text>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/trips")}>
+          <SpringPress onPress={() => router.push("/(tabs)/trips")}>
             <Text style={styles.sectionAction}>See all</Text>
-          </TouchableOpacity>
+          </SpringPress>
         </View>
 
         <FlatList
@@ -221,9 +277,8 @@ export default function Home() {
             const title = item.stops?.[0]?.label ?? mock.title;
 
             return (
-              <TouchableOpacity
+              <SpringPress
                 style={styles.tripCard}
-                activeOpacity={0.85}
                 testID={`past-trip-${item.id}`}
               >
                 <Image source={{ uri: mock.image }} style={styles.tripImg} />
@@ -239,7 +294,7 @@ export default function Home() {
                     ₹{item.fare.toLocaleString("en-IN")}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </SpringPress>
             );
           }}
         />
@@ -265,6 +320,37 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 26,
+    height: 52,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  searchDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+  },
+  searchText: {
+    flex: 1,
+    color: colors.textMuted,
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  searchIconRight: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceAlt,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -375,6 +461,18 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { color: "#fff", fontSize: 17, fontWeight: "700" },
   sectionAction: { color: colors.accent, fontSize: 13, fontWeight: "600" },
+  routeCard: {
+    width: 140, padding: 14, borderRadius: radius.lg,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+  },
+  routeIcon: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(30,107,255,0.12)",
+    alignItems: "center", justifyContent: "center", marginBottom: 10,
+  },
+  routeFrom: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  routeTo: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  routeTag: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 },
+  routeTagText: { color: colors.accent, fontSize: 11, fontWeight: "600" },
   spotCard: {
     width: 150,
     padding: 14,

@@ -1,24 +1,22 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
-  ScrollView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder } from "@/src/components/map-view";
+import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder, DARK_MAP_STYLE } from "@/src/components/map-view";
 import * as Location from "expo-location";
 
 import { colors, radius } from "@/src/theme";
 import { storage } from "@/src/utils/storage";
+import { SpringPress } from "@/src/components/spring-press";
 import {
   isWithinServiceArea,
   TOURIST_PLACES,
@@ -30,9 +28,10 @@ const SAKLESHPURA = { latitude: 13.0358, longitude: 75.7827 };
 
 export default function LocationPicker() {
   const router = useRouter();
-  const { target } = useLocalSearchParams<{ target: "pickup" | "dropoff" }>();
+  const { target = "dropoff" } = useLocalSearchParams<{ target: "pickup" | "dropoff" }>();
   const insets = useSafeAreaInsets();
   const mapRef = useRef<any>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [region, setRegion] = useState({
     ...SAKLESHPURA,
@@ -49,7 +48,6 @@ export default function LocationPicker() {
   const [showSuggestions, setShowSuggestions] = useState(target === "dropoff");
   const [parsingUrl, setParsingUrl] = useState(false);
 
-  // Load other location from storage for route drawing
   const [otherLocation, setOtherLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
@@ -57,8 +55,10 @@ export default function LocationPicker() {
       const otherKey = target === "pickup" ? "dropoff_location" : "pickup_location";
       const raw = await storage.getItem<string | null>(otherKey, null);
       if (raw) {
-        const parsed = JSON.parse(raw);
-        setOtherLocation(parsed);
+        try {
+          const parsed = JSON.parse(raw);
+          setOtherLocation(parsed);
+        } catch {}
       }
 
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -85,7 +85,6 @@ export default function LocationPicker() {
     })();
   }, []);
 
-  // Draw route when both locations set
   useEffect(() => {
     if (marker && otherLocation) {
       fetchRoute(
@@ -110,7 +109,6 @@ export default function LocationPicker() {
           (c: [number, number]) => ({ latitude: c[1], longitude: c[0] }),
         );
         setRouteCoords(coords);
-        // Fit map to show full route
         if (coords.length > 1) {
           mapRef.current?.fitToCoordinates([from, to], {
             edgePadding: { top: 100, right: 60, bottom: 200, left: 60 },
@@ -118,9 +116,7 @@ export default function LocationPicker() {
           });
         }
       }
-    } catch {
-      // Fallback: just show marker, no route line
-    }
+    } catch {}
   };
 
   const reverseGeocode = async (lat: number, lng: number) => {
@@ -136,25 +132,29 @@ export default function LocationPicker() {
     }
   };
 
-  const handleSearchInput = async (text: string) => {
+  const handleSearchInput = useCallback((text: string) => {
     setSearchQuery(text);
 
-    // Check if it's a Google Maps URL
+    // Clear existing timer
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    // Google Maps URL
     if (text.includes("google.com/maps") || text.includes("maps.app.goo.gl") || text.includes("goo.gl/maps")) {
       setParsingUrl(true);
-      const resolved = await resolveGoogleMapsUrl(text);
-      const coords = parseGoogleMapsUrl(resolved);
-      setParsingUrl(false);
-      if (coords) {
-        applyLocation(coords.lat, coords.lng, "Pasted location");
-        setSearchQuery("");
-      } else {
-        Alert.alert("Could not parse", "Could not extract location from this link.");
-      }
+      resolveGoogleMapsUrl(text).then((resolved) => {
+        const coords = parseGoogleMapsUrl(resolved);
+        setParsingUrl(false);
+        if (coords) {
+          applyLocation(coords.lat, coords.lng, "Pasted location");
+          setSearchQuery("");
+        } else {
+          Alert.alert("Could not parse", "Could not extract location from this link.");
+        }
+      });
       return;
     }
 
-    // Check if it's raw coordinates like "13.035, 75.782"
+    // Raw coordinates
     const coordMatch = text.match(/^\s*(-?\d{1,3}\.\d{2,7})\s*[,/]\s*(-?\d{1,3}\.\d{2,7})\s*$/);
     if (coordMatch) {
       applyLocation(parseFloat(coordMatch[1]), parseFloat(coordMatch[2]), "Pinned location");
@@ -162,22 +162,24 @@ export default function LocationPicker() {
       return;
     }
 
-    // Normal search
+    // Debounced search
     if (text.length >= 3) {
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=5&countrycodes=in`,
-          { headers: { "User-Agent": "Where2App/1.0" } },
-        );
-        const data = await res.json();
-        setSearchResults(data);
-      } catch {
-        setSearchResults([]);
-      }
+      searchTimerRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=5&countrycodes=in`,
+            { headers: { "User-Agent": "Where2App/1.0" } },
+          );
+          const data = await res.json();
+          setSearchResults(data);
+        } catch {
+          setSearchResults([]);
+        }
+      }, 300);
     } else {
       setSearchResults([]);
     }
-  };
+  }, []);
 
   const applyLocation = async (lat: number, lng: number, searchLabel?: string) => {
     const within = isWithinServiceArea(lat, lng);
@@ -246,13 +248,12 @@ export default function LocationPicker() {
           />
           {parsingUrl && <ActivityIndicator size="small" color={colors.accent} />}
           {!parsingUrl && searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => { setSearchQuery(""); setSearchResults([]); }}>
+            <SpringPress onPress={() => { setSearchQuery(""); setSearchResults([]); }}>
               <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
+            </SpringPress>
           )}
         </View>
 
-        {/* Google Maps link hint */}
         {searchQuery.length === 0 && (
           <View style={styles.hintRow}>
             <Ionicons name="link-outline" size={14} color={colors.textDim} />
@@ -263,10 +264,10 @@ export default function LocationPicker() {
         {searchResults.length > 0 && (
           <View style={styles.resultsList}>
             {searchResults.map((item, i) => (
-              <TouchableOpacity key={i} style={styles.resultItem} onPress={() => handleSearchSelect(item)}>
+              <SpringPress key={i} style={styles.resultItem} onPress={() => handleSearchSelect(item)}>
                 <Ionicons name="location-outline" size={16} color={colors.textMuted} />
                 <Text style={styles.resultText} numberOfLines={2}>{item.display_name}</Text>
-              </TouchableOpacity>
+              </SpringPress>
             ))}
           </View>
         )}
@@ -294,8 +295,15 @@ export default function LocationPicker() {
           showsUserLocation
           showsMyLocationButton={false}
           provider={PROVIDER_DEFAULT}
+          customMapStyle={DARK_MAP_STYLE}
         >
-          {marker && <Marker coordinate={marker} pinColor={outsideArea ? "#E4483C" : colors.accent} />}
+          {marker && (
+            <Marker coordinate={marker}>
+              <View style={[styles.customMarker, outsideArea && styles.customMarkerDanger]}>
+                <View style={[styles.customMarkerDot, outsideArea && styles.customMarkerDotDanger]} />
+              </View>
+            </Marker>
+          )}
           {routeCoords.length > 0 && (
             <Polyline coordinates={routeCoords} strokeColor={colors.accent} strokeWidth={4} />
           )}
@@ -305,9 +313,9 @@ export default function LocationPicker() {
       )}
 
       {/* My location FAB */}
-      <TouchableOpacity style={[styles.fab, { bottom: insets.bottom + 160 }]} onPress={useMyLocation}>
+      <SpringPress style={[styles.fab, { bottom: insets.bottom + 160 }]} onPress={useMyLocation}>
         <Ionicons name="locate" size={22} color={colors.accent} />
-      </TouchableOpacity>
+      </SpringPress>
 
       {/* Loading overlay */}
       {loading && (
@@ -318,23 +326,22 @@ export default function LocationPicker() {
 
       {/* Tourist suggestions */}
       {showSuggestions && !marker && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
+        <View
           style={[styles.suggestionsRow, { bottom: insets.bottom + 170 }]}
-          contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
         >
-          {TOURIST_PLACES.map((place) => (
-            <TouchableOpacity
-              key={place.name}
-              style={styles.suggestionChip}
-              onPress={() => handleSuggestionSelect(place)}
-            >
-              <Text style={styles.suggestionTag}>{place.tag}</Text>
-              <Text style={styles.suggestionName}>{place.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          <View style={{ flexDirection: "row", paddingHorizontal: 16, gap: 8 }}>
+            {TOURIST_PLACES.slice(0, 4).map((place) => (
+              <SpringPress
+                key={place.name}
+                style={styles.suggestionChip}
+                onPress={() => handleSuggestionSelect(place)}
+              >
+                <Text style={styles.suggestionTag}>{place.tag}</Text>
+                <Text style={styles.suggestionName}>{place.name}</Text>
+              </SpringPress>
+            ))}
+          </View>
+        </View>
       )}
 
       {/* Bottom panel */}
@@ -346,10 +353,10 @@ export default function LocationPicker() {
           </View>
         )}
         <View style={styles.bottomActions}>
-          <TouchableOpacity style={styles.cancelBtn} onPress={() => router.back()}>
+          <SpringPress style={styles.cancelBtn} onPress={() => router.back()}>
             <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </SpringPress>
+          <SpringPress
             style={[styles.confirmBtn, (!marker || outsideArea) && styles.confirmBtnDisabled]}
             disabled={!marker || outsideArea}
             onPress={async () => {
@@ -362,7 +369,7 @@ export default function LocationPicker() {
             }}
           >
             <Text style={styles.confirmText}>Confirm Location</Text>
-          </TouchableOpacity>
+          </SpringPress>
         </View>
       </View>
     </View>
@@ -374,138 +381,84 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   searchContainer: { position: "absolute", left: 12, right: 12, zIndex: 10 },
   searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
+    flexDirection: "row", alignItems: "center", gap: 8, height: 48,
+    borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1,
+    borderColor: colors.border, paddingHorizontal: 12,
   },
   searchBoxError: { borderColor: colors.danger },
   searchInput: { flex: 1, color: "#fff", fontSize: 15 },
   hintRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 6,
-    paddingHorizontal: 4,
+    flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6, paddingHorizontal: 4,
   },
   hintText: { color: colors.textDim, fontSize: 11 },
   resultsList: {
-    marginTop: 4,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
+    marginTop: 4, borderRadius: radius.md, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, overflow: "hidden",
   },
   resultItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    padding: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    flexDirection: "row", alignItems: "center", gap: 10, padding: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
   },
   resultText: { color: "#fff", fontSize: 13, flex: 1 },
   areaBanner: {
-    position: "absolute",
-    left: 12,
-    right: 12,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    padding: 12,
-    borderRadius: radius.md,
-    backgroundColor: "rgba(228,72,60,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(228,72,60,0.3)",
-    zIndex: 5,
+    position: "absolute", left: 12, right: 12, flexDirection: "row",
+    alignItems: "flex-start", gap: 10, padding: 12, borderRadius: radius.md,
+    backgroundColor: "rgba(228,72,60,0.12)", borderWidth: 1,
+    borderColor: "rgba(228,72,60,0.3)", zIndex: 5,
   },
   areaBannerTitle: { color: colors.danger, fontSize: 13, fontWeight: "700" },
   areaBannerText: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   suggestionsRow: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 4,
+    position: "absolute", left: 0, right: 0, zIndex: 4,
   },
   suggestionChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.md,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
     minWidth: 120,
   },
   suggestionTag: { color: colors.accent, fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase" },
   suggestionName: { color: "#fff", fontSize: 13, fontWeight: "600", marginTop: 3 },
   fab: {
-    position: "absolute",
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
+    position: "absolute", right: 16, width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    alignItems: "center", justifyContent: "center",
   },
   loadingOverlay: {
-    position: "absolute",
-    bottom: 160,
-    alignSelf: "center",
-    backgroundColor: colors.surface,
-    padding: 8,
-    borderRadius: 20,
+    position: "absolute", bottom: 160, alignSelf: "center",
+    backgroundColor: colors.surface, padding: 8, borderRadius: 20,
   },
+  customMarker: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: "rgba(30,107,255,0.2)", alignItems: "center", justifyContent: "center",
+  },
+  customMarkerDanger: { backgroundColor: "rgba(228,72,60,0.2)" },
+  customMarkerDot: {
+    width: 12, height: 12, borderRadius: 6, backgroundColor: colors.accent,
+    borderWidth: 2, borderColor: "#fff",
+  },
+  customMarkerDotDanger: { backgroundColor: colors.danger },
   bottomPanel: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.bg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: 16,
-    paddingTop: 14,
+    position: "absolute", left: 0, right: 0, bottom: 0,
+    backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: 16, paddingTop: 14,
   },
   pickedBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: 12,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 12,
+    flexDirection: "row", alignItems: "center", gap: 8, padding: 12,
+    borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1,
+    borderColor: colors.border, marginBottom: 12,
   },
   pickedBoxError: { borderColor: colors.danger },
   pickedLabel: { color: "#fff", fontSize: 13, flex: 1 },
   bottomActions: { flexDirection: "row", gap: 12 },
   cancelBtn: {
-    flex: 1,
-    height: 50,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
+    flex: 1, height: 50, borderRadius: radius.md, borderWidth: 1,
+    borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
   cancelText: { color: "#fff", fontSize: 15, fontWeight: "700" },
   confirmBtn: {
-    flex: 2,
-    height: 50,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
+    flex: 2, height: 50, borderRadius: radius.md, backgroundColor: colors.accent,
+    alignItems: "center", justifyContent: "center",
+    shadowColor: colors.accent, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
   },
   confirmBtnDisabled: { opacity: 0.4 },
   confirmText: { color: "#fff", fontSize: 15, fontWeight: "700" },

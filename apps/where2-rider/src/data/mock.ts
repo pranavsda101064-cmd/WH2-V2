@@ -136,6 +136,38 @@ export const pastTrips = [
     image:
       "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=800&q=70",
   },
+  {
+    id: "t5",
+    title: "Sakleshpura Lake Ride",
+    date: "Dec 15, 2025",
+    fare: 1299,
+    image:
+      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=800&q=70",
+  },
+  {
+    id: "t6",
+    title: "Hanbal Waterfall Trek",
+    date: "Nov 28, 2025",
+    fare: 1799,
+    image:
+      "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=800&q=70",
+  },
+  {
+    id: "t7",
+    title: "Kukke Temple Visit",
+    date: "Oct 10, 2025",
+    fare: 2899,
+    image:
+      "https://images.unsplash.com/photo-1587922546925-160ad1cd3b2a?auto=format&fit=crop&w=800&q=70",
+  },
+  {
+    id: "t8",
+    title: "Green Route Railway",
+    date: "Sep 05, 2025",
+    fare: 2599,
+    image:
+      "https://images.unsplash.com/photo-1418065460487-3956c3465ee2?auto=format&fit=crop&w=800&q=70",
+  },
 ];
 
 export const vehicles = [
@@ -197,4 +229,11 @@ export const stopsSeed = [
   { id: "s1", label: "Sakleshpura Bus Stand", sub: "Pickup point" },
   { id: "s2", label: "Manjarabad Fort", sub: "Stop 1 · 12 km" },
   { id: "s3", label: "Bisle Ghat Viewpoint", sub: "Stop 2 · 34 km" },
+];
+
+export const savedRoutes = [
+  { id: "sr1", from: "Hotel Entrance", to: "Sakleshpura Bus Stand", icon: "bus-outline" as const, tag: "2.3 km" },
+  { id: "sr2", from: "Homestay", to: "Manjarabad Fort", icon: "fort-outline" as const, tag: "12 km" },
+  { id: "sr3", from: "Resort", to: "Bisle Ghat Viewpoint", icon: "mountain-outline" as const, tag: "34 km" },
+  { id: "sr4", from: "Town Center", to: "Coffee Estate Tour", icon: "leaf-outline" as const, tag: "8 km" },
 ];

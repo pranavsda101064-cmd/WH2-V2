@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Platform, StyleSheet, View } from "react-native";
+import { BlurView } from "expo-blur";
 
 import { colors } from "@/src/theme";
 
@@ -17,17 +18,25 @@ export default function TabsLayout() {
         tabBarShowLabel: true,
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginTop: -2 },
         tabBarStyle: {
-          backgroundColor: colors.bg,
-          borderTopColor: colors.border,
+          backgroundColor: "transparent",
+          borderTopColor: "rgba(255,255,255,0.06)",
           borderTopWidth: StyleSheet.hairlineWidth,
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom + 6,
           paddingTop: 8,
-          position: Platform.OS === "web" ? "absolute" : undefined,
+          position: "absolute",
           left: 0,
           right: 0,
           bottom: 0,
+          elevation: 0,
         },
+        tabBarBackground: () => (
+          <BlurView
+            intensity={80}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+        ),
       }}
     >
       <Tabs.Screen
@@ -35,7 +44,7 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? "home" : "home-outline"} color={color as string} />
+            <TabIcon name={focused ? "home" : "home-outline"} color={color as string} size={focused ? 26 : 24} />
           ),
         }}
       />
@@ -47,6 +56,7 @@ export default function TabsLayout() {
             <TabIcon
               name={focused ? "map" : "map-outline"}
               color={color as string}
+              size={focused ? 26 : 24}
             />
           ),
         }}
@@ -59,6 +69,7 @@ export default function TabsLayout() {
             <TabIcon
               name={focused ? "person-circle" : "person-circle-outline"}
               color={color as string}
+              size={focused ? 26 : 24}
             />
           ),
         }}
@@ -70,13 +81,15 @@ export default function TabsLayout() {
 function TabIcon({
   name,
   color,
+  size = 24,
 }: {
   name: keyof typeof Ionicons.glyphMap;
   color: string;
+  size?: number;
 }) {
   return (
     <View style={{ alignItems: "center", justifyContent: "center" }}>
-      <Ionicons name={name} size={24} color={color as string} />
+      <Ionicons name={name} size={size} color={color as string} />
     </View>
   );
 }

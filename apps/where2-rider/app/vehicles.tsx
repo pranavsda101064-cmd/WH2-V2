@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  Animated,
+  Easing,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,6 +16,8 @@ import { colors, radius } from "@/src/theme";
 import { api, Vehicle } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
+import { SpringPress } from "@/src/components/spring-press";
+import { FadeIn } from "@/src/components/fade-in";
 
 export default function Vehicles() {
   const router = useRouter();
@@ -48,13 +51,13 @@ export default function Vehicles() {
     <View style={styles.root} testID="vehicles-screen">
       <StatusBar style="light" />
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity
+        <SpringPress
           style={styles.iconBtn}
           onPress={() => router.back()}
           testID="vehicles-back"
         >
           <Ionicons name="chevron-back" size={20} color="#fff" />
-        </TouchableOpacity>
+        </SpringPress>
         <View style={{ flex: 1, alignItems: "center" }}>
           <Text style={styles.topKicker}>3 stops · 46 km</Text>
           <Text style={styles.topTitle}>Choose a ride</Text>
@@ -68,40 +71,41 @@ export default function Vehicles() {
           paddingHorizontal: 16,
           paddingTop: 8,
         }}
+        showsVerticalScrollIndicator={false}
       >
-        {vehicles.map((v) => {
+        {vehicles.map((v, index) => {
           const isActive = v.id === selected;
           return (
-            <TouchableOpacity
-              key={v.id}
-              activeOpacity={0.85}
-              style={[styles.card, isActive && styles.cardActive]}
-              onPress={() => setSelected(v.id)}
-              testID={`vehicle-${v.id}`}
-            >
-              <View style={[styles.vIcon, isActive && styles.vIconActive]}>
-                <Ionicons
-                  name={v.icon}
-                  size={26}
-                  color={isActive ? colors.accent : "#fff"}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={styles.rowTop}>
-                  <Text style={styles.vName}>{v.name}</Text>
-                  <Ionicons name="person" size={11} color={colors.textMuted} />
-                  <Text style={styles.vSeats}>{v.seats}</Text>
+            <FadeIn key={v.id} delay={index * 80}>
+              <SpringPress
+                style={[styles.card, isActive && styles.cardActive]}
+                onPress={() => setSelected(v.id)}
+                testID={`vehicle-${v.id}`}
+              >
+                <View style={[styles.vIcon, isActive && styles.vIconActive]}>
+                  <Ionicons
+                    name={v.icon}
+                    size={26}
+                    color={isActive ? colors.accent : "#fff"}
+                  />
                 </View>
-                <Text style={styles.vDesc}>{v.desc}</Text>
-                <Text style={styles.vEta}>Arrives in {v.eta}</Text>
-              </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text style={styles.vFare}>
-                  ₹{v.fare.toLocaleString("en-IN")}
-                </Text>
-                <Text style={styles.vFareSub}>est. fare</Text>
-              </View>
-            </TouchableOpacity>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.rowTop}>
+                    <Text style={styles.vName}>{v.name}</Text>
+                    <Ionicons name="person" size={11} color={colors.textMuted} />
+                    <Text style={styles.vSeats}>{v.seats}</Text>
+                  </View>
+                  <Text style={styles.vDesc}>{v.desc}</Text>
+                  <Text style={styles.vEta}>Arrives in {v.eta}</Text>
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.vFare}>
+                    ₹{v.fare.toLocaleString("en-IN")}
+                  </Text>
+                  <Text style={styles.vFareSub}>est. fare</Text>
+                </View>
+              </SpringPress>
+            </FadeIn>
           );
         })}
       </ScrollView>
@@ -116,15 +120,14 @@ export default function Vehicles() {
             {chosen ? `₹${chosen.fare.toLocaleString("en-IN")}` : "—"}
           </Text>
         </View>
-        <TouchableOpacity
+        <SpringPress
           style={styles.barBtn}
           onPress={proceed}
           testID="vehicles-continue-button"
-          activeOpacity={0.85}
         >
           <Text style={styles.barBtnText}>Continue</Text>
           <Ionicons name="arrow-forward" size={18} color="#fff" />
-        </TouchableOpacity>
+        </SpringPress>
       </View>
     </View>
   );
@@ -139,55 +142,29 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
   topKicker: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
+    color: colors.textMuted, fontSize: 11, fontWeight: "700",
+    letterSpacing: 1.4, textTransform: "uppercase",
   },
   topTitle: { color: "#fff", fontSize: 16, fontWeight: "700", marginTop: 2 },
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    padding: 16,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 10,
+    flexDirection: "row", alignItems: "center", gap: 14,
+    padding: 16, borderRadius: radius.lg, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, marginBottom: 10,
   },
   cardActive: {
-    borderColor: colors.accent,
-    borderWidth: 2,
-    padding: 15,
+    borderColor: colors.accent, borderWidth: 2, padding: 15,
+    backgroundColor: "rgba(30,107,255,0.04)",
   },
   vIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surfaceAlt,
+    alignItems: "center", justifyContent: "center",
   },
-  vIconActive: {
-    backgroundColor: "rgba(30,107,255,0.14)",
-  },
-  rowTop: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
+  vIconActive: { backgroundColor: "rgba(30,107,255,0.14)" },
+  rowTop: { flexDirection: "row", alignItems: "center", gap: 6 },
   vName: { color: "#fff", fontSize: 16, fontWeight: "700", marginRight: 4 },
   vSeats: { color: colors.textMuted, fontSize: 12 },
   vDesc: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
@@ -195,29 +172,16 @@ const styles = StyleSheet.create({
   vFare: { color: "#fff", fontSize: 16, fontWeight: "700" },
   vFareSub: { color: colors.textDim, fontSize: 10, marginTop: 2 },
   bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.bg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    position: "absolute", left: 0, right: 0, bottom: 0,
+    backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: 16, paddingTop: 14, flexDirection: "row", alignItems: "center", gap: 12,
   },
   barLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
   barFare: { color: "#fff", fontSize: 22, fontWeight: "800", marginTop: 2 },
   barBtn: {
-    height: 52,
-    paddingHorizontal: 20,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+    height: 52, paddingHorizontal: 20, borderRadius: radius.md, backgroundColor: colors.accent,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    shadowColor: colors.accent, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
   },
   barBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
 });

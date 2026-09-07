@@ -318,6 +318,14 @@ export const api = {
       hours: 0,
     }),
 
+  listDriverRides: async () => {
+    const cached = await getCached<Ride[]>("driver_rides");
+    if (cached) return cached;
+    const data = await req<Ride[]>("/driver/rides", undefined, []);
+    await setCache("driver_rides", data);
+    return data;
+  },
+
   // Driver Onboarding
   createDriverProfile: (body: {
     full_name: string;
@@ -335,14 +343,15 @@ export const api = {
 
   uploadDocument: async (docType: string, file: { uri: string; type: string; name: string }) => {
     const token = await getToken();
+    const uploadBase = process.env.EXPO_PUBLIC_BACKEND_URL;
+    if (!uploadBase || !token) throw new Error("Not configured");
     const formData = new FormData();
     formData.append("file", {
       uri: file.uri,
       type: file.type,
       name: file.name,
     } as any);
-    const BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
-    const res = await fetch(`${BASE}/api/driver/documents?doc_type=${docType}`, {
+    const res = await fetch(`${uploadBase}/api/driver/documents?doc_type=${docType}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

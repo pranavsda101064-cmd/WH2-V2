@@ -168,7 +168,7 @@ export default function DriverOnboarding() {
 
     setLoading(false);
     Alert.alert("Success", "Your application has been submitted for review!", [
-      { text: "OK", onPress: () => router.replace("/driver-dashboard") },
+      { text: "OK", onPress: () => router.replace("/(tabs)") },
     ]);
   };
 

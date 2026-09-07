@@ -1165,6 +1165,41 @@ async def driver_stats(
         raise HTTPException(500, detail="Failed to fetch driver stats")
 
 
+@api_router.get("/driver/rides")
+async def list_driver_rides(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(
+            select(RideModel)
+            .where(RideModel.driver_id == str(current_user.id))
+            .order_by(RideModel.created_at.desc())
+            .limit(50)
+        )
+        rides = result.scalars().all()
+        return [
+            {
+                "id": str(r.id),
+                "user_id": str(r.user_id),
+                "driver_id": str(r.driver_id) if r.driver_id else None,
+                "vehicle_id": str(r.vehicle_id) if r.vehicle_id else None,
+                "stops": r.stops or [],
+                "fare": r.fare,
+                "payment_method": r.payment_method,
+                "tip": r.tip or 0,
+                "status": r.status,
+                "ride_pin": r.ride_pin,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rides
+        ]
+    except Exception as exc:
+        logger.error("list_driver_rides failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch driver rides")
+
+
 # ---------- Static files (uploads) ----------
 
 # ---------- Driver Location Tracking ----------

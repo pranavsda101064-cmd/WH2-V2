@@ -1,45 +1,47 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  Alert,
   Animated,
+  BackHandler,
   Easing,
+  KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import * as Haptics from "expo-haptics";
 
 import { colors, radius } from "@/src/theme";
 import { api, Ride as RideType, RideStop } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
-import { MapView, Marker, PROVIDER_DEFAULT, MapPlaceholder } from "@/src/components/map-view";
+import { MapView, Marker, PROVIDER_DEFAULT, DARK_MAP_STYLE } from "@/src/components/map-view";
 
 const POLL_INTERVAL = 5000;
-const MAP_HEIGHT = "52%";
+const MAP_HEIGHT = "50%";
 
 export default function Ride() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [activeRideId, setActiveRideId] = useState<string | null>(null);
   const [ride, setRide] = useState<RideType | null>(null);
-  const [driverLoc, setDriverLoc] = useState<{
-    lat: number | null;
-    lng: number | null;
-  }>({ lat: null, lng: null });
   const [loading, setLoading] = useState(true);
-  const [showPin, setShowPin] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
+  const [showPinInput, setShowPinInput] = useState(false);
   const pulse = useRef(new Animated.Value(0)).current;
-  const rideIdRef = useRef<string | null>(null);
+  const pinRef = useRef<TextInput>(null);
 
   useEffect(() => {
     Animated.loop(
@@ -59,7 +61,7 @@ export default function Ride() {
       try {
         const rideId = await storage.getItem<string>("active_ride_id", "");
         if (!rideId || cancelled) return;
-        rideIdRef.current = rideId;
+        setActiveRideId(rideId);
 
         const r = await api.getRide(rideId);
         if (!cancelled) {
@@ -76,300 +78,408 @@ export default function Ride() {
   }, []);
 
   useEffect(() => {
-    if (!rideIdRef.current) return;
+    if (!activeRideId) return;
 
     const poll = setInterval(async () => {
       try {
-        const [r, loc] = await Promise.all([
-          api.getRide(rideIdRef.current!),
-          api.getDriverLocation(rideIdRef.current!),
-        ]);
+        const r = await api.getRide(activeRideId);
         setRide(r);
-        if (loc.lat && loc.lng) {
-          setDriverLoc({ lat: loc.lat, lng: loc.lng });
-        }
       } catch {
         // silent
       }
     }, POLL_INTERVAL);
 
     return () => clearInterval(poll);
-  }, [rideIdRef.current]);
+  }, [activeRideId]);
 
-  const handleVerifyPin = async () => {
-    if (!rideIdRef.current || pinInput.length !== 4) return;
-    setPinError("");
+  useEffect(() => {
+    if (status === "completed" || status === "cancelled") return;
+
+    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
+      Alert.alert(
+        "Cancel ride?",
+        "Are you sure you want to cancel this ride?",
+        [
+          { text: "No", style: "cancel" },
+          {
+            text: "Yes, cancel",
+            style: "destructive",
+            onPress: async () => {
+              if (activeRideId) {
+                await api.updateRideStatus(activeRideId, "cancelled").catch(() => {});
+              }
+              handleBackToDashboard();
+            },
+          },
+        ],
+      );
+      return true;
+    });
+
+    return () => handler.remove();
+  }, [activeRideId, status]);
+
+  const handleStatusUpdate = async (nextStatus: RideType["status"]) => {
+    if (!activeRideId || updating) return;
+    setUpdating(true);
     try {
-      await api.verifyRidePin(rideIdRef.current, pinInput);
-      setShowPin(false);
-      setRide((prev) => (prev ? { ...prev, status: "onboard" } : prev));
+      const updated = await api.updateRideStatus(activeRideId, nextStatus);
+      setRide(updated);
+      if (nextStatus === "completed") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      if (nextStatus === "onboard") {
+        setShowPinInput(false);
+        setPinInput("");
+      }
     } catch {
-      setPinError("Invalid PIN. Try again.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Error", "Failed to update ride status. Try again.");
+    } finally {
+      setUpdating(false);
     }
   };
 
-  const handleShare = async () => {
-    if (!ride) return;
+  const handleVerifyPin = async () => {
+    if (!activeRideId || pinInput.length !== 4) return;
+    setPinError("");
     try {
-      await Share.share({
-        message: `Track my Where2 ride: https://where2-wdu6.onrender.com/api/rides/${ride.id}/share`,
-      });
-    } catch {}
+      await api.verifyRidePin(activeRideId, pinInput);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await handleStatusUpdate("onboard");
+    } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setPinError("Invalid PIN. Ask rider to check and re-enter.");
+    }
   };
 
   const handleSOS = () => {
-    Linking.openURL("tel:112");
+    Alert.alert(
+      "Emergency SOS",
+      "This will call 112 (emergency services). Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Call 112", style: "destructive", onPress: () => Linking.openURL("tel:112") },
+      ],
+    );
   };
 
-  if (loading) return <LoadingScreen />;
+  const handleBackToDashboard = () => {
+    storage.removeItem("active_ride_id");
+    router.replace("/(tabs)");
+  };
+
+  if (loading) return <LoadingScreen message="Loading ride..." />;
 
   const stops: RideStop[] = ride?.stops || [];
   const status = ride?.status || "arriving";
-
-  const statusLabel =
-    status === "arriving"
-      ? "Driver is on the way"
-      : status === "onboard"
-        ? "On the way to your destination"
-        : status === "arrived"
-          ? "You've arrived"
-          : status === "completed"
-            ? "Ride complete"
-            : "Ride";
-
   const pickup = stops[0];
   const drop = stops[stops.length - 1];
 
+  const statusLabel =
+    status === "arriving"
+      ? "HEADING TO PICKUP"
+      : status === "arrived"
+        ? "AT PICKUP"
+        : status === "onboard"
+          ? "TRIP IN PROGRESS"
+          : status === "completed"
+            ? "RIDE COMPLETE"
+            : status.toUpperCase();
+
+  const statusDescription =
+    status === "arriving"
+      ? "Navigate to the rider's pickup location"
+      : status === "arrived"
+        ? "You've arrived. Ask rider for their 4-digit PIN to start the trip."
+        : status === "onboard"
+          ? "Take the rider to their destination"
+          : status === "completed"
+            ? "Great work! Here's your trip summary."
+            : "";
+
   return (
-    <View style={styles.root} testID="ride-screen">
-      <StatusBar style="light" />
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <View style={styles.root} testID="driver-ride-screen">
+        <StatusBar style="light" />
 
-      {/* Map area */}
-      <View style={styles.map}>
-        {Platform.OS !== "web" && MapView && pickup && drop ? (
-          <MapView
-            style={StyleSheet.absoluteFill}
-            provider={PROVIDER_DEFAULT}
-            initialRegion={{
-              latitude: pickup.lat ?? 12.94,
-              longitude: pickup.lng ?? 75.77,
-              latitudeDelta: 0.08,
-              longitudeDelta: 0.08,
-            }}
-            showsUserLocation={false}
-          >
-            {pickup.lat && pickup.lng && (
-              <Marker
-                coordinate={{ latitude: pickup.lat, longitude: pickup.lng }}
-                pinColor={colors.accent}
-                title="Pickup"
-              />
-            )}
-            {drop.lat && drop.lng && (
-              <Marker
-                coordinate={{ latitude: drop.lat, longitude: drop.lng }}
-                pinColor={colors.danger}
-                title="Drop-off"
-              />
-            )}
-            {driverLoc.lat && driverLoc.lng && (
-              <Marker
-                coordinate={{ latitude: driverLoc.lat, longitude: driverLoc.lng }}
-                title="Driver"
-              >
-                <View style={styles.driverMarker}>
-                  <Ionicons name="car-sport" size={16} color="#fff" />
-                </View>
-              </Marker>
-            )}
-          </MapView>
-        ) : (
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="location" size={32} color={colors.accent} />
-            <Text style={styles.mapPlaceholderText}>
-              {driverLoc.lat
-                ? `Driver at ${driverLoc.lat.toFixed(4)}, ${driverLoc.lng?.toFixed(4)}`
-                : "Waiting for driver location..."}
-            </Text>
-          </View>
-        )}
-
-        <View style={[styles.mapTop, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity
-            style={styles.mapIcon}
-            onPress={() => router.back()}
-            testID="ride-back"
-          >
-            <Ionicons name="chevron-back" size={20} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.etaPill}>
-            <View style={styles.etaDot} />
-            <Text style={styles.etaText}>
-              {status === "arriving" ? "DRIVER ON THE WAY" : status === "onboard" ? "IN TRANSIT" : status.toUpperCase()}
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.mapIcon} onPress={handleShare} testID="ride-share">
-            <Ionicons name="share-outline" size={18} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Sheet */}
-      <ScrollView
-        style={styles.sheet}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.grabber} />
-
-        <Text style={styles.kicker}>{statusLabel.toUpperCase()}</Text>
-
-        {pickup && drop && (
-          <Text style={styles.headline}>
-            {pickup.label} → {drop.label}
-          </Text>
-        )}
-
-        {/* Ride PIN display (rider sees this when arriving) */}
-        {status === "arriving" && ride?.ride_pin && (
-          <TouchableOpacity
-            style={styles.pinCard}
-            onPress={() => setShowPin(!showPin)}
-          >
-            <Ionicons name="key-outline" size={18} color={colors.accent} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.pinLabel}>Your ride PIN</Text>
-              <Text style={styles.pinValue}>{showPin ? ride.ride_pin : "••••"}</Text>
-            </View>
-            <Text style={styles.pinHint}>Tap to {showPin ? "hide" : "reveal"}</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* PIN input for driver */}
-        {status === "arriving" && showPin && (
-          <View style={styles.pinInputGroup}>
-            <Text style={styles.pinInputLabel}>Enter rider's PIN to start ride:</Text>
-            <View style={styles.pinInputRow}>
-              {[0, 1, 2, 3].map((i) => (
-                <Pressable
-                  key={i}
-                  style={[
-                    styles.pinDigit,
-                    pinInput[i] && styles.pinDigitFilled,
-                  ]}
-                  onPress={() => {
-                    // Simple: clear and re-enter
-                    setPinInput("");
-                    setPinError("");
-                  }}
-                >
-                  <Text style={styles.pinDigitText}>
-                    {pinInput[i] || "•"}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            {pinError ? <Text style={styles.pinError}>{pinError}</Text> : null}
-            <TouchableOpacity
-              style={styles.pinSubmitBtn}
-              onPress={handleVerifyPin}
+        {/* Map area */}
+        <View style={styles.map}>
+          {Platform.OS !== "web" && MapView && pickup ? (
+            <MapView
+              style={StyleSheet.absoluteFill}
+              provider={PROVIDER_DEFAULT}
+              customMapStyle={DARK_MAP_STYLE}
+              initialRegion={{
+                latitude: pickup.lat ?? 12.94,
+                longitude: pickup.lng ?? 75.77,
+                latitudeDelta: 0.08,
+                longitudeDelta: 0.08,
+              }}
+              showsUserLocation={true}
             >
-              <Text style={styles.pinSubmitText}>Start Ride</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Driver card */}
-        <View style={styles.driverCard}>
-          <View style={styles.driverPhoto}>
-            <Ionicons name="person" size={22} color="#fff" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.driverName}>Driver</Text>
-            <View style={styles.driverMeta}>
-              <Ionicons name="car-sport" size={12} color="#fff" />
-              <Text style={styles.driverPlate}>{ride?.vehicle_id || "—"}</Text>
-            </View>
-          </View>
-          <View style={styles.actionRow}>
-            <TouchableOpacity style={styles.actBtn} testID="ride-message">
-              <Ionicons name="chatbubble-outline" size={18} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actBtn, styles.actBtnAccent]}
-              onPress={handleSOS}
-              testID="ride-sos"
-            >
-              <Ionicons name="alert-circle" size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Trip progress */}
-        <View style={styles.progressRow}>
-          {stops.map((stop, i) => (
-            <View key={i} style={{ flexDirection: "row", alignItems: "center", flex: i === stops.length - 1 ? 0 : 1 }}>
-              <View
-                style={[
-                  styles.progStep,
-                  status === "onboard" || status === "arrived" || status === "completed"
-                    ? styles.progStepDone
-                    : null,
-                ]}
-              >
-                <Text style={styles.progText} numberOfLines={1}>
-                  {stop.label}
-                </Text>
-              </View>
-              {i < stops.length - 1 && (
-                <View
-                  style={[
-                    styles.progLine,
-                    (status === "onboard" || status === "arrived" || status === "completed") &&
-                      styles.progLineDone,
-                  ]}
+              {pickup.lat && pickup.lng && (
+                <Marker
+                  coordinate={{ latitude: pickup.lat, longitude: pickup.lng }}
+                  pinColor={colors.accent}
+                  title="Pickup"
+                  description={pickup.label}
                 />
               )}
+              {drop?.lat && drop?.lng && status === "onboard" && (
+                <Marker
+                  coordinate={{ latitude: drop.lat, longitude: drop.lng }}
+                  pinColor={colors.danger}
+                  title="Drop-off"
+                  description={drop.label}
+                />
+              )}
+            </MapView>
+          ) : (
+            <View style={styles.mapFallback}>
+              <Ionicons name="map-outline" size={40} color={colors.textMuted} />
+              <Text style={styles.mapFallbackText}>Map unavailable</Text>
             </View>
-          ))}
-        </View>
+          )}
 
-        {status === "completed" ? (
-          <TouchableOpacity
-            style={styles.doneBtn}
-            onPress={() => router.replace("/rating")}
-            activeOpacity={0.85}
-            testID="ride-complete-button"
-          >
-            <Text style={styles.doneText}>Rate your ride</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.bottomActions}>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={handleSOS} testID="ride-safety">
-              <Ionicons name="shield-checkmark-outline" size={16} color="#fff" />
-              <Text style={styles.secondaryText}>SOS</Text>
-            </TouchableOpacity>
+          <View style={[styles.mapTop, { paddingTop: insets.top + 8 }]}>
             <TouchableOpacity
-              style={[styles.secondaryBtn, styles.shareBtn]}
-              onPress={handleShare}
-              testID="ride-share-btn"
+              style={styles.mapIcon}
+              onPress={() => router.back()}
+              testID="ride-back"
             >
-              <Ionicons name="share-outline" size={16} color="#fff" />
-              <Text style={styles.secondaryText}>Share Trip</Text>
+              <Ionicons name="chevron-back" size={20} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.secondaryBtn, styles.cancelBtn]}
-              onPress={() => router.replace("/driver-dashboard")}
-              testID="ride-cancel"
-            >
-              <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
-              <Text style={[styles.secondaryText, { color: colors.danger }]}>Cancel</Text>
+            <View style={styles.statusPill}>
+              <View style={[
+                styles.statusDot,
+                status === "onboard" && styles.statusDotGreen,
+                status === "completed" && styles.statusDotGray,
+              ]} />
+              <Text style={styles.statusPillText}>{statusLabel}</Text>
+            </View>
+            <TouchableOpacity style={styles.mapIcon} onPress={handleSOS} testID="ride-sos-map">
+              <Ionicons name="alert-circle" size={18} color={colors.danger} />
             </TouchableOpacity>
           </View>
-        )}
-      </ScrollView>
-    </View>
+        </View>
+
+        {/* Bottom sheet */}
+        <ScrollView
+          style={styles.sheet}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.grabber} />
+
+          <Text style={styles.kicker}>{statusLabel}</Text>
+          <Text style={styles.description}>{statusDescription}</Text>
+
+          {/* Route summary */}
+          {pickup && drop && (
+            <View style={styles.routeCard}>
+              <View style={styles.routeRow}>
+                <View style={styles.routeIndicator}>
+                  <View style={[styles.routeDot, { backgroundColor: colors.accent }]} />
+                  <View style={styles.routeLine} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.routeLabel} numberOfLines={1}>{pickup.label}</Text>
+                  <Text style={styles.routeSub}>Pickup</Text>
+                </View>
+              </View>
+              <View style={styles.routeRow}>
+                <View style={styles.routeIndicator}>
+                  <View style={[styles.routeDot, { backgroundColor: colors.danger }]} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.routeLabel} numberOfLines={1}>{drop.label}</Text>
+                  <Text style={styles.routeSub}>Drop-off</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Arrived at pickup — show PIN input */}
+          {status === "arrived" && (
+            <View style={styles.pinSection}>
+              {!showPinInput ? (
+                <TouchableOpacity
+                  style={styles.showPinBtn}
+                  onPress={() => {
+                    setShowPinInput(true);
+                    setTimeout(() => pinRef.current?.focus(), 300);
+                  }}
+                  testID="show-pin-input"
+                >
+                  <Ionicons name="key-outline" size={18} color={colors.accent} />
+                  <Text style={styles.showPinBtnText}>Enter rider's PIN to start trip</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.accent} />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.pinInputGroup}>
+                  <Text style={styles.pinLabel}>Ask rider for their 4-digit PIN</Text>
+                  <TextInput
+                    ref={pinRef}
+                    style={styles.hiddenInput}
+                    value={pinInput}
+                    onChangeText={(text) => {
+                      const cleaned = text.replace(/[^0-9]/g, "").slice(0, 4);
+                      setPinInput(cleaned);
+                      setPinError("");
+                    }}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    autoFocus
+                    testID="pin-text-input"
+                  />
+                  <View style={styles.pinDigitRow}>
+                    {[0, 1, 2, 3].map((i) => (
+                      <Pressable
+                        key={i}
+                        style={[
+                          styles.pinDigit,
+                          pinInput[i] !== undefined && styles.pinDigitFilled,
+                        ]}
+                        onPress={() => pinRef.current?.focus()}
+                      >
+                        <Text style={styles.pinDigitText}>
+                          {pinInput[i] !== undefined ? "•" : ""}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  {pinError ? <Text style={styles.pinError}>{pinError}</Text> : null}
+                  <TouchableOpacity
+                    style={[styles.verifyBtn, pinInput.length !== 4 && styles.verifyBtnDisabled]}
+                    onPress={handleVerifyPin}
+                    disabled={pinInput.length !== 4 || updating}
+                    testID="verify-pin-button"
+                  >
+                    <Text style={styles.verifyBtnText}>
+                      {updating ? "Verifying..." : "Verify PIN & Start Trip"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Fare summary on completed */}
+          {status === "completed" && (
+            <View style={styles.fareSummary}>
+              <View style={styles.fareHeader}>
+                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                <Text style={styles.fareHeaderText}>Trip Complete</Text>
+              </View>
+              <View style={styles.fareDivider} />
+              <View style={styles.fareRow}>
+                <Text style={styles.fareLabel}>Total fare</Text>
+                <Text style={styles.fareValue}>₹{ride?.fare.toLocaleString("en-IN") || "—"}</Text>
+              </View>
+              {ride?.tip ? (
+                <View style={styles.fareRow}>
+                  <Text style={styles.fareLabel}>Tip earned</Text>
+                  <Text style={[styles.fareValueSmall, { color: colors.accent }]}>+₹{ride.tip}</Text>
+                </View>
+              ) : null}
+              <View style={styles.fareDivider} />
+              <View style={styles.fareRow}>
+                <Text style={styles.fareLabel}>Payment</Text>
+                <Text style={styles.fareValueSmall}>{ride?.payment_method?.toUpperCase() || "—"}</Text>
+              </View>
+              <View style={styles.fareRow}>
+                <Text style={styles.fareLabel}>Route</Text>
+                <Text style={styles.fareValueSmall} numberOfLines={1}>
+                  {pickup?.label} → {drop?.label}
+                </Text>
+              </View>
+              {ride?.created_at && (
+                <View style={styles.fareRow}>
+                  <Text style={styles.fareLabel}>Duration</Text>
+                  <Text style={styles.fareValueSmall}>
+                    {(() => {
+                      const mins = Math.round((Date.now() - new Date(ride.created_at).getTime()) / 60000);
+                      if (mins < 60) return `${mins} min`;
+                      return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+                    })()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* Status action button */}
+          {status === "arriving" && (
+            <TouchableOpacity
+              style={[styles.actionBtn, updating && styles.actionBtnDisabled]}
+              onPress={() => handleStatusUpdate("arrived")}
+              disabled={updating}
+              testID="arrived-button"
+            >
+              <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+              <Text style={styles.actionBtnText}>
+                {updating ? "Updating..." : "Arrived at Pickup"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {status === "completed" && (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={handleBackToDashboard}
+              testID="back-to-dashboard-button"
+            >
+              <Ionicons name="arrow-back" size={18} color="#fff" />
+              <Text style={styles.actionBtnText}>Back to Dashboard</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Bottom actions (during trip) */}
+          {status !== "completed" && (
+            <View style={styles.bottomActions}>
+              <TouchableOpacity style={styles.sosBtn} onPress={handleSOS} testID="ride-sos-bottom">
+                <Ionicons name="shield-checkmark-outline" size={16} color={colors.danger} />
+                <Text style={styles.sosBtnText}>SOS</Text>
+              </TouchableOpacity>
+              {status !== "arrived" && (
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => {
+                    Alert.alert(
+                      "Cancel ride?",
+                      "This will cancel the current ride.",
+                      [
+                        { text: "No", style: "cancel" },
+                        {
+                          text: "Yes, cancel",
+                          style: "destructive",
+                          onPress: async () => {
+                            if (activeRideId) {
+                              await api.updateRideStatus(activeRideId, "cancelled").catch(() => {});
+                            }
+                            handleBackToDashboard();
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                  testID="ride-cancel"
+                >
+                  <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                  <Text style={[styles.sosBtnText, { color: colors.danger }]}>Cancel Ride</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -380,23 +490,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#0B0D10",
     overflow: "hidden",
   },
-  mapPlaceholder: {
+  mapFallback: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
   },
-  mapPlaceholderText: { color: colors.textDim, fontSize: 13 },
-  driverMarker: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#fff",
-  },
+  mapFallbackText: { color: colors.textDim, fontSize: 13 },
   mapTop: {
     position: "absolute",
     left: 0,
@@ -417,7 +517,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  etaPill: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -428,7 +528,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  etaDot: {
+  statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
@@ -437,7 +537,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 6,
   },
-  etaText: { color: "#fff", fontSize: 12, fontWeight: "700", letterSpacing: 1 },
+  statusDotGreen: {
+    backgroundColor: colors.success,
+    shadowColor: colors.success,
+  },
+  statusDotGray: {
+    backgroundColor: colors.textMuted,
+    shadowOpacity: 0,
+  },
+  statusPillText: { color: "#fff", fontSize: 11, fontWeight: "700", letterSpacing: 1 },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -463,141 +571,119 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 1.5,
   },
-  headline: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-    marginTop: 4,
+  description: {
+    color: colors.textMuted,
+    fontSize: 14,
+    marginTop: 6,
+    lineHeight: 20,
   },
-  pinCard: {
-    marginTop: 12,
-    padding: 12,
+
+  /* Route card */
+  routeCard: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 4,
+  },
+  routeRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  routeIndicator: { width: 10, alignItems: "center", paddingTop: 4 },
+  routeDot: { width: 8, height: 8, borderRadius: 4 },
+  routeLine: { width: 2, height: 20, backgroundColor: colors.border, marginTop: 4 },
+  routeLabel: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  routeSub: { color: colors.textMuted, fontSize: 11, marginTop: 2, marginBottom: 8 },
+
+  /* PIN section */
+  pinSection: { marginTop: 16 },
+  showPinBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.accent,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
   },
-  pinLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
-  pinValue: { color: "#fff", fontSize: 22, fontWeight: "800", letterSpacing: 6 },
-  pinHint: { color: colors.textDim, fontSize: 11 },
+  showPinBtnText: { flex: 1, color: "#fff", fontSize: 14, fontWeight: "600" },
   pinInputGroup: {
-    marginTop: 12,
     padding: 14,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  pinInputLabel: { color: colors.textMuted, fontSize: 12, marginBottom: 10 },
-  pinInputRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
+  pinLabel: { color: colors.textMuted, fontSize: 12, marginBottom: 12 },
+  hiddenInput: {
+    position: "absolute",
+    opacity: 0,
+    width: 1,
+    height: 1,
+  },
+  pinDigitRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
   pinDigit: {
-    width: 50,
-    height: 56,
-    borderRadius: 12,
+    width: 54,
+    height: 60,
+    borderRadius: 14,
     backgroundColor: colors.surfaceAlt,
     borderWidth: 2,
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
-  pinDigitFilled: { borderColor: colors.accent },
-  pinDigitText: { color: "#fff", fontSize: 24, fontWeight: "800" },
-  pinError: { color: colors.danger, fontSize: 12, marginTop: 8, textAlign: "center" },
-  pinSubmitBtn: {
+  pinDigitFilled: { borderColor: colors.accent, backgroundColor: "rgba(30,107,255,0.10)" },
+  pinDigitText: { color: "#fff", fontSize: 26, fontWeight: "800" },
+  pinError: { color: colors.danger, fontSize: 12, marginTop: 10, textAlign: "center" },
+  verifyBtn: {
     marginTop: 14,
-    height: 44,
+    height: 48,
     borderRadius: radius.md,
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
-  pinSubmitText: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  driverCard: {
+  verifyBtnDisabled: { opacity: 0.5 },
+  verifyBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+
+  /* Fare summary */
+  fareSummary: {
     marginTop: 16,
-    padding: 14,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  driverPhoto: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  driverName: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  driverMeta: { flexDirection: "row", alignItems: "center", marginTop: 3, gap: 6 },
-  driverPlate: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
-  actionRow: { flexDirection: "row", gap: 8 },
-  actBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  actBtnAccent: { backgroundColor: colors.danger, borderColor: colors.danger },
-  progressRow: {
-    marginTop: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  progStep: {
-    paddingHorizontal: 10,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-    maxWidth: 100,
-  },
-  progStepDone: {
-    backgroundColor: "rgba(30,107,255,0.15)",
-    borderColor: colors.accent,
-  },
-  progText: { color: "#fff", fontSize: 11, fontWeight: "600" },
-  progLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: colors.border,
-    borderRadius: 1,
-    marginHorizontal: 4,
-  },
-  progLineDone: { backgroundColor: colors.accent },
-  bottomActions: { flexDirection: "row", gap: 8, marginTop: 20 },
-  secondaryBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    height: 48,
+    padding: 16,
     borderRadius: radius.md,
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    gap: 10,
   },
-  shareBtn: { borderColor: "rgba(30,107,255,0.35)" },
-  cancelBtn: { borderColor: "rgba(228,72,60,0.35)" },
-  secondaryText: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  doneBtn: {
-    marginTop: 22,
+  fareHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  fareHeaderText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  fareDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: 4,
+  },
+  fareRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  fareLabel: { color: colors.textMuted, fontSize: 13 },
+  fareValue: { color: "#fff", fontSize: 22, fontWeight: "800" },
+  fareValueSmall: { color: "#fff", fontSize: 14, fontWeight: "600" },
+
+  /* Action button */
+  actionBtn: {
+    marginTop: 20,
     height: 56,
     borderRadius: radius.md,
     backgroundColor: colors.accent,
@@ -606,5 +692,34 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  doneText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  actionBtnDisabled: { opacity: 0.5 },
+  actionBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+
+  /* Bottom actions */
+  bottomActions: { flexDirection: "row", gap: 10, marginTop: 20 },
+  sosBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "rgba(228,72,60,0.35)",
+    backgroundColor: colors.surface,
+  },
+  cancelBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    height: 48,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: "rgba(228,72,60,0.35)",
+    backgroundColor: colors.surface,
+  },
+  sosBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
 });

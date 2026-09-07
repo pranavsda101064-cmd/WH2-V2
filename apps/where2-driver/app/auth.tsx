@@ -19,19 +19,16 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Google from "expo-auth-session/providers/google";
 
 import { colors, radius } from "@/src/theme";
-import { api, getProfileCompleted } from "@/src/api";
+import { api } from "@/src/api";
 
 const BG =
   "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1400&q=80";
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 
-type Role = "customer" | "driver";
-
 export default function Auth() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const role: Role = "driver";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -52,14 +49,9 @@ export default function Auth() {
         return;
       }
       setGoogleLoading(true);
-      api.googleAuth(accessToken, role)
-        .then(async () => {
-          if (role === "driver") {
-            router.replace("/driver-onboarding");
-          } else {
-            const completed = await getProfileCompleted();
-            router.replace(completed ? "/(tabs)/home" : "/profile-setup");
-          }
+      api.googleAuth(accessToken, "driver")
+        .then(() => {
+          router.replace("/driver-onboarding");
         })
         .catch(() => setError("Google sign-in failed"))
         .finally(() => setGoogleLoading(false));
@@ -77,17 +69,11 @@ export default function Auth() {
     setLoading(true);
     try {
       await api.login(email.trim(), password);
-      if (role === "driver") {
-        router.replace("/driver-dashboard");
-      } else {
-        const completed = await getProfileCompleted();
-        router.replace(completed ? "/(tabs)/home" : "/profile-setup");
-      }
+      router.replace("/(tabs)");
     } catch {
       try {
-        await api.register(email.trim(), password, role);
-        if (role === "driver") router.replace("/driver-onboarding");
-        else router.replace("/profile-setup");
+        await api.register(email.trim(), password, "driver");
+        router.replace("/driver-onboarding");
       } catch {
         setError("Invalid email or password");
       }

@@ -246,7 +246,26 @@ export default function DriverProfileScreen() {
           >
             <Text style={{ color: colors.accent, fontSize: 14, fontWeight: "600" }}>Update Profile & Documents</Text>
           </TouchableOpacity>
+        </FadeIn>
 
+        <FadeIn delay={550}>
+          <Section title="Legal">
+            <TouchableOpacity style={[styles.field, styles.fieldDivider]} onPress={() => router.push("/privacy")}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Privacy Policy</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.field} onPress={() => router.push("/terms")}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Terms of Service</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
+            </TouchableOpacity>
+          </Section>
+        </FadeIn>
+
+        <FadeIn delay={600}>
           <TouchableOpacity
             style={styles.signOutBtn}
             onPress={async () => {

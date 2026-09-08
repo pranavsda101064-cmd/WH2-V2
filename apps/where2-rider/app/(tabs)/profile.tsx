@@ -31,6 +31,7 @@ const rows: {
   { icon: "notifications-outline", label: "Notifications", route: "/notifications" },
   { icon: "help-circle-outline", label: "Help", route: "/help" },
   { icon: "shield-checkmark-outline", label: "Privacy", route: "/privacy" },
+  { icon: "document-text-outline", label: "Terms of Service", route: "/terms" },
   { icon: "log-out-outline", label: "Sign out" },
 ];
 

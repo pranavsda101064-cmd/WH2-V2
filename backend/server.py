@@ -11,7 +11,7 @@ import httpx
 import sentry_sdk
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 from pythonjsonlogger import json as jsonlogger
@@ -555,6 +555,54 @@ async def health(db: AsyncSession = Depends(get_db)):
     except Exception as exc:
         logger.error("health check failed", extra={"error": str(exc)})
         raise HTTPException(503, detail="Service unhealthy")
+
+
+# ---------- Legal ----------
+PRIVACY_HTML = """
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Where2 - Privacy Policy</title>
+<style>body{font-family:-apple-system,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;color:#222;line-height:1.6}
+h1{font-size:24px}h2{font-size:18px;margin-top:28px}p{margin:12px 0}small{color:#888}</style></head>
+<body><h1>Where2 - Privacy Policy</h1><small>Last updated: September 2026</small>
+<h2>Information We Collect</h2><p>When you use Where2, we collect your name, email, phone number, and location data to provide ride services. Drivers also provide vehicle and document information for verification.</p>
+<h2>How We Use Your Information</h2><p>Your information is used to connect riders with drivers, calculate fares, ensure safety during rides, and improve our services. Location data is used for real-time ride tracking and route optimization.</p>
+<h2>Data Sharing</h2><p>We share your pickup/drop location and name with your assigned driver only during an active ride. We do not sell your personal data to third parties.</p>
+<h2>Data Security</h2><p>All data is encrypted in transit and at rest. We use industry-standard security measures to protect your personal information from unauthorized access.</p>
+<h2>Location Tracking</h2><p>Location data is collected during active rides for safety and tracking purposes. Background location is not tracked when no ride is active.</p>
+<h2>Your Rights</h2><p>You can request access to your data, update your profile information, or request deletion of your account at any time by contacting support@where2.app.</p>
+<h2>Contact Us</h2><p>For privacy-related inquiries, email us at privacy@where2.app.</p>
+</body></html>
+"""
+
+TERMS_HTML = """
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Where2 - Terms of Service</title>
+<style>body{font-family:-apple-system,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;color:#222;line-height:1.6}
+h1{font-size:24px}h2{font-size:18px;margin-top:28px}p{margin:12px 0}small{color:#888}</style></head>
+<body><h1>Where2 - Terms of Service</h1><small>Last updated: September 2026</small>
+<h2>Acceptance of Terms</h2><p>By accessing or using Where2, you agree to be bound by these Terms of Service. If you do not agree, do not use the application.</p>
+<h2>Service Description</h2><p>Where2 is a tourist ride-hailing platform operating in Sakleshpura, Karnataka, India. We connect riders with local drivers for point-to-point transportation services.</p>
+<h2>User Responsibilities</h2><p>You must provide accurate information during registration. Drivers must maintain valid licenses and vehicle documentation. Riders must treat drivers with respect and pay the agreed fare.</p>
+<h2>Payments</h2><p>Fares are displayed before ride confirmation. Payment can be made via cash, card, or UPI as selected during checkout. Tips are optional and at your discretion.</p>
+<h2>Safety</h2><p>Where2 provides safety features including ride PIN verification, trip sharing, and SOS alerts. However, we cannot guarantee your safety. Always exercise caution.</p>
+<h2>Cancellation</h2><p>Riders may cancel a ride before the driver arrives. Drivers may decline ride requests. Repeated cancellations may result in account restrictions.</p>
+<h2>Limitation of Liability</h2><p>Where2 acts as a platform connecting riders and drivers. We are not liable for the actions of drivers or riders during a ride. Our liability is limited to the service fee charged.</p>
+<h2>Changes to Terms</h2><p>We reserve the right to modify these terms at any time. Continued use of the app after changes constitutes acceptance of the new terms.</p>
+<h2>Contact Us</h2><p>For questions about these Terms, contact us at support@where2.app.</p>
+</body></html>
+"""
+
+
+@app.get("/api/legal/privacy", response_class=HTMLResponse)
+async def legal_privacy():
+    return HTMLResponse(content=PRIVACY_HTML)
+
+
+@app.get("/api/legal/terms", response_class=HTMLResponse)
+async def legal_terms():
+    return HTMLResponse(content=TERMS_HTML)
 
 
 # ---------- Packages ----------

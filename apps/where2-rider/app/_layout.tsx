@@ -1,13 +1,15 @@
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
-import { LogBox, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { LogBox, Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import * as Notifications from "expo-notifications";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { colors } from "@/src/theme";
+import { api } from "@/src/api";
 
 // Disable logbox errors etc so that users can see the app
 // and agent works as expected.
@@ -19,14 +21,54 @@ LogBox.ignoreAllLogs(true);
 // the family is registered — which throws on Android Expo Go.
 SplashScreen.preventAutoHideAsync();
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+async function registerForPushNotifications() {
+  try {
+    const { status: existing } = await Notifications.getPermissionsAsync();
+    let finalStatus = existing;
+    if (existing !== "granted") {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== "granted") return;
+
+    const token = await Notifications.getExpoPushTokenAsync();
+    await api.registerPushToken(token.data);
+  } catch {}
+}
+
 export default function RootLayout() {
   const [loaded, error] = useIconFonts();
+  const notificationListener = useRef<Notifications.Subscription>();
 
   useEffect(() => {
     if (loaded || error) {
       SplashScreen.hideAsync();
     }
   }, [loaded, error]);
+
+  useEffect(() => {
+    registerForPushNotifications();
+
+    notificationListener.current = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        // Foreground notification — could update UI, show toast, etc.
+      },
+    );
+
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(notificationListener.current);
+      }
+    };
+  }, []);
 
   // If the CDN is unreachable we fall through on error rather than wedging
   // the app — icons will tofu, but the app still boots.

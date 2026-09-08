@@ -43,6 +43,7 @@ from models import Rating as RatingModel
 from models import Ride as RideModel
 from models import User
 from models import Vehicle as VehicleModel
+from notifications import notify_drivers, notify_user
 from seed import seed_database
 
 settings = get_settings()
@@ -248,6 +249,10 @@ class DriverStats(BaseModel):
     earnings: int
     trips: int
     hours: float
+
+
+class PushTokenRequest(BaseModel):
+    token: str = Field(..., max_length=500)
 
 
 # ---------- Helpers ----------
@@ -526,6 +531,21 @@ async def upload_avatar(
         raise HTTPException(500, detail="Failed to upload avatar")
 
 
+@api_router.post("/push-token")
+async def register_push_token(
+    payload: PushTokenRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        current_user.push_token = payload.token
+        await db.flush()
+        return {"status": "ok"}
+    except Exception as exc:
+        logger.error("register_push_token failed", extra={"error": str(exc), "user_id": str(current_user.id)})
+        raise HTTPException(500, detail="Failed to save push token")
+
+
 # ---------- Health check ----------
 @app.get("/health")
 async def health(db: AsyncSession = Depends(get_db)):
@@ -633,6 +653,19 @@ async def create_ride(
         )
         db.add(driver_req)
         await db.flush()
+
+        # Notify nearby drivers about new ride request
+        try:
+            pickup_label = stops[0]["label"] if stops else "Pickup"
+            drop_label = stops[-1]["label"] if stops else "Drop"
+            await notify_drivers(
+                db,
+                title="New ride request",
+                body=f"{pickup_label} → {drop_label}  •  ₹{payload.fare}",
+                data={"ride_id": ride_id, "type": "new_request"},
+            )
+        except Exception:
+            pass  # Don't fail ride creation if notification fails
 
         return RideOut(
             id=ride.id,
@@ -1197,6 +1230,23 @@ async def accept_request(
         # Delete the request
         await db.delete(req)
         await db.flush()
+
+        # Notify the rider that a driver has been assigned
+        try:
+            profile_result = await db.execute(
+                select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
+            )
+            driver_profile = profile_result.scalar_one_or_none()
+            driver_name = driver_profile.full_name if driver_profile else "Your driver"
+            await notify_user(
+                db,
+                user_id=ride.user_id,
+                title="Your ride has been accepted!",
+                body=f"{driver_name} is on the way to pick you up",
+                data={"ride_id": ride.id, "type": "driver_accepted"},
+            )
+        except Exception:
+            pass  # Don't fail acceptance if notification fails
 
         return RideOut(
             id=ride.id,

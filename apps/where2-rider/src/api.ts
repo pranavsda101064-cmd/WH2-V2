@@ -291,6 +291,9 @@ export const api = {
       { name: "Driver", phone: "", photo_url: null, vehicle_make: null, vehicle_model: null, vehicle_reg: null },
     ),
 
+  registerPushToken: (token: string) =>
+    req<{ status: string }>("/push-token", { method: "POST", body: JSON.stringify({ token }) }, { status: "ok" }),
+
   // Ratings
   submitRating: (body: {
     ride_id: string;

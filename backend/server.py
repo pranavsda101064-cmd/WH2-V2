@@ -182,7 +182,7 @@ class RideCreate(BaseModel):
     vehicle_id: str = Field(..., max_length=10)
     stops: List[RideStop] = Field(..., min_length=1, max_length=10)
     fare: int = Field(..., ge=0, le=100000)
-    payment_method: Literal["card", "upi"]
+    payment_method: Literal["card", "upi", "cash"]
     tip: Optional[int] = Field(0, ge=0, le=10000)
 
 
@@ -193,15 +193,15 @@ class RideOut(BaseModel):
     vehicle_id: str
     stops: List[RideStop]
     fare: int
-    payment_method: Literal["card", "upi"]
+    payment_method: Literal["card", "upi", "cash"]
     tip: int = 0
-    status: Literal["arriving", "onboard", "arrived", "completed", "cancelled"] = "arriving"
+    status: Literal["pending", "arriving", "onboard", "arrived", "completed", "cancelled"] = "pending"
     ride_pin: Optional[str] = None
     created_at: str
 
 
 class RideStatusUpdate(BaseModel):
-    status: Literal["arriving", "onboard", "arrived", "completed", "cancelled"]
+    status: Literal["pending", "arriving", "onboard", "arrived", "completed", "cancelled"]
 
 
 class RatingCreate(BaseModel):
@@ -224,6 +224,7 @@ class RatingOut(BaseModel):
 
 class DriverRequestOut(BaseModel):
     id: str
+    ride_id: Optional[str] = None
     pickup: str
     drop: str
     distance: str
@@ -232,6 +233,15 @@ class DriverRequestOut(BaseModel):
     rider: str
     rating: float
     tag: str
+
+
+class DriverInfoOut(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    photo_url: Optional[str] = None
+    vehicle_make: Optional[str] = None
+    vehicle_model: Optional[str] = None
+    vehicle_reg: Optional[str] = None
 
 
 class DriverStats(BaseModel):
@@ -587,11 +597,41 @@ async def create_ride(
             fare=payload.fare,
             payment_method=payload.payment_method,
             tip=payload.tip or 0,
-            status="arriving",
+            status="pending",
             ride_pin=ride_pin,
             created_at=now,
         )
         db.add(ride)
+
+        # Get rider name for the driver request
+        rider_name = "Rider"
+        try:
+            from models import CustomerProfile as CustomerProfileModel
+            cp_result = await db.execute(
+                select(CustomerProfileModel).where(CustomerProfileModel.user_id == str(current_user.id))
+            )
+            cp = cp_result.scalar_one_or_none()
+            if cp:
+                rider_name = cp.full_name
+        except Exception:
+            pass
+
+        stops = [{"label": s.label, "sub": s.sub, "lat": s.lat, "lng": s.lng} for s in payload.stops]
+        pickup_label = stops[0]["label"] if stops else "Pickup"
+        drop_label = stops[-1]["label"] if stops else "Drop"
+
+        driver_req = DriverRequestModel(
+            ride_id=ride_id,
+            pickup=pickup_label,
+            drop=drop_label,
+            distance="",
+            duration="",
+            fare=payload.fare,
+            rider=rider_name,
+            rating=0.0,
+            tag="",
+        )
+        db.add(driver_req)
         await db.flush()
 
         return RideOut(
@@ -652,6 +692,49 @@ async def get_ride(
     except Exception as exc:
         logger.error("get_ride failed", extra={"error": str(exc), "ride_id": ride_id})
         raise HTTPException(500, detail="Failed to fetch ride")
+
+
+@api_router.get("/rides/{ride_id}/driver", response_model=DriverInfoOut)
+async def get_ride_driver(
+    ride_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
+        ride = result.scalar_one_or_none()
+        if not ride:
+            raise HTTPException(404, detail="Ride not found")
+        if not ride.driver_id:
+            raise HTTPException(404, detail="No driver assigned yet")
+
+        # Look up driver profile
+        profile_result = await db.execute(
+            select(DriverProfileModel).where(DriverProfileModel.user_id == ride.driver_id)
+        )
+        profile = profile_result.scalar_one_or_none()
+        if not profile:
+            raise HTTPException(404, detail="Driver profile not found")
+
+        # Look up driver's primary vehicle
+        veh_result = await db.execute(
+            select(DriverVehicleModel).where(DriverVehicleModel.driver_id == profile.id).limit(1)
+        )
+        veh = veh_result.scalar_one_or_none()
+
+        return DriverInfoOut(
+            name=profile.full_name,
+            phone=profile.phone,
+            photo_url=profile.photo_url,
+            vehicle_make=veh.make if veh else None,
+            vehicle_model=veh.model if veh else None,
+            vehicle_reg=veh.reg_number if veh else None,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("get_ride_driver failed", extra={"error": str(exc), "ride_id": ride_id})
+        raise HTTPException(500, detail="Failed to fetch driver info")
 
 
 @api_router.patch("/rides/{ride_id}/status", response_model=RideOut)
@@ -1037,11 +1120,13 @@ async def list_driver_requests(
 ):
     require_driver(current_user)
     try:
-        result = await db.execute(select(DriverRequestModel))
+        result = await db.execute(
+            select(DriverRequestModel).where(DriverRequestModel.ride_id.isnot(None))
+        )
         requests = result.scalars().all()
         return [
             DriverRequestOut(
-                id=r.id, pickup=r.pickup, drop=r.drop,
+                id=r.id, ride_id=r.ride_id, pickup=r.pickup, drop=r.drop,
                 distance=r.distance, duration=r.duration, fare=r.fare,
                 rider=r.rider, rating=r.rating, tag=r.tag,
             )
@@ -1065,11 +1150,12 @@ async def accept_request(
         if not req:
             raise HTTPException(404, detail="Request not found")
 
+        # Find the driver's vehicle
         profile_result = await db.execute(
             select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
         )
         profile = profile_result.scalar_one_or_none()
-        vehicle_id = "v1"
+        vehicle_id = None
         if profile:
             veh_result = await db.execute(
                 select(DriverVehicleModel).where(DriverVehicleModel.driver_id == profile.id).limit(1)
@@ -1078,21 +1164,37 @@ async def accept_request(
             if veh:
                 vehicle_id = veh.id
 
-        ride = RideModel(
-            id=str(uuid.uuid4()),
-            user_id=str(uuid.uuid4()),
-            driver_id=str(current_user.id),
-            vehicle_id=vehicle_id,
-            stops=[
-                {"label": req.pickup, "sub": "Pickup"},
-                {"label": req.drop, "sub": "Drop-off"},
-            ],
-            fare=req.fare,
-            payment_method="card",
-            status="arriving",
-            created_at=datetime.now(timezone.utc),
-        )
-        db.add(ride)
+        # If this request has a ride_id, link to the real ride
+        ride = None
+        if req.ride_id:
+            ride_result = await db.execute(select(RideModel).where(RideModel.id == req.ride_id))
+            ride = ride_result.scalar_one_or_none()
+
+        if ride:
+            # Update existing ride with driver info
+            ride.driver_id = str(current_user.id)
+            if vehicle_id:
+                ride.vehicle_id = vehicle_id
+            ride.status = "arriving"
+        else:
+            # Fallback: create a new ride (for seed data or orphaned requests)
+            ride = RideModel(
+                id=str(uuid.uuid4()),
+                user_id=str(uuid.uuid4()),
+                driver_id=str(current_user.id),
+                vehicle_id=vehicle_id or "v1",
+                stops=[
+                    {"label": req.pickup, "sub": "Pickup"},
+                    {"label": req.drop, "sub": "Drop-off"},
+                ],
+                fare=req.fare,
+                payment_method="cash",
+                status="arriving",
+                created_at=datetime.now(timezone.utc),
+            )
+            db.add(ride)
+
+        # Delete the request
         await db.delete(req)
         await db.flush()
 
@@ -1106,6 +1208,7 @@ async def accept_request(
             payment_method=ride.payment_method,
             tip=ride.tip,
             status=ride.status,
+            ride_pin=ride.ride_pin,
             created_at=ride.created_at.isoformat(),
         )
     except HTTPException:

@@ -20,7 +20,7 @@ import { storage } from "@/src/utils/storage";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
 
-type PayMethod = "card" | "upi";
+type PayMethod = "card" | "upi" | "cash";
 type LocationData = { lat: number; lng: number; label: string };
 
 const DEFAULT_PICKUP = "Sakleshpura Bus Stand";
@@ -287,10 +287,15 @@ export default function Checkout() {
               label="UPI"
               sub="explorer@okhdfc"
             />
+            <MethodBtn
+              id="cash"
+              active={method === "cash"}
+              onPress={() => setMethod("cash")}
+              icon="cash-outline"
+              label="Cash"
+              sub="Pay driver"
+            />
           </View>
-          <Text style={styles.legal}>
-            Card & UPI only. Cash payments are not accepted.
-          </Text>
           {error ? (
             <Text style={{ color: colors.danger, fontSize: 13, marginTop: 8, marginLeft: 4 }}>{error}</Text>
           ) : null}
@@ -300,7 +305,7 @@ export default function Checkout() {
       {/* Pay bar */}
       <View style={[styles.payBar, { paddingBottom: insets.bottom + 16 }]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.barLabel}>{method === "card" ? "Card •••• 4421" : "UPI · explorer@okhdfc"}</Text>
+          <Text style={styles.barLabel}>{method === "card" ? "Card •••• 4421" : method === "upi" ? "UPI · explorer@okhdfc" : "Cash on ride"}</Text>
           <Text style={styles.barTotal}>₹{total.toLocaleString("en-IN")}</Text>
         </View>
         <SpringPress

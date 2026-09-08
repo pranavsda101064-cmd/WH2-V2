@@ -148,15 +148,17 @@ export default function Ride() {
   const status = ride?.status || "arriving";
 
   const statusLabel =
-    status === "arriving"
-      ? `Arriving in ${etaMinutes} min`
-      : status === "onboard"
-        ? "On the way to your destination"
-        : status === "arrived"
-          ? "You've arrived"
-          : status === "completed"
-            ? "Ride complete"
-            : "Ride";
+    status === "pending"
+      ? "Looking for a driver..."
+      : status === "arriving"
+        ? `Arriving in ${etaMinutes} min`
+        : status === "onboard"
+          ? "On the way to your destination"
+          : status === "arrived"
+            ? "You've arrived"
+            : status === "completed"
+              ? "Ride complete"
+              : "Ride";
 
   const pickup = stops[0];
   const drop = stops[stops.length - 1];
@@ -233,11 +235,13 @@ export default function Ride() {
           <View style={styles.etaPill}>
             <Animated.View style={[styles.etaDot, { transform: [{ scale: pulseScale }], opacity: pulseOpacity }]} />
             <Text style={styles.etaText}>
-              {status === "arriving"
-                ? `ARRIVING IN ${etaMinutes} MIN`
-                : status === "onboard"
-                  ? "IN TRANSIT"
-                  : status.toUpperCase()}
+              {status === "pending"
+                ? "FINDING DRIVER"
+                : status === "arriving"
+                  ? `ARRIVING IN ${etaMinutes} MIN`
+                  : status === "onboard"
+                    ? "IN TRANSIT"
+                    : status.toUpperCase()}
             </Text>
           </View>
           <SpringPress style={styles.mapIcon} onPress={handleShare} testID="ride-share">
@@ -324,13 +328,13 @@ export default function Ride() {
         {/* Driver card */}
         <View style={styles.driverCard}>
           <View style={styles.driverPhoto}>
-            <Ionicons name="person" size={22} color="#fff" />
+            <Ionicons name={status === "pending" ? "search" : "person"} size={22} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.driverName}>Driver</Text>
+            <Text style={styles.driverName}>{status === "pending" ? "Searching..." : "Driver"}</Text>
             <View style={styles.driverMeta}>
               <Ionicons name="car-sport" size={12} color="#fff" />
-              <Text style={styles.driverPlate}>{ride?.vehicle_id || "—"}</Text>
+              <Text style={styles.driverPlate}>{status === "pending" ? "Matched driver will appear here" : ride?.vehicle_id || "—"}</Text>
             </View>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={10} color={colors.accent} />

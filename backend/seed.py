@@ -52,10 +52,10 @@ async def seed_database(session: AsyncSession) -> None:
         await session.commit()
         logger.info("Seeded %d vehicles", len(VEHICLES))
 
-    # Seed driver requests
+    # Seed driver requests (legacy demo data — no ride_id, filtered out by driver requests endpoint)
     result = await session.execute(select(func.count()).select_from(DriverRequest))
     if result.scalar() == 0:
         for r in DRIVER_REQUESTS:
             session.add(DriverRequest(**r))
         await session.commit()
-        logger.info("Seeded %d driver requests", len(DRIVER_REQUESTS))
+        logger.info("Seeded %d driver requests (demo only)", len(DRIVER_REQUESTS))

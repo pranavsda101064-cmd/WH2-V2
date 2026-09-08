@@ -14,7 +14,7 @@ async def test_create_ride(client: AsyncClient, auth_header):
     assert r.status_code == 200
     data = r.json()
     assert data["vehicle_id"] == "v1"
-    assert data["status"] == "arriving"
+    assert data["status"] == "pending"
 
 
 @pytest.mark.asyncio

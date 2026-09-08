@@ -94,15 +94,16 @@ export type Ride = {
   vehicle_id: string;
   stops: RideStop[];
   fare: number;
-  payment_method: "card" | "upi";
+  payment_method: "card" | "upi" | "cash";
   tip: number;
-  status: "arriving" | "onboard" | "arrived" | "completed" | "cancelled";
+  status: "pending" | "arriving" | "onboard" | "arrived" | "completed" | "cancelled";
   ride_pin?: string;
   created_at: string;
 };
 
 export type DriverRequest = {
   id: string;
+  ride_id?: string;
   pickup: string;
   drop: string;
   distance: string;
@@ -233,7 +234,7 @@ export const api = {
     vehicle_id: string;
     stops: RideStop[];
     fare: number;
-    payment_method: "card" | "upi";
+    payment_method: "card" | "upi" | "cash";
     tip?: number;
   }) =>
     req<Ride>(
@@ -247,7 +248,7 @@ export const api = {
         fare: body.fare,
         payment_method: body.payment_method,
         tip: body.tip ?? 0,
-        status: "arriving",
+        status: "pending",
         created_at: new Date().toISOString(),
       },
     ),
@@ -282,6 +283,13 @@ export const api = {
 
   getRide: (id: string) =>
     req<Ride>(`/rides/${id}`),
+
+  getRideDriver: (rideId: string) =>
+    req<{ name: string; phone?: string; photo_url?: string; vehicle_make?: string; vehicle_model?: string; vehicle_reg?: string }>(
+      `/rides/${rideId}/driver`,
+      undefined,
+      { name: "Driver", phone: "", photo_url: null, vehicle_make: null, vehicle_model: null, vehicle_reg: null },
+    ),
 
   // Ratings
   submitRating: (body: {

@@ -179,7 +179,7 @@ export default function Ride() {
   const drop = stops[stops.length - 1];
 
   const statusLabel =
-    status === "arriving"
+    status === "arriving" || status === "pending"
       ? "HEADING TO PICKUP"
       : status === "arrived"
         ? "AT PICKUP"
@@ -190,7 +190,7 @@ export default function Ride() {
             : status.toUpperCase();
 
   const statusDescription =
-    status === "arriving"
+    status === "arriving" || status === "pending"
       ? "Navigate to the rider's pickup location"
       : status === "arrived"
         ? "You've arrived. Ask rider for their 4-digit PIN to start the trip."

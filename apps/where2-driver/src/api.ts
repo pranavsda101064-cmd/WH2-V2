@@ -104,6 +104,7 @@ export type Ride = {
 
 export type DriverRequest = {
   id: string;
+  ride_id?: string;
   pickup: string;
   drop: string;
   distance: string;
@@ -299,17 +300,20 @@ export const api = {
 
   // Driver
   listDriverRequests: () =>
-    req<DriverRequest[]>("/driver/requests", undefined, [
-      { id: "r1", pickup: "Sakleshpura Bus Stand", drop: "Bisle Ghat Viewpoint", distance: "46 km", duration: "1h 40m", fare: 2199, rider: "Aditi S.", rating: 4.9, tag: "3 stops" },
-      { id: "r2", pickup: "Green Route Homestay", drop: "Manjarabad Fort", distance: "12 km", duration: "22 min", fare: 899, rider: "Rohit K.", rating: 4.8, tag: "Direct" },
-      { id: "r3", pickup: "Coffee Estate Retreat", drop: "Hanbal Falls", distance: "18 km", duration: "32 min", fare: 1499, rider: "Priya M.", rating: 5.0, tag: "2 stops" },
-    ]),
+    req<DriverRequest[]>("/driver/requests", undefined, []),
 
   acceptRequest: (id: string) =>
     req<Ride>(`/driver/requests/${id}/accept`, { method: "POST" }),
 
   declineRequest: (id: string) =>
     req<{ status: string }>(`/driver/requests/${id}/decline`, { method: "POST" }),
+
+  getRideDriver: (rideId: string) =>
+    req<{ name: string; phone?: string; photo_url?: string; vehicle_make?: string; vehicle_model?: string; vehicle_reg?: string }>(
+      `/rides/${rideId}/driver`,
+      undefined,
+      { name: "Driver", phone: "", photo_url: null, vehicle_make: null, vehicle_model: null, vehicle_reg: null },
+    ),
 
   driverStats: () =>
     req<DriverStats>("/driver/stats", undefined, {

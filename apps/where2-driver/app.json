@@ -47,7 +47,8 @@
           "backgroundColor": "#000000"
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true

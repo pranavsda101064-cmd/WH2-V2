@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react-native";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -10,6 +11,12 @@ import * as Notifications from "expo-notifications";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { colors } from "@/src/theme";
 import { api } from "@/src/api";
+
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 0.2,
+  enableAutoSessionTracking: true,
+});
 
 // Disable logbox errors etc so that users can see the app
 // and agent works as expected.
@@ -44,7 +51,7 @@ async function registerForPushNotifications() {
   } catch {}
 }
 
-export default function RootLayout() {
+export default Sentry.wrap(function RootLayout() {
   const [loaded, error] = useIconFonts();
   const notificationListener = useRef<Notifications.Subscription>();
 
@@ -91,4 +98,4 @@ export default function RootLayout() {
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
-}
+});

@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { LogBox, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import Constants from "expo-constants";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { colors } from "@/src/theme";
@@ -24,11 +25,15 @@ try {
   Haptics = require("expo-haptics");
 } catch {}
 
-Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
-  tracesSampleRate: 0.2,
-  enableAutoSessionTracking: true,
-});
+// Guard Sentry — crashes in Expo Go on SDK 57 (v7.11.0 mobileReplayIntegration SIGABRT)
+const isExpoGo = Constants.appOwnership === "expo";
+if (!isExpoGo) {
+  Sentry.init({
+    dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    tracesSampleRate: 0.2,
+    enableAutoSessionTracking: true,
+  });
+}
 
 // Disable logbox errors etc so that users can see the app
 // and agent works as expected.
@@ -66,7 +71,7 @@ async function registerForPushNotifications() {
   } catch {}
 }
 
-export default Sentry.wrap(function RootLayout() {
+function RootLayout() {
   const [loaded, error] = useIconFonts();
   const notificationListener = useRef<any>(null);
 
@@ -122,4 +127,6 @@ export default Sentry.wrap(function RootLayout() {
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
-});
+}
+
+export default isExpoGo ? RootLayout : Sentry.wrap(RootLayout);

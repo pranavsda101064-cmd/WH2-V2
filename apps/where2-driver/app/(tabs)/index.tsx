@@ -11,9 +11,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import * as Haptics from "expo-haptics";
+let Haptics: any = null;
+try { Haptics = require("expo-haptics"); } catch {}
 
-import { colors, radius, shadows } from "@/src/theme";
+import { colors, radius } from "@/src/theme";
 import { api, DriverRequest, DriverStats } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { DashboardSkeleton } from "@/src/components/loading";
@@ -101,7 +102,7 @@ export default function DriverDashboard() {
 
       if (r.length > prevCountRef.current && prevCountRef.current > 0) {
         playNotificationSound();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       prevCountRef.current = r.length;
 
@@ -154,7 +155,7 @@ export default function DriverDashboard() {
       timersRef.current.delete(id);
       countdownsRef.current.delete(id);
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const ride = await api.acceptRequest(id).catch(() => null);
     if (ride?.id) await storage.setItem("active_ride_id", ride.id);
     setRequests((prev) => prev.filter((x) => x.id !== id));
@@ -173,7 +174,7 @@ export default function DriverDashboard() {
       timersRef.current.delete(id);
       countdownsRef.current.delete(id);
     }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await api.declineRequest(id).catch(() => {});
     setRequests((prev) => prev.filter((x) => x.id !== id));
     setCountdowns((prev) => {

@@ -35,7 +35,7 @@ export default function Landing() {
 
         {/* Headline — sits mid-screen so lower half is masked by hills gradient */}
         <View style={styles.headlineWrap} pointerEvents="none">
-          <FadeIn delay={300} duration={800} direction="up" scale={{ from: 0.85, to: 1 }}>
+          <FadeIn delay={300} duration={800} direction="up" scale>
             <Text style={styles.headline} testID="landing-headline">
               WHERE TO ?!
             </Text>

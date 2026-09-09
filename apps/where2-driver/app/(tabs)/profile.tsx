@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 import {
   Alert,
@@ -282,7 +282,7 @@ export default function DriverProfileScreen() {
   );
 }
 
-function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+function Section({ title, children, action }: { title: string; children: ReactNode; action?: ReactNode }) {
   return (
     <View style={{ marginTop: 22 }}>
       <View style={styles.sectionHeader}>

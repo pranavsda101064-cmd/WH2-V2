@@ -5,7 +5,6 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Animated,
-  Easing,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,

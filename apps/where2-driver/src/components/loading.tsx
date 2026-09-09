@@ -155,9 +155,9 @@ export function DashboardSkeleton() {
         style={{ marginTop: 20 }}
       />
       <View style={styles.statsRow}>
-        <SkeletonBlock flex={1} height={70} borderRadius={radius.lg} />
-        <SkeletonBlock flex={1} height={70} borderRadius={radius.lg} />
-        <SkeletonBlock flex={1} height={70} borderRadius={radius.lg} />
+        <SkeletonBlock width="0" height={70} borderRadius={radius.lg} style={{ flex: 1 }} />
+        <SkeletonBlock width="0" height={70} borderRadius={radius.lg} style={{ flex: 1 }} />
+        <SkeletonBlock width="0" height={70} borderRadius={radius.lg} style={{ flex: 1 }} />
       </View>
       <SkeletonBlock width={160} height={16} style={{ marginTop: 28 }} />
       {[0, 1, 2].map((i) => (
@@ -181,9 +181,9 @@ export function EarningsSkeleton() {
       <SkeletonBlock width={120} height={14} />
       <SkeletonBlock width={160} height={28} style={{ marginTop: 6 }} />
       <View style={styles.statsRow}>
-        <SkeletonBlock flex={1} height={70} borderRadius={radius.lg} />
-        <SkeletonBlock flex={1} height={70} borderRadius={radius.lg} />
-        <SkeletonBlock flex={1} height={70} borderRadius={radius.lg} />
+        <SkeletonBlock width="0" height={70} borderRadius={radius.lg} style={{ flex: 1 }} />
+        <SkeletonBlock width="0" height={70} borderRadius={radius.lg} style={{ flex: 1 }} />
+        <SkeletonBlock width="0" height={70} borderRadius={radius.lg} style={{ flex: 1 }} />
       </View>
       <SkeletonBlock width={160} height={16} style={{ marginTop: 28 }} />
       {[0, 1, 2, 3].map((i) => (

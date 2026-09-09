@@ -18,7 +18,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import * as Haptics from "expo-haptics";
+let Haptics: any = null;
+try { Haptics = require("expo-haptics"); } catch {}
 
 import { colors, radius } from "@/src/theme";
 import { api, Ride as RideType, RideStop } from "@/src/api";
@@ -43,6 +44,11 @@ export default function Ride() {
   const [showPinInput, setShowPinInput] = useState(false);
   const pulse = useRef(new Animated.Value(0)).current;
   const pinRef = useRef<TextInput>(null);
+
+  const stops: RideStop[] = ride?.stops || [];
+  const status = ride?.status || "arriving";
+  const pickup = stops[0];
+  const drop = stops[stops.length - 1];
 
   useEffect(() => {
     if (status === "completed" || status === "cancelled") return;
@@ -129,16 +135,16 @@ export default function Ride() {
       const updated = await api.updateRideStatus(activeRideId, nextStatus);
       setRide(updated);
       if (nextStatus === "completed") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } else {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       }
       if (nextStatus === "onboard") {
         setShowPinInput(false);
         setPinInput("");
       }
     } catch {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert("Error", "Failed to update ride status. Try again.");
     } finally {
       setUpdating(false);
@@ -150,10 +156,10 @@ export default function Ride() {
     setPinError("");
     try {
       await api.verifyRidePin(activeRideId, pinInput);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await handleStatusUpdate("onboard");
     } catch {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       setPinError("Invalid PIN. Ask rider to check and re-enter.");
     }
   };
@@ -175,11 +181,6 @@ export default function Ride() {
   };
 
   if (loading) return <LoadingScreen message="Loading ride..." />;
-
-  const stops: RideStop[] = ride?.stops || [];
-  const status = ride?.status || "arriving";
-  const pickup = stops[0];
-  const drop = stops[stops.length - 1];
 
   const statusLabel =
     status === "arriving" || status === "pending"

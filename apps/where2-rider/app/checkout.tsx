@@ -12,7 +12,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import * as Haptics from "expo-haptics";
+let Haptics: any = null;
+try { Haptics = require("expo-haptics"); } catch {}
 
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api } from "@/src/api";
@@ -95,12 +96,12 @@ export default function Checkout() {
       try {
         const v = await storage.getItem<string>("checkout_vehicle_id", "v1");
         const f = await storage.getItem<number>("checkout_fare", 2199);
-        const pRaw = await storage.getItem<string | null>("pickup_location", null);
-        const dRaw = await storage.getItem<string | null>("dropoff_location", null);
+        const pRaw = await storage.getItem<{ lat: number; lng: number; label: string } | null>("pickup_location", null);
+        const dRaw = await storage.getItem<{ lat: number; lng: number; label: string } | null>("dropoff_location", null);
         if (v) setVehicleId(v);
         if (f) setBaseFare(f);
-        if (pRaw) { try { setPickup(JSON.parse(pRaw)); } catch {} }
-        if (dRaw) { try { setDropoff(JSON.parse(dRaw)); } catch {} }
+        if (pRaw) setPickup(pRaw);
+        if (dRaw) setDropoff(dRaw);
       } catch {}
     })();
   }, []);
@@ -147,7 +148,7 @@ export default function Checkout() {
       await storage.setItem("active_ride_id", ride.id);
       await storage.removeItem("pickup_location");
       await storage.removeItem("dropoff_location");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setDone(true);
       setTimeout(() => router.replace("/ride"), 1400);
     } catch {

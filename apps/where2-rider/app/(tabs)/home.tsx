@@ -227,7 +227,7 @@ export default function Home() {
               <SpringPress
                 style={styles.spotCard}
                 onPress={async () => {
-                  await storage.setItem("dropoff_location", JSON.stringify({ lat: item.lat, lng: item.lng, label: item.name }));
+                  await storage.setItem("dropoff_location", { lat: item.lat, lng: item.lng, label: item.name });
                   router.push("/location-picker?target=dropoff");
                 }}
               >

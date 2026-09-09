@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
+let Haptics: any = null;
+try { Haptics = require("expo-haptics"); } catch {}
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -49,7 +50,7 @@ export default function Landing() {
   }));
 
   const handleGetStarted = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     contentOpacity.value = withTiming(0, { duration: 350, easing: EASE });
     contentTranslateY.value = withTiming(40, { duration: 350, easing: EASE });
@@ -121,7 +122,7 @@ export default function Landing() {
                   onPress={() => {
                     storage.setItem(
                       "dropoff_location",
-                      JSON.stringify({ lat: place.lat, lng: place.lng, label: place.name }),
+                      { lat: place.lat, lng: place.lng, label: place.name },
                     );
                     router.push("/location-picker?target=dropoff");
                   }}

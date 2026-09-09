@@ -54,12 +54,9 @@ export default function LocationPicker() {
   useEffect(() => {
     (async () => {
       const otherKey = target === "pickup" ? "dropoff_location" : "pickup_location";
-      const raw = await storage.getItem<string | null>(otherKey, null);
+      const raw = await storage.getItem<{ lat: number; lng: number; label: string } | null>(otherKey, null);
       if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          setOtherLocation(parsed);
-        } catch {}
+        setOtherLocation(raw);
       }
 
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -369,7 +366,7 @@ export default function LocationPicker() {
               if (marker) {
                 const loc = { lat: marker.latitude, lng: marker.longitude, label: label || "Selected location" };
                 const key = target === "pickup" ? "pickup_location" : "dropoff_location";
-                await storage.setItem(key, JSON.stringify(loc));
+                await storage.setItem(key, loc);
                 router.back();
               }
             }}

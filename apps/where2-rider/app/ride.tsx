@@ -17,7 +17,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import * as Haptics from "expo-haptics";
+let Haptics: any = null;
+try { Haptics = require("expo-haptics"); } catch {}
 
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api, Ride as RideType, RideStop } from "@/src/api";
@@ -139,13 +140,13 @@ export default function Ride() {
   useEffect(() => {
     if (!ride?.status) return;
     if (ride.status === "completed") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else if (ride.status === "cancelled") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     } else if (ride.status === "onboard") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } else if (ride.status === "arrived") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   }, [ride?.status]);
 

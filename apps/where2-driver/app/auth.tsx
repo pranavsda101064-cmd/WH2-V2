@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import {
+  Animated,
+  Easing,
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
   ActivityIndicator,
 } from "react-native";
@@ -20,11 +21,36 @@ import * as Google from "expo-auth-session/providers/google";
 
 import { colors, radius } from "@/src/theme";
 import { api } from "@/src/api";
+import { SpringPress } from "@/src/components/spring-press";
+import { FadeIn } from "@/src/components/fade-in";
 
 const BG =
-  "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1400&q=80";
+  "https://images.unsplash.com/photo-DY4ZEkiPPPA?auto=format&fit=crop&w=1400&q=80";
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
+
+function ShakeError({ text }: { text: string }) {
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!text) return;
+    shakeAnim.setValue(0);
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -4, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  }, [text]);
+
+  if (!text) return null;
+  return (
+    <Animated.Text style={[styles.error, { transform: [{ translateX: shakeAnim }] }]}>
+      {text}
+    </Animated.Text>
+  );
+}
 
 export default function Auth() {
   const router = useRouter();
@@ -94,15 +120,15 @@ export default function Auth() {
       </ImageBackground>
 
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => router.back()}
-          testID="auth-back-button"
-        >
+        <SpringPress style={styles.backBtn} onPress={() => router.back()} testID="auth-back-button">
           <Ionicons name="chevron-back" size={22} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.h1}>Welcome</Text>
-        <Text style={styles.hSub}>Sign in to continue your journey</Text>
+        </SpringPress>
+        <FadeIn delay={200}>
+          <Text style={styles.h1}>Welcome</Text>
+        </FadeIn>
+        <FadeIn delay={300}>
+          <Text style={styles.hSub}>Sign in to continue your journey</Text>
+        </FadeIn>
       </View>
 
       <KeyboardAvoidingView
@@ -113,82 +139,92 @@ export default function Auth() {
           <View style={styles.grabber} />
 
           {/* Email */}
-          <Text style={styles.label}>Email</Text>
-          <View style={styles.input}>
-            <Ionicons name="mail-outline" size={18} color={colors.textDim} style={{ marginRight: 10 }} />
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholder="you@example.com"
-              placeholderTextColor={colors.textDim}
-              style={styles.inputText}
-              testID="email-input"
-            />
-          </View>
+          <FadeIn delay={400}>
+            <Text style={styles.label}>Email</Text>
+          </FadeIn>
+          <FadeIn delay={450}>
+            <View style={styles.input}>
+              <Ionicons name="mail-outline" size={18} color={colors.textDim} style={{ marginRight: 10 }} />
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholder="you@example.com"
+                placeholderTextColor={colors.textDim}
+                style={styles.inputText}
+                testID="email-input"
+              />
+            </View>
+          </FadeIn>
 
           {/* Password */}
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.input}>
-            <Ionicons name="lock-closed-outline" size={18} color={colors.textDim} style={{ marginRight: 10 }} />
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="Min 6 characters"
-              placeholderTextColor={colors.textDim}
-              style={styles.inputText}
-              testID="password-input"
-            />
-          </View>
+          <FadeIn delay={500}>
+            <Text style={styles.label}>Password</Text>
+          </FadeIn>
+          <FadeIn delay={550}>
+            <View style={styles.input}>
+              <Ionicons name="lock-closed-outline" size={18} color={colors.textDim} style={{ marginRight: 10 }} />
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                placeholder="Min 6 characters"
+                placeholderTextColor={colors.textDim}
+                style={styles.inputText}
+                testID="password-input"
+              />
+            </View>
+          </FadeIn>
 
-          {error ? (
-            <Text style={styles.error}>{error}</Text>
-          ) : null}
+          <ShakeError text={error} />
 
-          <TouchableOpacity
-            style={[styles.cta, loading && styles.ctaDisabled]}
-            onPress={onContinue}
-            activeOpacity={0.85}
-            disabled={loading || googleLoading}
-            testID="auth-continue-button"
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.ctaText}>Sign in</Text>
-            )}
-          </TouchableOpacity>
+          <FadeIn delay={600}>
+            <SpringPress
+              style={[styles.cta, loading && styles.ctaDisabled]}
+              onPress={onContinue}
+              testID="auth-continue-button"
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.ctaText}>Sign in</Text>
+              )}
+            </SpringPress>
+          </FadeIn>
 
           {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          <FadeIn delay={650}>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+          </FadeIn>
 
           {/* Google Sign In */}
-          <TouchableOpacity
-            style={[styles.googleBtn, (googleLoading || !request) && styles.ctaDisabled]}
-            onPress={() => request && promptAsync()}
-            activeOpacity={0.85}
-            disabled={loading || googleLoading || !request}
-            testID="google-sign-in-button"
-          >
-            {googleLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 10 }} />
-                <Text style={styles.googleText}>Continue with Google</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <FadeIn delay={700}>
+            <SpringPress
+              style={[styles.googleBtn, (googleLoading || !request) && styles.ctaDisabled]}
+              onPress={() => request && promptAsync()}
+              testID="google-sign-in-button"
+            >
+              {googleLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="logo-google" size={20} color="#fff" style={{ marginRight: 10 }} />
+                  <Text style={styles.googleText}>Continue with Google</Text>
+                </>
+              )}
+            </SpringPress>
+          </FadeIn>
 
-          <Text style={[styles.legal, { marginBottom: insets.bottom + 12 }]}>
-            By continuing you agree to our Terms & Privacy Policy.
-          </Text>
+          <FadeIn delay={750}>
+            <Text style={[styles.legal, { marginBottom: insets.bottom + 12 }]}>
+              By continuing you agree to our Terms & Privacy Policy.
+            </Text>
+          </FadeIn>
         </BlurView>
       </KeyboardAvoidingView>
     </View>

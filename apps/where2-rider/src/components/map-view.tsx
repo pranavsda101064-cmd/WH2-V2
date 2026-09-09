@@ -1,5 +1,5 @@
 import { Platform, View, Text, StyleSheet } from "react-native";
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font } from "@/src/theme";
 
 let MapView: any = null;
 let Marker: any = null;
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  placeholderText: { color: colors.textDim, fontSize: 14 },
+  placeholderText: { color: colors.textDim, fontSize: font.label },
 });
 
 export { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder, DARK_MAP_STYLE };

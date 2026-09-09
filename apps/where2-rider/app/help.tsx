@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing } from "@/src/theme";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
 
@@ -88,25 +88,25 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { color: "#fff", fontSize: 22, fontWeight: "800" },
-  sectionTitle: { color: colors.textMuted, fontSize: 13, fontWeight: "600", paddingHorizontal: 20, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 },
+  h1: { color: "#fff", fontSize: font.title, fontWeight: "800" },
+  sectionTitle: { color: colors.textMuted, fontSize: font.small, fontWeight: "600", paddingHorizontal: 20, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 },
   faqCard: {
-    marginHorizontal: 20, marginBottom: 10, padding: 16, borderRadius: radius.lg,
+    marginHorizontal: 20, marginBottom: 10, padding: spacing.md, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   faqRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  faqQ: { color: "#fff", fontSize: 15, fontWeight: "600", flex: 1, marginRight: 12 },
-  faqA: { color: colors.textMuted, fontSize: 14, lineHeight: 20, marginTop: 12 },
+  faqQ: { color: "#fff", fontSize: font.body, fontWeight: "600", flex: 1, marginRight: 12 },
+  faqA: { color: colors.textMuted, fontSize: font.label, lineHeight: 20, marginTop: 12 },
   contactCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
     marginHorizontal: 20, marginTop: 20, padding: 18, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  contactTitle: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  contactSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  contactTitle: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  contactSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   contactBtn: {
-    paddingHorizontal: 16, height: 36, borderRadius: 18, backgroundColor: colors.accent,
+    paddingHorizontal: spacing.md, height: 36, borderRadius: 18, backgroundColor: colors.accent,
     alignItems: "center", justifyContent: "center",
   },
-  contactBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  contactBtnText: { color: "#fff", fontSize: font.small, fontWeight: "600" },
 });

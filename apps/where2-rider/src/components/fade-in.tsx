@@ -37,7 +37,7 @@ export function FadeIn({
     if (scale) {
       scaleVal.value = withDelay(delay, withTiming(scale.to ?? 1, { duration, easing: ease }));
     }
-  }, []);
+  }, [delay, duration, scale?.to]);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,

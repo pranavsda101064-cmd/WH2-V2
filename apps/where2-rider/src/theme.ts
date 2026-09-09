@@ -9,8 +9,6 @@ export const colors = {
   textMuted: "#9AA0A6",
   textDim: "#6B7075",
   accent: "#1E6BFF", // electric blue
-  accentDim: "#153F99",
-  accentGlow: "rgba(30,107,255,0.35)",
   danger: "#E4483C",
   success: "#22C55E",
 };
@@ -36,7 +34,11 @@ export const font = {
   h1: 32,
   h2: 24,
   h3: 20,
+  title: 22,
+  subtitle: 16,
   body: 15,
+  label: 14,
+  caption: 12,
   small: 13,
   micro: 11,
 };

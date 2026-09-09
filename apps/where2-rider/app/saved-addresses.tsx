@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing } from "@/src/theme";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
 
@@ -161,52 +161,52 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { color: "#fff", fontSize: 22, fontWeight: "800" },
+  h1: { color: "#fff", fontSize: font.title, fontWeight: "800" },
   card: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    marginHorizontal: 20, marginBottom: 10, padding: 16, borderRadius: radius.lg,
+    marginHorizontal: 20, marginBottom: 10, padding: spacing.md, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   cardIcon: {
     width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(30,107,255,0.12)",
     alignItems: "center", justifyContent: "center",
   },
-  cardLabel: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  cardAddress: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
+  cardLabel: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  cardAddress: { color: colors.textMuted, fontSize: font.small, marginTop: 2 },
   deleteBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(239,68,68,0.1)", alignItems: "center", justifyContent: "center" },
   addBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     marginHorizontal: 20, marginTop: 10, height: 52, borderRadius: radius.md,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent, borderStyle: "dashed",
   },
-  addText: { color: colors.accent, fontSize: 15, fontWeight: "600" },
+  addText: { color: colors.accent, fontSize: font.body, fontWeight: "600" },
   addForm: {
-    marginHorizontal: 20, marginTop: 10, padding: 16, borderRadius: radius.lg,
+    marginHorizontal: 20, marginTop: 10, padding: spacing.md, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  addFormTitle: { color: "#fff", fontSize: 16, fontWeight: "700", marginBottom: 12 },
+  addFormTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700", marginBottom: 12 },
   typeRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
   typeBtn: {
     flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, height: 36,
     borderRadius: 18, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border,
   },
   typeBtnActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  typeText: { color: colors.textDim, fontSize: 12, fontWeight: "600" },
+  typeText: { color: colors.textDim, fontSize: font.caption, fontWeight: "600" },
   typeTextActive: { color: "#fff" },
   input: {
     height: 48, borderRadius: radius.md, backgroundColor: colors.surfaceAlt,
     borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14,
-    color: "#fff", fontSize: 14, marginBottom: 10,
+    color: "#fff", fontSize: font.label, marginBottom: 10,
   },
   addFormActions: { flexDirection: "row", gap: 10, marginTop: 4 },
   cancelFormBtn: {
     flex: 1, height: 44, borderRadius: radius.md, backgroundColor: colors.surfaceAlt,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  cancelFormText: { color: colors.textDim, fontSize: 14, fontWeight: "600" },
+  cancelFormText: { color: colors.textDim, fontSize: font.label, fontWeight: "600" },
   saveFormBtn: {
     flex: 1, height: 44, borderRadius: radius.md, backgroundColor: colors.accent,
     alignItems: "center", justifyContent: "center",
   },
-  saveFormText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  saveFormText: { color: "#fff", fontSize: font.label, fontWeight: "700" },
 });

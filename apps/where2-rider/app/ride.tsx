@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  Alert,
   Animated,
   Easing,
   Linking,
@@ -16,8 +17,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import * as Haptics from "expo-haptics";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api, Ride as RideType, RideStop } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
@@ -41,6 +43,14 @@ export default function Ride() {
   const [pinError, setPinError] = useState("");
   const [etaMinutes, setEtaMinutes] = useState(5);
   const [activeRideId, setActiveRideId] = useState<string | null>(null);
+  const [driverInfo, setDriverInfo] = useState<{
+    name: string;
+    phone?: string;
+    photo_url?: string;
+    vehicle_make?: string;
+    vehicle_model?: string;
+    vehicle_reg?: string;
+  } | null>(null);
   const rideIdRef = useRef<string | null>(null);
   const pinRef = useRef<TextInput>(null);
 
@@ -106,7 +116,7 @@ export default function Ride() {
           api.getDriverLocation(activeRideId),
         ]);
         setRide(r);
-        if (loc.lat && loc.lng) {
+        if (loc.lat !== null && loc.lng !== null) {
           setDriverLoc({ lat: loc.lat, lng: loc.lng });
         }
       } catch {
@@ -116,6 +126,28 @@ export default function Ride() {
 
     return () => clearInterval(poll);
   }, [activeRideId]);
+
+  useEffect(() => {
+    if (!ride?.id || !ride.driver_id) return;
+    let cancelled = false;
+    api.getRideDriver(ride.id)
+      .then((d) => { if (!cancelled) setDriverInfo(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [ride?.id, ride?.driver_id]);
+
+  useEffect(() => {
+    if (!ride?.status) return;
+    if (ride.status === "completed") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } else if (ride.status === "cancelled") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } else if (ride.status === "onboard") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } else if (ride.status === "arrived") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+  }, [ride?.status]);
 
   const handleVerifyPin = async () => {
     if (!rideIdRef.current || pinInput.length !== 4) return;
@@ -140,6 +172,27 @@ export default function Ride() {
 
   const handleSOS = () => {
     Linking.openURL("tel:112");
+  };
+
+  const handleCancel = () => {
+    Alert.alert(
+      "Cancel ride?",
+      "Are you sure you want to cancel this ride?",
+      [
+        { text: "No", style: "cancel" },
+        {
+          text: "Yes, cancel",
+          style: "destructive",
+          onPress: async () => {
+            if (rideIdRef.current) {
+              await api.updateRideStatus(rideIdRef.current, "cancelled").catch(() => {});
+            }
+            storage.removeItem("active_ride_id");
+            router.replace("/(tabs)/home");
+          },
+        },
+      ],
+    );
   };
 
   if (loading) return <LoadingScreen />;
@@ -331,15 +384,25 @@ export default function Ride() {
             <Ionicons name={status === "pending" ? "search" : "person"} size={22} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.driverName}>{status === "pending" ? "Searching..." : "Driver"}</Text>
+            <Text style={styles.driverName}>
+              {status === "pending" ? "Searching..." : driverInfo?.name || "Driver"}
+            </Text>
             <View style={styles.driverMeta}>
               <Ionicons name="car-sport" size={12} color="#fff" />
-              <Text style={styles.driverPlate}>{status === "pending" ? "Matched driver will appear here" : ride?.vehicle_id || "—"}</Text>
+              <Text style={styles.driverPlate}>
+                {status === "pending"
+                  ? "Matched driver will appear here"
+                  : driverInfo?.vehicle_reg || ride?.vehicle_id || "—"}
+              </Text>
             </View>
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={10} color={colors.accent} />
-              <Text style={styles.ratingText}>4.9</Text>
-            </View>
+            {driverInfo && (
+              <View style={styles.ratingBadge}>
+                <Ionicons name="star" size={10} color={colors.accent} />
+                <Text style={styles.ratingText}>
+                  {[driverInfo.vehicle_make, driverInfo.vehicle_model].filter(Boolean).join(" ") || "Vehicle"}
+                </Text>
+              </View>
+            )}
           </View>
           <View style={styles.actionRow}>
             <SpringPress style={styles.actBtn} testID="ride-message">
@@ -409,7 +472,7 @@ export default function Ride() {
             </SpringPress>
             <SpringPress
               style={[styles.secondaryBtn, styles.cancelBtn]}
-              onPress={() => router.replace("/(tabs)/home")}
+              onPress={handleCancel}
               testID="ride-cancel"
             >
               <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
@@ -435,7 +498,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  mapPlaceholderText: { color: colors.textDim, fontSize: 13 },
+  mapPlaceholderText: { color: colors.textDim, fontSize: font.small },
   pickupMarker: {
     width: 28,
     height: 28,
@@ -477,17 +540,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 3,
     borderColor: "#fff",
-    shadowColor: colors.accent,
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 0 },
+    ...shadows.accent,
   },
   mapTop: {
     position: "absolute",
     left: 0,
     right: 0,
     top: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -518,11 +578,9 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOpacity: 1,
-    shadowRadius: 6,
+    ...shadows.accent,
   },
-  etaText: { color: "#fff", fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
+  etaText: { color: "#fff", fontSize: font.micro, fontWeight: "700", letterSpacing: 1.2 },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
@@ -544,16 +602,16 @@ const styles = StyleSheet.create({
   },
   kicker: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: font.micro,
     fontWeight: "700",
     letterSpacing: 1.5,
   },
   headline: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: font.title,
     fontWeight: "800",
     letterSpacing: -0.5,
-    marginTop: 4,
+    marginTop: spacing.xs,
   },
   pinCard: {
     marginTop: 12,
@@ -566,9 +624,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  pinLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
-  pinValue: { color: "#fff", fontSize: 22, fontWeight: "800", letterSpacing: 6 },
-  pinHint: { color: colors.textDim, fontSize: 11 },
+  pinLabel: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
+  pinValue: { color: "#fff", fontSize: font.title, fontWeight: "800", letterSpacing: 6 },
+  pinHint: { color: colors.textDim, fontSize: font.micro },
   pinInputGroup: {
     marginTop: 12,
     padding: 14,
@@ -577,7 +635,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  pinInputLabel: { color: colors.textMuted, fontSize: 12, marginBottom: 10 },
+  pinInputLabel: { color: colors.textMuted, fontSize: font.caption, marginBottom: 10 },
   pinInputRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
   pinDigit: {
     width: 50,
@@ -590,14 +648,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   pinDigitFilled: { borderColor: colors.accent },
-  pinDigitText: { color: "#fff", fontSize: 24, fontWeight: "800" },
+  pinDigitText: { color: "#fff", fontSize: font.h2, fontWeight: "800" },
   pinHiddenInput: {
     position: "absolute",
     opacity: 0,
     width: 1,
     height: 1,
   },
-  pinError: { color: colors.danger, fontSize: 12, marginTop: 8, textAlign: "center" },
+  pinError: { color: colors.danger, fontSize: font.caption, marginTop: 8, textAlign: "center" },
   pinSubmitBtn: {
     marginTop: 14,
     height: 44,
@@ -606,9 +664,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  pinSubmitText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  pinSubmitText: { color: "#fff", fontSize: font.label, fontWeight: "700" },
   driverCard: {
-    marginTop: 16,
+    marginTop: spacing.md,
     padding: 14,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
@@ -626,21 +684,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  driverName: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  driverName: { color: "#fff", fontSize: font.body, fontWeight: "700" },
   driverMeta: { flexDirection: "row", alignItems: "center", marginTop: 3, gap: 6 },
-  driverPlate: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
+  driverPlate: { color: colors.textMuted, fontSize: font.caption, fontWeight: "600" },
   ratingBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
-    marginTop: 4,
+    marginTop: spacing.xs,
     alignSelf: "flex-start",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
     backgroundColor: "rgba(30,107,255,0.12)",
   },
-  ratingText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  ratingText: { color: "#fff", fontSize: font.micro, fontWeight: "700" },
   actionRow: { flexDirection: "row", gap: 8 },
   actBtn: {
     width: 42,
@@ -674,13 +732,13 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(30,107,255,0.15)",
     borderColor: colors.accent,
   },
-  progText: { color: "#fff", fontSize: 11, fontWeight: "600" },
+  progText: { color: "#fff", fontSize: font.micro, fontWeight: "600" },
   progLine: {
     flex: 1,
     height: 2,
     backgroundColor: colors.border,
     borderRadius: 1,
-    marginHorizontal: 4,
+    marginHorizontal: spacing.xs,
   },
   progLineDone: { backgroundColor: colors.accent },
   bottomActions: { flexDirection: "row", gap: 8, marginTop: 20 },
@@ -698,7 +756,7 @@ const styles = StyleSheet.create({
   },
   shareBtn: { borderColor: "rgba(30,107,255,0.35)" },
   cancelBtn: { borderColor: "rgba(228,72,60,0.35)" },
-  secondaryText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  secondaryText: { color: "#fff", fontSize: font.small, fontWeight: "700" },
   doneBtn: {
     marginTop: 22,
     height: 56,
@@ -709,5 +767,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  doneText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  doneText: { color: "#fff", fontSize: font.subtitle, fontWeight: "800" },
 });

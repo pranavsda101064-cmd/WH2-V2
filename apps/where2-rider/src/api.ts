@@ -42,7 +42,7 @@ export async function clearUserEmail(): Promise<void> {
 }
 
 export async function getProfileCompleted(): Promise<boolean> {
-  return (await storage.getItem<boolean>(PROFILE_COMPLETED_KEY, false)) || false;
+  return !!(await storage.getItem<boolean>(PROFILE_COMPLETED_KEY, false));
 }
 
 export async function setProfileCompleted(val: boolean): Promise<void> {
@@ -233,7 +233,6 @@ export const api = {
   createRide: (body: {
     vehicle_id: string;
     stops: RideStop[];
-    fare: number;
     payment_method: "card" | "upi" | "cash";
     tip?: number;
   }) =>
@@ -245,7 +244,7 @@ export const api = {
         user_id: "explorer",
         vehicle_id: body.vehicle_id,
         stops: body.stops,
-        fare: body.fare,
+        fare: 0,
         payment_method: body.payment_method,
         tip: body.tip ?? 0,
         status: "pending",
@@ -411,8 +410,8 @@ export const api = {
     ),
 
   // Customer Profile
-  getProfile: () =>
-    req<CustomerProfile>("/profile", undefined, undefined as CustomerProfile | undefined),
+  getProfile: (): Promise<CustomerProfile | null> =>
+    req<CustomerProfile | null>("/profile", undefined, null),
 
   updateProfile: (body: { full_name: string; phone: string; gender?: string; avatar_url?: string; address?: string }) =>
     req<CustomerProfile>("/profile", { method: "POST", body: JSON.stringify(body) }),

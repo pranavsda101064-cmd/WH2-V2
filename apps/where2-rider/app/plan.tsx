@@ -14,8 +14,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
-import { colors, radius } from "@/src/theme";
-import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder } from "@/src/components/map-view";
+import { colors, radius, font, spacing } from "@/src/theme";
+import { FadeIn } from "@/src/components/fade-in";
+import { SpringPress } from "@/src/components/spring-press";
+import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder, DARK_MAP_STYLE } from "@/src/components/map-view";
 
 const MAP_H_RATIO = 0.32;
 
@@ -91,6 +93,7 @@ export default function Plan() {
           <MapView
             style={StyleSheet.absoluteFill}
             provider={PROVIDER_DEFAULT}
+            customMapStyle={DARK_MAP_STYLE}
             initialRegion={{
               latitude: centerLat,
               longitude: centerLng,
@@ -115,20 +118,20 @@ export default function Plan() {
         )}
 
         <View style={[styles.mapTop, { paddingTop: insets.top + 8 }]}>
-          <TouchableOpacity
+          <SpringPress
             style={styles.mapIcon}
             onPress={() => router.back()}
             testID="plan-back"
           >
             <Ionicons name="chevron-back" size={20} color="#fff" />
-          </TouchableOpacity>
+          </SpringPress>
           <View style={styles.mapChip}>
             <Ionicons name="locate" size={12} color={colors.accent} />
             <Text style={styles.mapChipText}>Sakleshpura, KA</Text>
           </View>
-          <TouchableOpacity style={styles.mapIcon}>
+          <SpringPress style={styles.mapIcon}>
             <Ionicons name="layers-outline" size={18} color="#fff" />
-          </TouchableOpacity>
+          </SpringPress>
         </View>
       </View>
 
@@ -142,36 +145,43 @@ export default function Plan() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.grabber} />
-          <Text style={styles.title}>Plan your trip</Text>
-          <Text style={styles.subtitle}>Add stops in the order you want to visit</Text>
+          <FadeIn delay={100}>
+            <Text style={styles.title}>Plan your trip</Text>
+          </FadeIn>
+          <FadeIn delay={150}>
+            <Text style={styles.subtitle}>Add stops in the order you want to visit</Text>
+          </FadeIn>
 
           {/* Destination input */}
-          <View style={styles.inputRow}>
-            <View style={styles.inputBox}>
-              <Ionicons name="search" size={18} color={colors.textMuted} />
-              <TextInput
-                value={input}
-                onChangeText={setInput}
-                placeholder="Paste map link or type a place"
-                placeholderTextColor={colors.textDim}
-                style={styles.inputText}
-                returnKeyType="done"
-                onSubmitEditing={addStop}
-                testID="destination-input"
-              />
+          <FadeIn delay={200}>
+            <View style={styles.inputRow}>
+              <View style={styles.inputBox}>
+                <Ionicons name="search" size={18} color={colors.textMuted} />
+                <TextInput
+                  value={input}
+                  onChangeText={setInput}
+                  placeholder="Paste map link or type a place"
+                  placeholderTextColor={colors.textDim}
+                  style={styles.inputText}
+                  returnKeyType="done"
+                  onSubmitEditing={addStop}
+                  testID="destination-input"
+                />
+              </View>
+              <SpringPress
+                style={styles.addBtn}
+                onPress={addStop}
+                testID="add-stop-button"
+              >
+                <Ionicons name="add" size={22} color="#fff" />
+              </SpringPress>
             </View>
-            <TouchableOpacity
-              style={styles.addBtn}
-              onPress={addStop}
-              testID="add-stop-button"
-            >
-              <Ionicons name="add" size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          </FadeIn>
 
           {/* Stops list */}
-          <View style={styles.stopsList}>
-            {stops.map((s, i) => (
+          <FadeIn delay={250}>
+            <View style={styles.stopsList}>
+              {stops.map((s, i) => (
               <View
                 key={s.id}
                 style={[
@@ -231,17 +241,19 @@ export default function Plan() {
                 </View>
               </View>
             ))}
-          </View>
+            </View>
+          </FadeIn>
 
-          <TouchableOpacity
-            style={styles.confirmBtn}
-            onPress={() => router.push("/vehicles")}
-            testID="confirm-stops-button"
-            activeOpacity={0.85}
-          >
-            <Text style={styles.confirmText}>Choose vehicle</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
+          <FadeIn delay={300}>
+            <SpringPress
+              style={styles.confirmBtn}
+              onPress={() => router.push("/vehicles")}
+              testID="confirm-stops-button"
+            >
+              <Text style={styles.confirmText}>Choose vehicle</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </SpringPress>
+          </FadeIn>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -260,7 +272,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -286,14 +298,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  mapChipText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  mapChipText: { color: "#fff", fontSize: font.caption, fontWeight: "600" },
   sheet: {
     flex: 1,
     backgroundColor: colors.bg,
     marginTop: -14,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
     paddingTop: 10,
   },
   grabber: {
@@ -304,9 +316,9 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     marginBottom: 14,
   },
-  title: { color: "#fff", fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
-  subtitle: { color: colors.textMuted, fontSize: 13, marginTop: 4, marginBottom: 18 },
-  inputRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
+  title: { color: "#fff", fontSize: font.h2, fontWeight: "800", letterSpacing: -0.5 },
+  subtitle: { color: colors.textMuted, fontSize: font.small, marginTop: 4, marginBottom: 18 },
+  inputRow: { flexDirection: "row", gap: 10, marginBottom: spacing.md },
   inputBox: {
     flex: 1,
     flexDirection: "row",
@@ -319,7 +331,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingHorizontal: 14,
   },
-  inputText: { flex: 1, color: "#fff", fontSize: 14 },
+  inputText: { flex: 1, color: "#fff", fontSize: font.label },
   addBtn: {
     width: 52,
     height: 52,
@@ -365,8 +377,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginTop: 2,
   },
-  stopLabel: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  stopSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  stopLabel: { color: "#fff", fontSize: font.body, fontWeight: "600" },
+  stopSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   stopActions: { flexDirection: "row", alignItems: "center", gap: 4 },
   stopAction: {
     width: 30,
@@ -386,5 +398,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  confirmText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  confirmText: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
 });

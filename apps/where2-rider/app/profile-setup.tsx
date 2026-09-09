@@ -5,6 +5,7 @@ import {
   Dimensions,
   Easing,
   Image,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,9 +18,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api, getProfileCompleted, setProfileCompleted, setUserName } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
+import { FadeIn } from "@/src/components/fade-in";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const AVATAR_SIZE = Math.round((SCREEN_W - 80) / 4);
@@ -230,7 +232,7 @@ export default function ProfileSetup() {
   };
 
   return (
-    <View style={styles.root} testID="profile-setup-screen">
+    <Pressable style={styles.root} testID="profile-setup-screen" onPress={() => Keyboard.dismiss()}>
       <StatusBar style="light" />
 
       {editMode && (
@@ -270,99 +272,121 @@ export default function ProfileSetup() {
           {/* Step 1: Personal Info */}
           {step === 1 && (
             <>
-              <Text style={styles.title}>{editMode ? "Edit your details" : "Tell us about yourself"}</Text>
-              <Text style={styles.subtitle}>We'll use this to personalize your experience</Text>
+              <FadeIn delay={100}>
+                <Text style={styles.title}>{editMode ? "Edit your details" : "Tell us about yourself"}</Text>
+              </FadeIn>
+              <FadeIn delay={200}>
+                <Text style={styles.subtitle}>We'll use this to personalize your experience</Text>
+              </FadeIn>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>Full name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="Enter your name"
-                  placeholderTextColor={colors.textDim}
-                  autoCapitalize="words"
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Phone number *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="Enter phone number"
-                  placeholderTextColor={colors.textDim}
-                  keyboardType="phone-pad"
-                  maxLength={15}
-                />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Gender (optional)</Text>
-                <View style={styles.genderRow}>
-                  {(["male", "female", "other"] as const).map((g) => (
-                    <SpringPress
-                      key={g}
-                      style={[styles.genderBtn, gender === g && styles.genderBtnActive]}
-                      onPress={() => setGender(g === gender ? "" : g)}
-                    >
-                      <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>
-                        {g === "male" ? "Male" : g === "female" ? "Female" : "Other"}
-                      </Text>
-                    </SpringPress>
-                  ))}
+              <FadeIn delay={300}>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Full name *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Enter your name"
+                    placeholderTextColor={colors.textDim}
+                    autoCapitalize="words"
+                  />
                 </View>
-              </View>
+              </FadeIn>
 
-              <View style={styles.field}>
-                <Text style={styles.label}>Address (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="Enter your address"
-                  placeholderTextColor={colors.textDim}
-                  autoCapitalize="words"
-                />
-              </View>
+              <FadeIn delay={400}>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Phone number *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder="Enter phone number"
+                    placeholderTextColor={colors.textDim}
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                  />
+                </View>
+              </FadeIn>
+
+              <FadeIn delay={500}>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Gender (optional)</Text>
+                  <View style={styles.genderRow}>
+                    {(["male", "female", "other"] as const).map((g) => (
+                      <SpringPress
+                        key={g}
+                        style={[styles.genderBtn, gender === g && styles.genderBtnActive]}
+                        onPress={() => setGender(g === gender ? "" : g)}
+                      >
+                        <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>
+                          {g === "male" ? "Male" : g === "female" ? "Female" : "Other"}
+                        </Text>
+                      </SpringPress>
+                    ))}
+                  </View>
+                </View>
+              </FadeIn>
+
+              <FadeIn delay={600}>
+                <View style={styles.field}>
+                  <Text style={styles.label}>Address (optional)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={address}
+                    onChangeText={setAddress}
+                    placeholder="Enter your address"
+                    placeholderTextColor={colors.textDim}
+                    autoCapitalize="words"
+                  />
+                </View>
+              </FadeIn>
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
-              <SpringPress style={styles.nextBtn} onPress={handleStep1Next}>
-                <Text style={styles.nextBtnText}>{editMode ? "Save" : "Next"}</Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
-              </SpringPress>
+              <FadeIn delay={700}>
+                <SpringPress style={styles.nextBtn} onPress={handleStep1Next}>
+                  <Text style={styles.nextBtnText}>{editMode ? "Save" : "Next"}</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </SpringPress>
+              </FadeIn>
             </>
           )}
 
           {/* Step 2: Avatar */}
           {step === 2 && (
             <>
-              <Text style={styles.title}>Choose your avatar</Text>
-              <Text style={styles.subtitle}>Pick an avatar or upload your own photo</Text>
+              <FadeIn delay={100}>
+                <Text style={styles.title}>Choose your avatar</Text>
+              </FadeIn>
+              <FadeIn delay={200}>
+                <Text style={styles.subtitle}>Pick an avatar or upload your own photo</Text>
+              </FadeIn>
 
-              <View style={styles.avatarGrid}>
-                {AVATARS.map((av) => (
-                  <AnimatedAvatar
-                    key={av.id}
-                    av={av}
-                    selected={selectedAvatar === av.id}
-                    onPress={() => { setSelectedAvatar(av.id); setCustomAvatar(null); }}
-                  />
-                ))}
-              </View>
+              <FadeIn delay={300}>
+                <View style={styles.avatarGrid}>
+                  {AVATARS.map((av) => (
+                    <AnimatedAvatar
+                      key={av.id}
+                      av={av}
+                      selected={selectedAvatar === av.id}
+                      onPress={() => { setSelectedAvatar(av.id); setCustomAvatar(null); }}
+                    />
+                  ))}
+                </View>
+              </FadeIn>
 
-              <View style={styles.uploadRow}>
-                <SpringPress style={styles.uploadBtn} onPress={takePhoto}>
-                  <Ionicons name="camera-outline" size={22} color={colors.accent} />
-                  <Text style={styles.uploadText}>Take photo</Text>
-                </SpringPress>
-                <SpringPress style={styles.uploadBtn} onPress={pickImage}>
-                  <Ionicons name="images-outline" size={22} color={colors.accent} />
-                  <Text style={styles.uploadText}>Choose from gallery</Text>
-                </SpringPress>
-              </View>
+              <FadeIn delay={400}>
+                <View style={styles.uploadRow}>
+                  <SpringPress style={styles.uploadBtn} onPress={takePhoto}>
+                    <Ionicons name="camera-outline" size={22} color={colors.accent} />
+                    <Text style={styles.uploadText}>Take photo</Text>
+                  </SpringPress>
+                  <SpringPress style={styles.uploadBtn} onPress={pickImage}>
+                    <Ionicons name="images-outline" size={22} color={colors.accent} />
+                    <Text style={styles.uploadText}>Choose from gallery</Text>
+                  </SpringPress>
+                </View>
+              </FadeIn>
 
               {customAvatar && (
                 <View style={styles.previewContainer}>
@@ -395,22 +419,30 @@ export default function ProfileSetup() {
           {/* Step 3: Welcome (only for first-time setup) */}
           {step === 3 && (
             <View style={styles.welcomeContainer}>
-              <View style={styles.welcomeCircle}>
-                <Ionicons name="checkmark" size={48} color="#fff" />
-              </View>
-              <Text style={styles.welcomeTitle}>Welcome, {name.split(" ")[0]}!</Text>
-              <Text style={styles.welcomeSubtitle}>
-                Your profile is all set.{"\n"}Let's explore Sakleshpura!
-              </Text>
-              <SpringPress style={styles.startBtn} onPress={handleFinish}>
-                <Text style={styles.startBtnText}>Start Exploring</Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
-              </SpringPress>
+              <FadeIn delay={100}>
+                <View style={styles.welcomeCircle}>
+                  <Ionicons name="checkmark" size={48} color="#fff" />
+                </View>
+              </FadeIn>
+              <FadeIn delay={300}>
+                <Text style={styles.welcomeTitle}>Welcome, {name.split(" ")[0]}!</Text>
+              </FadeIn>
+              <FadeIn delay={500}>
+                <Text style={styles.welcomeSubtitle}>
+                  Your profile is all set.{"\n"}Let's explore Sakleshpura!
+                </Text>
+              </FadeIn>
+              <FadeIn delay={700}>
+                <SpringPress style={styles.startBtn} onPress={handleFinish}>
+                  <Text style={styles.startBtnText}>Start Exploring</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </SpringPress>
+              </FadeIn>
             </View>
           )}
         </ScrollView>
       </Animated.View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -423,24 +455,24 @@ const styles = StyleSheet.create({
   backHeaderText: { color: "#fff", fontSize: 17, fontWeight: "600" },
   progressContainer: {
     flexDirection: "row", justifyContent: "center", gap: 8,
-    paddingBottom: 12, paddingHorizontal: 16,
+    paddingBottom: 12, paddingHorizontal: spacing.md,
   },
   progressDot: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.surfaceAlt },
   progressDotActive: { backgroundColor: colors.accent },
   progressDotCurrent: { width: 56 },
-  content: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
+  content: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingBottom: 40 },
   title: {
-    color: "#fff", fontSize: 26, fontWeight: "800", letterSpacing: -0.5, marginTop: 8,
+    color: "#fff", fontSize: 26, fontWeight: "800", letterSpacing: -0.5, marginTop: spacing.sm,
   },
   subtitle: {
-    color: colors.textMuted, fontSize: 14, marginTop: 6, marginBottom: 28,
+    color: colors.textMuted, fontSize: font.label, marginTop: 6, marginBottom: 28,
   },
   field: { marginBottom: 20 },
-  label: { color: colors.textMuted, fontSize: 13, fontWeight: "600", marginBottom: 8 },
+  label: { color: colors.textMuted, fontSize: font.small, fontWeight: "600", marginBottom: 8 },
   input: {
     height: 52, borderRadius: radius.md, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14,
-    color: "#fff", fontSize: 15,
+    color: "#fff", fontSize: font.body,
   },
   genderRow: { flexDirection: "row", gap: 10 },
   genderBtn: {
@@ -448,7 +480,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
   genderBtnActive: { backgroundColor: "rgba(30,107,255,0.15)", borderColor: colors.accent },
-  genderText: { color: colors.textMuted, fontSize: 14, fontWeight: "600" },
+  genderText: { color: colors.textMuted, fontSize: font.label, fontWeight: "600" },
   genderTextActive: { color: colors.accent },
   avatarGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
   avatarItem: { width: AVATAR_SIZE, alignItems: "center", gap: 6 },
@@ -457,45 +489,45 @@ const styles = StyleSheet.create({
     width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2,
     alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "transparent",
   },
-  avatarLabel: { color: colors.textMuted, fontSize: 11 },
+  avatarLabel: { color: colors.textMuted, fontSize: font.micro },
   uploadRow: { flexDirection: "row", gap: 12, marginBottom: 24 },
   uploadBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, height: 52, borderRadius: radius.md, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border,
   },
-  uploadText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  uploadText: { color: "#fff", fontSize: font.small, fontWeight: "600" },
   previewContainer: { alignItems: "center", marginBottom: 16 },
   previewImage: { width: 100, height: 100, borderRadius: 50 },
   previewRemove: { position: "absolute", top: -4, right: -4 },
-  error: { color: colors.danger, fontSize: 13, marginBottom: 12 },
+  error: { color: colors.danger, fontSize: font.small, marginBottom: 12 },
   nextBtn: {
     height: 56, borderRadius: radius.md, backgroundColor: colors.accent,
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, marginTop: 8,
-    shadowColor: colors.accent, shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 4 },
+    gap: 8, marginTop: spacing.sm,
+    ...shadows.accent,
   },
   nextBtnDisabled: { opacity: 0.6 },
-  nextBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  nextBtnText: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
   skipBtn: { alignItems: "center", paddingVertical: 14, marginTop: 4 },
-  skipText: { color: colors.textMuted, fontSize: 14 },
+  skipText: { color: colors.textMuted, fontSize: font.label },
   welcomeContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
   welcomeCircle: {
     width: 80, height: 80, borderRadius: 40, backgroundColor: colors.accent,
     alignItems: "center", justifyContent: "center", marginBottom: 24,
-    shadowColor: colors.accent, shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: 0 },
+    ...shadows.accent,
   },
   welcomeTitle: {
     color: "#fff", fontSize: 28, fontWeight: "800", letterSpacing: -0.5, marginBottom: 12,
   },
   welcomeSubtitle: {
-    color: colors.textMuted, fontSize: 15, textAlign: "center", lineHeight: 22, marginBottom: 40,
+    color: colors.textMuted, fontSize: font.body, textAlign: "center", lineHeight: 22, marginBottom: 40,
   },
   startBtn: {
     height: 56, borderRadius: radius.md, backgroundColor: colors.accent,
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 8, width: "100%",
-    shadowColor: colors.accent, shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 4 },
+    ...shadows.accent,
   },
-  startBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  startBtnText: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
 });

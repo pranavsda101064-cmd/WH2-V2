@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing } from "@/src/theme";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
 
@@ -77,18 +77,18 @@ export default function Privacy() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   headRow: {
-    flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: 16, gap: 12,
+    flexDirection: "row", alignItems: "center", paddingHorizontal: 20, marginBottom: spacing.md, gap: 12,
   },
   backBtn: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { color: "#fff", fontSize: 22, fontWeight: "800" },
-  updated: { color: colors.textDim, fontSize: 12, paddingHorizontal: 20, marginBottom: 20 },
+  h1: { color: "#fff", fontSize: font.title, fontWeight: "800" },
+  updated: { color: colors.textDim, fontSize: font.caption, paddingHorizontal: 20, marginBottom: 20 },
   card: {
     marginHorizontal: 20, marginBottom: 12, padding: 18, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  cardTitle: { color: "#fff", fontSize: 16, fontWeight: "700", marginBottom: 8 },
-  cardBody: { color: colors.textMuted, fontSize: 14, lineHeight: 21 },
+  cardTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700", marginBottom: spacing.sm },
+  cardBody: { color: colors.textMuted, fontSize: font.label, lineHeight: 21 },
 });

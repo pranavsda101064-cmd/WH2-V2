@@ -12,13 +12,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder, DARK_MAP_STYLE } from "@/src/components/map-view";
+import * as Haptics from "expo-haptics";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
+import { LoadingBar } from "@/src/components/loading";
+import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder, DARK_MAP_STYLE } from "@/src/components/map-view";
 
 type PayMethod = "card" | "upi" | "cash";
 type LocationData = { lat: number; lng: number; label: string };
@@ -90,14 +92,16 @@ export default function Checkout() {
 
   useEffect(() => {
     (async () => {
-      const v = await storage.getItem<string>("checkout_vehicle_id", "v1");
-      const f = await storage.getItem<number>("checkout_fare", 2199);
-      const pRaw = await storage.getItem<string | null>("pickup_location", null);
-      const dRaw = await storage.getItem<string | null>("dropoff_location", null);
-      if (v) setVehicleId(v);
-      if (f) setBaseFare(f);
-      if (pRaw) setPickup(JSON.parse(pRaw));
-      if (dRaw) setDropoff(JSON.parse(dRaw));
+      try {
+        const v = await storage.getItem<string>("checkout_vehicle_id", "v1");
+        const f = await storage.getItem<number>("checkout_fare", 2199);
+        const pRaw = await storage.getItem<string | null>("pickup_location", null);
+        const dRaw = await storage.getItem<string | null>("dropoff_location", null);
+        if (v) setVehicleId(v);
+        if (f) setBaseFare(f);
+        if (pRaw) { try { setPickup(JSON.parse(pRaw)); } catch {} }
+        if (dRaw) { try { setDropoff(JSON.parse(dRaw)); } catch {} }
+      } catch {}
     })();
   }, []);
 
@@ -138,12 +142,12 @@ export default function Checkout() {
       const ride = await api.createRide({
         vehicle_id: vehicleId,
         stops,
-        fare: total,
         payment_method: method,
       });
       await storage.setItem("active_ride_id", ride.id);
       await storage.removeItem("pickup_location");
       await storage.removeItem("dropoff_location");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setDone(true);
       setTimeout(() => router.replace("/ride"), 1400);
     } catch {
@@ -304,6 +308,7 @@ export default function Checkout() {
 
       {/* Pay bar */}
       <View style={[styles.payBar, { paddingBottom: insets.bottom + 16 }]}>
+        {paying && <LoadingBar />}
         <View style={{ flex: 1 }}>
           <Text style={styles.barLabel}>{method === "card" ? "Card •••• 4421" : method === "upi" ? "UPI · explorer@okhdfc" : "Cash on ride"}</Text>
           <Text style={styles.barTotal}>₹{total.toLocaleString("en-IN")}</Text>
@@ -395,8 +400,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
   },
   iconBtn: {
     width: 40,
@@ -408,45 +413,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  topTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
   card: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
-    padding: 16,
+    padding: spacing.md,
     marginBottom: 12,
   },
   cardHead: {
     color: colors.textMuted,
-    fontSize: 11,
+    fontSize: font.micro,
     fontWeight: "700",
     letterSpacing: 1.4,
     textTransform: "uppercase",
     marginBottom: 12,
   },
   routeRow: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  routeIndicator: { width: 12, alignItems: "center", paddingTop: 4 },
+  routeIndicator: { width: 12, alignItems: "center", paddingTop: spacing.xs },
   routeDot: { width: 10, height: 10, borderRadius: 5 },
-  routeLine: { width: 2, height: 26, backgroundColor: colors.border, marginTop: 4 },
-  routeLabel: { color: "#fff", fontSize: 14, fontWeight: "600" },
-  routeSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  routeLine: { width: 2, height: 26, backgroundColor: colors.border, marginTop: spacing.xs },
+  routeLabel: { color: "#fff", fontSize: font.label, fontWeight: "600" },
+  routeSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   vehicleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   vIcon: {
     width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center",
   },
-  vName: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  vSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  change: { color: colors.accent, fontSize: 13, fontWeight: "600" },
+  vName: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  vSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
+  change: { color: colors.accent, fontSize: font.small, fontWeight: "600" },
   fareRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
-  fareLabel: { color: colors.textMuted, fontSize: 13 },
-  fareValue: { color: "#fff", fontSize: 13, fontWeight: "500" },
+  fareLabel: { color: colors.textMuted, fontSize: font.small },
+  fareValue: { color: "#fff", fontSize: font.small, fontWeight: "500" },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: 10 },
   totalRow: { flexDirection: "row", justifyContent: "space-between" },
-  totalLabel: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  totalLabel: { color: "#fff", fontSize: font.body, fontWeight: "700" },
   totalValue: { color: "#fff", fontSize: 18, fontWeight: "800" },
   sectionTitle: {
-    color: colors.textMuted, fontSize: 12, fontWeight: "700", letterSpacing: 1.4,
+    color: colors.textMuted, fontSize: font.caption, fontWeight: "700", letterSpacing: 1.4,
     textTransform: "uppercase", marginBottom: 10, marginTop: 8, marginLeft: 4,
   },
   methodRow: { flexDirection: "column", gap: 10 },
@@ -458,36 +463,35 @@ const styles = StyleSheet.create({
   methodIcon: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center",
   },
-  methodLabel: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  methodSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  methodLabel: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  methodSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   radio: {
     width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.borderStrong,
     alignItems: "center", justifyContent: "center",
   },
   radioActive: { borderColor: colors.accent },
   radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent },
-  legal: { color: colors.textDim, fontSize: 12, marginTop: 12, marginLeft: 4 },
   payBar: {
     position: "absolute", left: 0, right: 0, bottom: 0,
     backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border,
-    paddingHorizontal: 16, paddingTop: 14, flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: spacing.md, paddingTop: spacing.md, flexDirection: "row", alignItems: "center", gap: 12,
   },
-  barLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
-  barTotal: { color: "#fff", fontSize: 22, fontWeight: "800", marginTop: 2 },
+  barLabel: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
+  barTotal: { color: "#fff", fontSize: font.title, fontWeight: "800", marginTop: 2 },
   payBtn: {
     height: 54, paddingHorizontal: 32, borderRadius: radius.md, backgroundColor: colors.accent,
     alignItems: "center", justifyContent: "center",
-    shadowColor: colors.accent, shadowOpacity: 0.45, shadowRadius: 16, shadowOffset: { width: 0, height: 4 },
+    ...shadows.accent,
   },
-  payText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  payText: { color: "#fff", fontSize: font.subtitle, fontWeight: "800" },
   done: {
-    flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", paddingHorizontal: 32,
+    flex: 1, backgroundColor: colors.bg,     alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.xl,
   },
   successCircle: {
     width: 96, height: 96, borderRadius: 48, backgroundColor: colors.accent,
     alignItems: "center", justifyContent: "center", marginBottom: 24,
-    shadowColor: colors.accent, shadowOpacity: 0.5, shadowRadius: 30, shadowOffset: { width: 0, height: 0 },
+    ...shadows.accent,
   },
   doneTitle: { color: "#fff", fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
-  doneSub: { color: colors.textMuted, fontSize: 15, marginTop: 8, textAlign: "center" },
+  doneSub: { color: colors.textMuted, fontSize: font.body, marginTop: spacing.sm, textAlign: "center" },
 });

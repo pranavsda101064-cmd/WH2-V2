@@ -10,7 +10,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, spacing } from "@/src/theme";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     backgroundColor: colors.bg,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.md,
   },
   bar: {
     padding: 20,
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     marginTop: 12,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   spotsRow: {
     flexDirection: "row",

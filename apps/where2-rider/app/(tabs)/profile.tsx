@@ -14,10 +14,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing } from "@/src/theme";
 import { api, getUserEmail, getUserName } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
+import { SkeletonCircle } from "@/src/components/loading";
 
 const rows: {
   icon: keyof typeof Ionicons.glyphMap;
@@ -118,7 +119,11 @@ export default function Profile() {
 
         <FadeIn delay={50}>
           <View style={styles.card}>
-            <Image source={getAvatarSource()} style={styles.avatar} />
+            {avatarUrl ? (
+              <Image source={getAvatarSource()} style={styles.avatar} />
+            ) : (
+              <SkeletonCircle size={56} />
+            )}
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{displayName}</Text>
               <Text style={styles.phone}>{userEmail || "Not signed in"}</Text>
@@ -194,41 +199,42 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
   card: {
-    marginHorizontal: 20, padding: 16, borderRadius: radius.lg, backgroundColor: colors.surface,
+    marginHorizontal: 20, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 14,
   },
   avatar: {
     width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surfaceAlt,
   },
   name: { color: "#fff", fontSize: 17, fontWeight: "700" },
-  phone: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
+  phone: { color: colors.textMuted, fontSize: font.small, marginTop: 2 },
   addressRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
-  addressText: { color: colors.textDim, fontSize: 12, flex: 1 },
-  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  rating: { color: colors.textMuted, fontSize: 12 },
+  addressText: { color: colors.textDim, fontSize: font.caption, flex: 1 },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: spacing.xs },
+  rating: { color: colors.textMuted, fontSize: font.caption },
   editBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 16, height: 44, borderRadius: 22,
+    paddingHorizontal: spacing.md,
+    height: 44, borderRadius: 22,
     borderWidth: 1, borderColor: colors.border, backgroundColor: "rgba(255,255,255,0.06)",
   },
-  editText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  editText: { color: "#fff", fontSize: font.small, fontWeight: "600" },
   statsRow: {
-    flexDirection: "row", marginHorizontal: 20, marginTop: 16, padding: 16,
+    flexDirection: "row", marginHorizontal: 20, marginTop: spacing.md, padding: spacing.md,
     borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   stat: { flex: 1, alignItems: "center" },
   statValue: { color: "#fff", fontSize: 18, fontWeight: "800" },
-  statLabel: { color: colors.textMuted, fontSize: 12, marginTop: 4 },
+  statLabel: { color: colors.textMuted, fontSize: font.caption, marginTop: spacing.xs },
   statDivider: { width: 1, backgroundColor: colors.border },
   list: {
-    marginHorizontal: 20, marginTop: 16, borderRadius: radius.lg, backgroundColor: colors.surface,
+    marginHorizontal: 20, marginTop: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, overflow: "hidden",
   },
   row: {
     flexDirection: "row", alignItems: "center", gap: 12,
-    paddingHorizontal: 16, height: 52,
+    paddingHorizontal: spacing.md, height: 52,
   },
   rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  rowLabel: { flex: 1, color: "#fff", fontSize: 15, fontWeight: "500" },
-  rowHint: { color: colors.textDim, fontSize: 13 },
+  rowLabel: { flex: 1, color: "#fff", fontSize: font.body, fontWeight: "500" },
+  rowHint: { color: colors.textDim, fontSize: font.small },
 });

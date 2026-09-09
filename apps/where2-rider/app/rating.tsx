@@ -15,9 +15,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
-import { LinearGradient } from "expo-linear-gradient";
-
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { SpringPress } from "@/src/components/spring-press";
@@ -383,11 +381,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 14,
   },
-  driverName: { color: "#fff", fontSize: 20, fontWeight: "800" },
-  driverSub: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
+  driverName: { color: "#fff", fontSize: font.h3, fontWeight: "800" },
+  driverSub: { color: colors.textMuted, fontSize: font.small, marginTop: spacing.xs },
   q: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: font.title,
     fontWeight: "800",
     textAlign: "center",
     letterSpacing: -0.5,
@@ -396,12 +394,12 @@ const styles = StyleSheet.create({
   starsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: spacing.md,
     paddingHorizontal: 8,
   },
   starHint: {
     color: colors.textMuted,
-    fontSize: 13,
+    fontSize: font.small,
     textAlign: "center",
     marginBottom: 20,
   },
@@ -409,7 +407,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 24,
+    marginBottom: spacing.lg,
     justifyContent: "center",
   },
   tag: {
@@ -427,15 +425,15 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: "rgba(30,107,255,0.12)",
   },
-  tagText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  tagText: { color: "#fff", fontSize: font.small, fontWeight: "600" },
   section: {
     color: "#fff",
-    fontSize: 15,
+    fontSize: font.body,
     fontWeight: "700",
     marginTop: 8,
     marginBottom: 4,
   },
-  sectionSub: { color: colors.textMuted, fontSize: 12, marginBottom: 10 },
+  sectionSub: { color: colors.textMuted, fontSize: font.caption, marginBottom: 10 },
   noteInput: {
     minHeight: 90,
     borderRadius: radius.md,
@@ -444,7 +442,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: 14,
     color: "#fff",
-    fontSize: 14,
+    fontSize: font.label,
     textAlignVertical: "top",
     marginBottom: 8,
   },
@@ -464,7 +462,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     backgroundColor: "rgba(30,107,255,0.12)",
   },
-  tipText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  tipText: { color: "#fff", fontSize: font.label, fontWeight: "700" },
   bottomBar: {
     position: "absolute",
     left: 0,
@@ -482,22 +480,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: colors.accent,
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
+    ...shadows.accent,
   },
   submitDisabled: {
     backgroundColor: colors.surfaceAlt,
     shadowOpacity: 0,
   },
-  submitText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  submitText: { color: "#fff", fontSize: font.subtitle, fontWeight: "800" },
   done: {
     flex: 1,
     backgroundColor: colors.bg,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: spacing.xl,
   },
   successCircle: {
     width: 96,
@@ -507,10 +502,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 24,
-    shadowColor: colors.accent,
-    shadowOpacity: 0.5,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 0 },
+    ...shadows.accent,
   },
   doneTitle: {
     color: "#fff",
@@ -520,7 +512,7 @@ const styles = StyleSheet.create({
   },
   doneSub: {
     color: colors.textMuted,
-    fontSize: 15,
+    fontSize: font.body,
     marginTop: 8,
     textAlign: "center",
   },

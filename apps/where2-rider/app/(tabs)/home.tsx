@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing } from "@/src/theme";
 import { pastTrips as mockTrips, savedRoutes } from "@/src/data/mock";
 import { api, Package, Ride, getUserName } from "@/src/api";
 import { storage } from "@/src/utils/storage";
@@ -309,9 +309,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: spacing.md,
   },
-  hello: { color: colors.textMuted, fontSize: 13 },
+  hello: { color: colors.textMuted, fontSize: font.small },
   name: { color: "#fff", fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
   iconBtn: {
     width: 40,
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   searchText: {
     flex: 1,
     color: colors.textMuted,
-    fontSize: 16,
+    fontSize: font.subtitle,
     fontWeight: "500",
   },
   searchIconRight: {
@@ -375,20 +375,20 @@ const styles = StyleSheet.create({
   },
   cardKicker: {
     color: "rgba(255,255,255,0.75)",
-    fontSize: 11,
+    fontSize: font.micro,
     letterSpacing: 1.5,
     fontWeight: "600",
-    marginBottom: 4,
+    marginBottom: spacing.xs,
   },
   cardTitle: {
     color: "#fff",
-    fontSize: 24,
+    fontSize: font.h2,
     fontWeight: "800",
     letterSpacing: -0.5,
   },
   cardPrice: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: font.label,
     fontWeight: "600",
     marginTop: 6,
     opacity: 0.95,
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     marginTop: 12,
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   dot: {
     width: 6,
@@ -408,8 +408,8 @@ const styles = StyleSheet.create({
   },
   dotActive: { backgroundColor: "#fff", width: 18 },
   actionCard: {
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -427,16 +427,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  actionTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  actionSub: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
+  actionTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
+  actionSub: { color: colors.textMuted, fontSize: font.small, marginTop: 2 },
   quickCard: {
-    marginHorizontal: 16,
+    marginHorizontal: spacing.md,
     marginTop: 10,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
-    padding: 16,
+    padding: spacing.md,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
@@ -449,8 +449,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  quickTitle: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  quickSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  quickTitle: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  quickSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   sectionHead: {
     flexDirection: "row",
     alignItems: "center",
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sectionTitle: { color: "#fff", fontSize: 17, fontWeight: "700" },
-  sectionAction: { color: colors.accent, fontSize: 13, fontWeight: "600" },
+  sectionAction: { color: colors.accent, fontSize: font.small, fontWeight: "600" },
   routeCard: {
     width: 140, padding: 14, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
@@ -469,10 +469,10 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(30,107,255,0.12)",
     alignItems: "center", justifyContent: "center", marginBottom: 10,
   },
-  routeFrom: { color: "#fff", fontSize: 13, fontWeight: "700" },
-  routeTo: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  routeTag: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 8 },
-  routeTagText: { color: colors.accent, fontSize: 11, fontWeight: "600" },
+  routeFrom: { color: "#fff", fontSize: font.small, fontWeight: "700" },
+  routeTo: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
+  routeTag: { flexDirection: "row", alignItems: "center",     gap: 4, marginTop: spacing.sm },
+  routeTagText: { color: colors.accent, fontSize: font.micro, fontWeight: "600" },
   spotCard: {
     width: 150,
     padding: 14,
@@ -483,15 +483,15 @@ const styles = StyleSheet.create({
   },
   spotTag: {
     alignSelf: "flex-start",
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.xs,
     paddingVertical: 3,
     borderRadius: 6,
     backgroundColor: "rgba(30,107,255,0.12)",
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   spotTagText: { color: colors.accent, fontSize: 10, fontWeight: "700", letterSpacing: 0.6 },
-  spotName: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  spotDesc: { color: colors.textMuted, fontSize: 12, marginTop: 4 },
+  spotName: { color: "#fff", fontSize: font.label, fontWeight: "700" },
+  spotDesc: { color: colors.textMuted, fontSize: font.caption, marginTop: spacing.xs },
   tripCard: {
     width: 200,
     height: 140,
@@ -508,6 +508,6 @@ const styles = StyleSheet.create({
     height: "70%",
   },
   tripBody: { position: "absolute", left: 12, right: 12, bottom: 10 },
-  tripTitle: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  tripDate: { color: "rgba(255,255,255,0.7)", fontSize: 11, marginTop: 2 },
+  tripTitle: { color: "#fff", fontSize: font.label, fontWeight: "700" },
+  tripDate: { color: "rgba(255,255,255,0.7)", fontSize: font.micro, marginTop: 2 },
 });

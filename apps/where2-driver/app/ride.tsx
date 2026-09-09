@@ -4,7 +4,6 @@ import {
   Alert,
   Animated,
   BackHandler,
-  Easing,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -25,6 +24,8 @@ import { colors, radius } from "@/src/theme";
 import { api, Ride as RideType, RideStop } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
+import { FadeIn } from "@/src/components/fade-in";
+import { SpringPress } from "@/src/components/spring-press";
 import { MapView, Marker, PROVIDER_DEFAULT, DARK_MAP_STYLE } from "@/src/components/map-view";
 
 const POLL_INTERVAL = 5000;
@@ -44,15 +45,17 @@ export default function Ride() {
   const pinRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    Animated.loop(
-      Animated.timing(pulse, {
-        toValue: 1,
-        duration: 1600,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ).start();
-  }, [pulse]);
+    if (status === "completed" || status === "cancelled") return;
+    pulse.setValue(0);
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 1200, useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [status, pulse]);
 
   useEffect(() => {
     let cancelled = false;
@@ -256,10 +259,11 @@ export default function Ride() {
               <Ionicons name="chevron-back" size={20} color="#fff" />
             </TouchableOpacity>
             <View style={styles.statusPill}>
-              <View style={[
+              <Animated.View style={[
                 styles.statusDot,
                 status === "onboard" && styles.statusDotGreen,
                 status === "completed" && styles.statusDotGray,
+                { opacity: (status === "arriving" || status === "pending") ? pulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] }) : 1 },
               ]} />
               <Text style={styles.statusPillText}>{statusLabel}</Text>
             </View>
@@ -277,12 +281,17 @@ export default function Ride() {
         >
           <View style={styles.grabber} />
 
-          <Text style={styles.kicker}>{statusLabel}</Text>
-          <Text style={styles.description}>{statusDescription}</Text>
+          <FadeIn delay={100}>
+            <Text style={styles.kicker}>{statusLabel}</Text>
+          </FadeIn>
+          <FadeIn delay={150}>
+            <Text style={styles.description}>{statusDescription}</Text>
+          </FadeIn>
 
           {/* Route summary */}
           {pickup && drop && (
-            <View style={styles.routeCard}>
+            <FadeIn delay={200}>
+              <View style={styles.routeCard}>
               <View style={styles.routeRow}>
                 <View style={styles.routeIndicator}>
                   <View style={[styles.routeDot, { backgroundColor: colors.accent }]} />
@@ -302,7 +311,8 @@ export default function Ride() {
                   <Text style={styles.routeSub}>Drop-off</Text>
                 </View>
               </View>
-            </View>
+              </View>
+            </FadeIn>
           )}
 
           {/* Arrived at pickup — show PIN input */}
@@ -416,66 +426,71 @@ export default function Ride() {
 
           {/* Status action button */}
           {status === "arriving" && (
-            <TouchableOpacity
-              style={[styles.actionBtn, updating && styles.actionBtnDisabled]}
-              onPress={() => handleStatusUpdate("arrived")}
-              disabled={updating}
-              testID="arrived-button"
-            >
-              <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-              <Text style={styles.actionBtnText}>
-                {updating ? "Updating..." : "Arrived at Pickup"}
-              </Text>
-            </TouchableOpacity>
+            <FadeIn delay={300}>
+              <SpringPress
+                style={[styles.actionBtn, updating && styles.actionBtnDisabled]}
+                onPress={() => handleStatusUpdate("arrived")}
+                testID="arrived-button"
+              >
+                <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+                <Text style={styles.actionBtnText}>
+                  {updating ? "Updating..." : "Arrived at Pickup"}
+                </Text>
+              </SpringPress>
+            </FadeIn>
           )}
 
           {status === "completed" && (
-            <TouchableOpacity
-              style={styles.actionBtn}
-              onPress={handleBackToDashboard}
-              testID="back-to-dashboard-button"
-            >
-              <Ionicons name="arrow-back" size={18} color="#fff" />
-              <Text style={styles.actionBtnText}>Back to Dashboard</Text>
-            </TouchableOpacity>
+            <FadeIn delay={300}>
+              <SpringPress
+                style={styles.actionBtn}
+                onPress={handleBackToDashboard}
+                testID="back-to-dashboard-button"
+              >
+                <Ionicons name="arrow-back" size={18} color="#fff" />
+                <Text style={styles.actionBtnText}>Back to Dashboard</Text>
+              </SpringPress>
+            </FadeIn>
           )}
 
           {/* Bottom actions (during trip) */}
           {status !== "completed" && (
-            <View style={styles.bottomActions}>
-              <TouchableOpacity style={styles.sosBtn} onPress={handleSOS} testID="ride-sos-bottom">
-                <Ionicons name="shield-checkmark-outline" size={16} color={colors.danger} />
-                <Text style={styles.sosBtnText}>SOS</Text>
-              </TouchableOpacity>
-              {status !== "arrived" && (
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={() => {
-                    Alert.alert(
-                      "Cancel ride?",
-                      "This will cancel the current ride.",
-                      [
-                        { text: "No", style: "cancel" },
-                        {
-                          text: "Yes, cancel",
-                          style: "destructive",
-                          onPress: async () => {
-                            if (activeRideId) {
-                              await api.updateRideStatus(activeRideId, "cancelled").catch(() => {});
-                            }
-                            handleBackToDashboard();
+            <FadeIn delay={400}>
+              <View style={styles.bottomActions}>
+                <SpringPress style={styles.sosBtn} onPress={handleSOS} testID="ride-sos-bottom">
+                  <Ionicons name="shield-checkmark-outline" size={16} color={colors.danger} />
+                  <Text style={styles.sosBtnText}>SOS</Text>
+                </SpringPress>
+                {status !== "arrived" && (
+                  <SpringPress
+                    style={styles.cancelBtn}
+                    onPress={() => {
+                      Alert.alert(
+                        "Cancel ride?",
+                        "This will cancel the current ride.",
+                        [
+                          { text: "No", style: "cancel" },
+                          {
+                            text: "Yes, cancel",
+                            style: "destructive",
+                            onPress: async () => {
+                              if (activeRideId) {
+                                await api.updateRideStatus(activeRideId, "cancelled").catch(() => {});
+                              }
+                              handleBackToDashboard();
+                            },
                           },
-                        },
-                      ],
-                    );
-                  }}
-                  testID="ride-cancel"
-                >
-                  <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
-                  <Text style={[styles.sosBtnText, { color: colors.danger }]}>Cancel Ride</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                        ],
+                      );
+                    }}
+                    testID="ride-cancel"
+                  >
+                    <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
+                    <Text style={[styles.sosBtnText, { color: colors.danger }]}>Cancel Ride</Text>
+                  </SpringPress>
+                )}
+              </View>
+            </FadeIn>
           )}
         </ScrollView>
       </View>

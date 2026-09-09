@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
-  Animated,
-  Easing,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,7 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api, Vehicle } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
@@ -138,21 +136,21 @@ const styles = StyleSheet.create({
   top: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.md,
   },
   iconBtn: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
   topKicker: {
-    color: colors.textMuted, fontSize: 11, fontWeight: "700",
+    color: colors.textMuted, fontSize: font.micro, fontWeight: "700",
     letterSpacing: 1.4, textTransform: "uppercase",
   },
-  topTitle: { color: "#fff", fontSize: 16, fontWeight: "700", marginTop: 2 },
+  topTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700", marginTop: 2 },
   card: {
     flexDirection: "row", alignItems: "center", gap: 14,
-    padding: 16, borderRadius: radius.lg, backgroundColor: colors.surface,
+    padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, marginBottom: 10,
   },
   cardActive: {
@@ -165,23 +163,23 @@ const styles = StyleSheet.create({
   },
   vIconActive: { backgroundColor: "rgba(30,107,255,0.14)" },
   rowTop: { flexDirection: "row", alignItems: "center", gap: 6 },
-  vName: { color: "#fff", fontSize: 16, fontWeight: "700", marginRight: 4 },
-  vSeats: { color: colors.textMuted, fontSize: 12 },
-  vDesc: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
-  vEta: { color: colors.text, fontSize: 11, marginTop: 4, opacity: 0.7 },
-  vFare: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  vName: { color: "#fff", fontSize: font.subtitle, fontWeight: "700", marginRight: 4 },
+  vSeats: { color: colors.textMuted, fontSize: font.caption },
+  vDesc: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
+  vEta: { color: colors.text, fontSize: font.micro, marginTop: 4, opacity: 0.7 },
+  vFare: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
   vFareSub: { color: colors.textDim, fontSize: 10, marginTop: 2 },
   bottomBar: {
     position: "absolute", left: 0, right: 0, bottom: 0,
     backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border,
-    paddingHorizontal: 16, paddingTop: 14, flexDirection: "row", alignItems: "center", gap: 12,
+    paddingHorizontal: spacing.md, paddingTop: 14, flexDirection: "row", alignItems: "center", gap: 12,
   },
-  barLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
-  barFare: { color: "#fff", fontSize: 22, fontWeight: "800", marginTop: 2 },
+  barLabel: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
+  barFare: { color: "#fff", fontSize: font.title, fontWeight: "800", marginTop: 2 },
   barBtn: {
     height: 52, paddingHorizontal: 20, borderRadius: radius.md, backgroundColor: colors.accent,
     flexDirection: "row", alignItems: "center", gap: 8,
-    shadowColor: colors.accent, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+    ...shadows.accent,
   },
-  barBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  barBtnText: { color: "#fff", fontSize: font.body, fontWeight: "700" },
 });

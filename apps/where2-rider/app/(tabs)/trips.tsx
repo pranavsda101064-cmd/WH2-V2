@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing } from "@/src/theme";
 import { pastTrips as mockTrips } from "@/src/data/mock";
 import { api, Ride } from "@/src/api";
 import { HomeSkeleton } from "@/src/components/loading";
@@ -21,13 +21,24 @@ export default function Trips() {
   const insets = useSafeAreaInsets();
   const [trips, setTrips] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = async () => {
+    const r = await api.listRides();
+    setTrips(r);
+  };
 
   useEffect(() => {
-    api.listRides()
-      .then(setTrips)
+    fetchData()
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchData().catch(() => {});
+    setRefreshing(false);
+  };
 
   return (
     <View style={styles.root} testID="trips-screen">
@@ -45,6 +56,8 @@ export default function Trips() {
         <FlatList
           data={trips}
           keyExtractor={(i) => i.id}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingBottom: insets.bottom + 100,
@@ -106,7 +119,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingBottom: 20 },
   h1: { color: "#fff", fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
-  sub: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
+  sub: { color: colors.textMuted, fontSize: font.small, marginTop: spacing.xs },
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -118,16 +131,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   thumb: { width: 60, height: 60, borderRadius: 10, backgroundColor: colors.surfaceAlt },
-  title: { color: "#fff", fontSize: 15, fontWeight: "700" },
-  date: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  title: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  date: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
-  meta: { color: colors.textMuted, fontSize: 12 },
+  meta: { color: colors.textMuted, fontSize: font.caption },
   empty: {
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 80,
-    gap: 8,
+    gap: spacing.sm,
   },
   emptyText: { color: "#fff", fontSize: 18, fontWeight: "700" },
-  emptySub: { color: colors.textMuted, fontSize: 13 },
+  emptySub: { color: colors.textMuted, fontSize: font.small },
 });

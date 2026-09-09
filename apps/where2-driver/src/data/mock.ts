@@ -1,5 +1,5 @@
-// Curated Unsplash imagery of misty hills, coffee estates, and Karnataka landscapes.
-// Direct URLs — no API key needed.
+// Real Unsplash imagery of Sakleshpura, Chikmagalur, and Western Ghats, Karnataka.
+// Free under the Unsplash License — no API key needed.
 export const packages = [
   {
     id: "p1",
@@ -9,7 +9,7 @@ export const packages = [
     duration: "8 hrs",
     stops: 4,
     image:
-      "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-e6vJ0pGrvuw?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p2",
@@ -19,7 +19,7 @@ export const packages = [
     duration: "5 hrs",
     stops: 3,
     image:
-      "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-b-GcKW0Vqpc?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p3",
@@ -29,7 +29,7 @@ export const packages = [
     duration: "4 hrs",
     stops: 2,
     image:
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-vbE-OMJa3zI?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p4",
@@ -39,7 +39,7 @@ export const packages = [
     duration: "24 hrs",
     stops: 5,
     image:
-      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-eyNsCCb4RBc?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p5",
@@ -49,7 +49,7 @@ export const packages = [
     duration: "5 hrs",
     stops: 2,
     image:
-      "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-5IEaMPc8Vdw?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p6",
@@ -59,7 +59,7 @@ export const packages = [
     duration: "6 hrs",
     stops: 3,
     image:
-      "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-nwXKR4isc_k?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p7",
@@ -69,7 +69,7 @@ export const packages = [
     duration: "10 hrs",
     stops: 3,
     image:
-      "https://images.unsplash.com/photo-1587922546925-160ad1cd3b2a?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-8uGw6FO55G8?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p8",
@@ -79,7 +79,7 @@ export const packages = [
     duration: "6 hrs",
     stops: 2,
     image:
-      "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-dhY5m7qKUBY?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p9",
@@ -89,7 +89,7 @@ export const packages = [
     duration: "3 hrs",
     stops: 1,
     image:
-      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-hiou85my84w?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p10",
@@ -99,7 +99,7 @@ export const packages = [
     duration: "7 hrs",
     stops: 4,
     image:
-      "https://images.unsplash.com/photo-1418065460487-3956c3465ee2?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-JnnENnjv0L0?auto=format&fit=crop&w=1200&q=70",
   },
 ];
 
@@ -110,7 +110,7 @@ export const pastTrips = [
     date: "Apr 12, 2026",
     fare: 3200,
     image:
-      "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-OY6MOPmk3JE?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t2",
@@ -118,7 +118,7 @@ export const pastTrips = [
     date: "Mar 03, 2026",
     fare: 2499,
     image:
-      "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-e6vJ0pGrvuw?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t3",
@@ -126,7 +126,7 @@ export const pastTrips = [
     date: "Feb 18, 2026",
     fare: 1899,
     image:
-      "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-b-GcKW0Vqpc?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t4",
@@ -134,7 +134,7 @@ export const pastTrips = [
     date: "Jan 22, 2026",
     fare: 1499,
     image:
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-vbE-OMJa3zI?auto=format&fit=crop&w=800&q=70",
   },
 ];
 

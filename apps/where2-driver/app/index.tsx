@@ -5,17 +5,18 @@ import {
   ImageBackground,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 import { colors, radius } from "@/src/theme";
+import { SpringPress } from "@/src/components/spring-press";
+import { FadeIn } from "@/src/components/fade-in";
 
-// Coffee estate / misty Western Ghats forest.
+// Green mountain ranges, Chikmagalur — Karnataka, Western Ghats.
 const BG =
-  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1400&q=80";
+  "https://images.unsplash.com/photo-eyNsCCb4RBc?auto=format&fit=crop&w=1400&q=80";
 
 export default function Landing() {
   const router = useRouter();
@@ -34,9 +35,11 @@ export default function Landing() {
 
         {/* Headline — sits mid-screen so lower half is masked by hills gradient */}
         <View style={styles.headlineWrap} pointerEvents="none">
-          <Text style={styles.headline} testID="landing-headline">
-            WHERE TO ?!
-          </Text>
+          <FadeIn delay={300} duration={800} direction="up" scale={{ from: 0.85, to: 1 }}>
+            <Text style={styles.headline} testID="landing-headline">
+              WHERE TO ?!
+            </Text>
+          </FadeIn>
         </View>
 
         {/* Hills mask — solid dark base with soft top edge, masks bottom of headline */}
@@ -55,22 +58,29 @@ export default function Landing() {
 
         {/* Bottom content */}
         <View style={[styles.bottom, { paddingBottom: insets.bottom + 24 }]}>
-          <Text style={styles.tagline}>Sakleshpura · Karnataka</Text>
-          <Text style={styles.sub}>Curated tourist rides through the hills</Text>
+          <FadeIn delay={400}>
+            <Text style={styles.tagline}>Sakleshpura · Karnataka</Text>
+          </FadeIn>
+          <FadeIn delay={600}>
+            <Text style={styles.sub}>Curated tourist rides through the hills</Text>
+          </FadeIn>
 
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={styles.cta}
-            onPress={() => router.push("/auth")}
-            testID="landing-continue-button"
-          >
-            <Text style={styles.ctaText}>Get started</Text>
-            <Ionicons name="arrow-forward" size={18} color="#fff" />
-          </TouchableOpacity>
+          <FadeIn delay={800}>
+            <SpringPress
+              style={styles.cta}
+              onPress={() => router.push("/auth")}
+              testID="landing-continue-button"
+            >
+              <Text style={styles.ctaText}>Get started</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </SpringPress>
+          </FadeIn>
 
-          <Text style={styles.legal}>
-            By continuing you agree to our Terms & Privacy Policy.
-          </Text>
+          <FadeIn delay={1000}>
+            <Text style={styles.legal}>
+              By continuing you agree to our Terms & Privacy Policy.
+            </Text>
+          </FadeIn>
         </View>
       </ImageBackground>
     </View>

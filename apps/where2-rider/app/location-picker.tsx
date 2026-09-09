@@ -14,8 +14,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder, DARK_MAP_STYLE } from "@/src/components/map-view";
 import * as Location from "expo-location";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { storage } from "@/src/utils/storage";
+import { FadeIn } from "@/src/components/fade-in";
 import { SpringPress } from "@/src/components/spring-press";
 import {
   isWithinServiceArea,
@@ -236,7 +237,8 @@ export default function LocationPicker() {
   return (
     <View style={styles.root}>
       {/* Search bar */}
-      <View style={[styles.searchContainer, { top: insets.top + 8 }]}>
+      <FadeIn delay={100}>
+        <View style={[styles.searchContainer, { top: insets.top + 8 }]}>
         <View style={[styles.searchBox, outsideArea && styles.searchBoxError]}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
@@ -271,7 +273,8 @@ export default function LocationPicker() {
             ))}
           </View>
         )}
-      </View>
+        </View>
+      </FadeIn>
 
       {/* Outside area banner */}
       {outsideArea && (
@@ -326,9 +329,10 @@ export default function LocationPicker() {
 
       {/* Tourist suggestions */}
       {showSuggestions && !marker && (
-        <View
-          style={[styles.suggestionsRow, { bottom: insets.bottom + 170 }]}
-        >
+        <FadeIn delay={200}>
+          <View
+            style={[styles.suggestionsRow, { bottom: insets.bottom + 170 }]}
+          >
           <View style={{ flexDirection: "row", paddingHorizontal: 16, gap: 8 }}>
             {TOURIST_PLACES.slice(0, 4).map((place) => (
               <SpringPress
@@ -341,11 +345,13 @@ export default function LocationPicker() {
               </SpringPress>
             ))}
           </View>
-        </View>
+          </View>
+        </FadeIn>
       )}
 
       {/* Bottom panel */}
-      <View style={[styles.bottomPanel, { paddingBottom: insets.bottom + 16 }]}>
+      <FadeIn delay={250}>
+        <View style={[styles.bottomPanel, { paddingBottom: insets.bottom + 16 }]}>
         {marker && (
           <View style={[styles.pickedBox, outsideArea && styles.pickedBoxError]}>
             <Ionicons name="location" size={16} color={outsideArea ? colors.danger : colors.accent} />
@@ -371,7 +377,8 @@ export default function LocationPicker() {
             <Text style={styles.confirmText}>Confirm Location</Text>
           </SpringPress>
         </View>
-      </View>
+        </View>
+      </FadeIn>
     </View>
   );
 }
@@ -386,28 +393,28 @@ const styles = StyleSheet.create({
     borderColor: colors.border, paddingHorizontal: 12,
   },
   searchBoxError: { borderColor: colors.danger },
-  searchInput: { flex: 1, color: "#fff", fontSize: 15 },
+  searchInput: { flex: 1, color: "#fff", fontSize: font.body },
   hintRow: {
     flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6, paddingHorizontal: 4,
   },
-  hintText: { color: colors.textDim, fontSize: 11 },
+  hintText: { color: colors.textDim, fontSize: font.micro },
   resultsList: {
-    marginTop: 4, borderRadius: radius.md, backgroundColor: colors.surface,
+    marginTop: spacing.xs, borderRadius: radius.md, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, overflow: "hidden",
   },
   resultItem: {
     flexDirection: "row", alignItems: "center", gap: 10, padding: 12,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
   },
-  resultText: { color: "#fff", fontSize: 13, flex: 1 },
+  resultText: { color: "#fff", fontSize: font.small, flex: 1 },
   areaBanner: {
     position: "absolute", left: 12, right: 12, flexDirection: "row",
     alignItems: "flex-start", gap: 10, padding: 12, borderRadius: radius.md,
     backgroundColor: "rgba(228,72,60,0.12)", borderWidth: 1,
     borderColor: "rgba(228,72,60,0.3)", zIndex: 5,
   },
-  areaBannerTitle: { color: colors.danger, fontSize: 13, fontWeight: "700" },
-  areaBannerText: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  areaBannerTitle: { color: colors.danger, fontSize: font.small, fontWeight: "700" },
+  areaBannerText: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   suggestionsRow: {
     position: "absolute", left: 0, right: 0, zIndex: 4,
   },
@@ -417,7 +424,7 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   suggestionTag: { color: colors.accent, fontSize: 10, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase" },
-  suggestionName: { color: "#fff", fontSize: 13, fontWeight: "600", marginTop: 3 },
+  suggestionName: { color: "#fff", fontSize: font.small, fontWeight: "600", marginTop: 3 },
   fab: {
     position: "absolute", right: 16, width: 44, height: 44, borderRadius: 22,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
@@ -425,7 +432,7 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     position: "absolute", bottom: 160, alignSelf: "center",
-    backgroundColor: colors.surface, padding: 8, borderRadius: 20,
+    backgroundColor: colors.surface, padding: spacing.sm, borderRadius: 20,
   },
   customMarker: {
     width: 28, height: 28, borderRadius: 14,
@@ -440,7 +447,7 @@ const styles = StyleSheet.create({
   bottomPanel: {
     position: "absolute", left: 0, right: 0, bottom: 0,
     backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border,
-    paddingHorizontal: 16, paddingTop: 14,
+    paddingHorizontal: spacing.md, paddingTop: 14,
   },
   pickedBox: {
     flexDirection: "row", alignItems: "center", gap: 8, padding: 12,
@@ -448,18 +455,18 @@ const styles = StyleSheet.create({
     borderColor: colors.border, marginBottom: 12,
   },
   pickedBoxError: { borderColor: colors.danger },
-  pickedLabel: { color: "#fff", fontSize: 13, flex: 1 },
+  pickedLabel: { color: "#fff", fontSize: font.small, flex: 1 },
   bottomActions: { flexDirection: "row", gap: 12 },
   cancelBtn: {
     flex: 1, height: 50, borderRadius: radius.md, borderWidth: 1,
     borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  cancelText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  cancelText: { color: "#fff", fontSize: font.body, fontWeight: "700" },
   confirmBtn: {
     flex: 2, height: 50, borderRadius: radius.md, backgroundColor: colors.accent,
     alignItems: "center", justifyContent: "center",
-    shadowColor: colors.accent, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 },
+    ...shadows.accent,
   },
   confirmBtnDisabled: { opacity: 0.4 },
-  confirmText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  confirmText: { color: "#fff", fontSize: font.body, fontWeight: "700" },
 });

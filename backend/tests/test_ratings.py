@@ -7,9 +7,9 @@ async def test_submit_rating(client: AsyncClient, auth_header):
     create = await client.post("/api/rides", json={
         "vehicle_id": "v1",
         "stops": [{"label": "A"}],
-        "fare": 500,
         "payment_method": "card",
     }, headers=auth_header)
+    assert create.status_code == 200
     ride_id = create.json()["id"]
 
     r = await client.post("/api/ratings", json={
@@ -32,3 +32,26 @@ async def test_rating_nonexistent_ride(client: AsyncClient, auth_header):
         "stars": 4,
     }, headers=auth_header)
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_duplicate_rating_rejected(client: AsyncClient, auth_header):
+    create = await client.post("/api/rides", json={
+        "vehicle_id": "v1",
+        "stops": [{"label": "A"}],
+        "payment_method": "cash",
+    }, headers=auth_header)
+    ride_id = create.json()["id"]
+
+    r1 = await client.post("/api/ratings", json={
+        "ride_id": ride_id,
+        "stars": 5,
+    }, headers=auth_header)
+    assert r1.status_code == 200
+
+    # Second rating for same ride should be rejected
+    r2 = await client.post("/api/ratings", json={
+        "ride_id": ride_id,
+        "stars": 4,
+    }, headers=auth_header)
+    assert r2.status_code == 400

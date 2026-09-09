@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   Alert,
+  Animated,
+  Easing,
   Image,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,6 +20,8 @@ import * as Location from "expo-location";
 import { colors, radius } from "@/src/theme";
 import { api } from "@/src/api";
 import { LoadingScreen } from "@/src/components/loading";
+import { SpringPress } from "@/src/components/spring-press";
+import { FadeIn } from "@/src/components/fade-in";
 
 type Step = "personal" | "documents" | "vehicle" | "review";
 
@@ -42,6 +45,21 @@ export default function DriverOnboarding() {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>("personal");
   const [loading, setLoading] = useState(false);
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const animateStep = () => {
+    slideAnim.setValue(30);
+    fadeAnim.setValue(0);
+    Animated.parallel([
+      Animated.timing(slideAnim, { toValue: 0, duration: 300, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+    ]).start();
+  };
+
+  useEffect(() => {
+    animateStep();
+  }, [step]);
 
   // Personal info
   const [fullName, setFullName] = useState("");
@@ -181,9 +199,9 @@ export default function DriverOnboarding() {
     <View style={styles.root}>
       <StatusBar style="light" />
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
+        <SpringPress style={styles.iconBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={20} color="#fff" />
-        </TouchableOpacity>
+        </SpringPress>
         <View style={{ flex: 1, alignItems: "center" }}>
           <Text style={styles.headKicker}>DRIVER ONBOARDING</Text>
           <Text style={styles.headTitle}>Step {currentIdx + 1} of 4</Text>
@@ -202,13 +220,16 @@ export default function DriverOnboarding() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 100, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
       >
+        <Animated.View style={{ transform: [{ translateY: slideAnim }], opacity: fadeAnim }}>
         {/* Step 1: Personal Info */}
         {step === "personal" && (
           <View>
-            <Text style={styles.sectionTitle}>Personal Information</Text>
+            <FadeIn delay={0}>
+              <Text style={styles.sectionTitle}>Personal Information</Text>
+            </FadeIn>
 
             {/* Profile photo */}
-            <TouchableOpacity style={styles.photoBtn} onPress={() => Alert.alert("Photo", "Choose an option", [
+            <SpringPress style={styles.photoBtn} onPress={() => Alert.alert("Photo", "Choose an option", [
               { text: "Camera", onPress: () => takePhoto() },
               { text: "Gallery", onPress: () => pickPhoto() },
               { text: "Cancel" },
@@ -221,7 +242,7 @@ export default function DriverOnboarding() {
                   <Text style={styles.photoText}>Add Photo</Text>
                 </View>
               )}
-            </TouchableOpacity>
+            </SpringPress>
 
             <Text style={styles.label}>Full Name *</Text>
             <TextInput style={styles.input} value={fullName} onChangeText={setFullName} placeholder="Ravi Kumar" placeholderTextColor={colors.textDim} />
@@ -233,7 +254,7 @@ export default function DriverOnboarding() {
             <TextInput style={styles.input} value={dob} onChangeText={setDob} placeholder="DD/MM/YYYY" placeholderTextColor={colors.textDim} />
 
             <Text style={styles.label}>Address</Text>
-            <TouchableOpacity
+            <SpringPress
               style={styles.gpsBtn}
               onPress={async () => {
                 const { status } = await Location.requestForegroundPermissionsAsync();
@@ -253,7 +274,7 @@ export default function DriverOnboarding() {
             >
               <Ionicons name="locate" size={16} color={colors.accent} />
               <Text style={styles.gpsBtnText}>Use current location</Text>
-            </TouchableOpacity>
+            </SpringPress>
             <TextInput style={[styles.input, { height: 80 }]} value={address} onChangeText={setAddress} multiline textAlignVertical="top" placeholder="Hassan Road, Sakleshpura" placeholderTextColor={colors.textDim} />
           </View>
         )}
@@ -267,7 +288,7 @@ export default function DriverOnboarding() {
             {DOC_TYPES.map((doc) => {
               const uploaded = docs[doc.key];
               return (
-                <TouchableOpacity key={doc.key} style={styles.docCard} onPress={() => Alert.alert(doc.label, "Choose an option", [
+                <SpringPress key={doc.key} style={styles.docCard} onPress={() => Alert.alert(doc.label, "Choose an option", [
                   { text: "Camera", onPress: () => takePhoto(doc.key) },
                   { text: "Gallery", onPress: () => pickPhoto(doc.key) },
                   { text: "Cancel" },
@@ -283,7 +304,7 @@ export default function DriverOnboarding() {
                   </View>
                   {uploaded && <Ionicons name="checkmark-circle" size={20} color={colors.success} />}
                   {!uploaded && <Ionicons name="camera-outline" size={20} color={colors.textDim} />}
-                </TouchableOpacity>
+                </SpringPress>
               );
             })}
           </View>
@@ -297,14 +318,14 @@ export default function DriverOnboarding() {
             <Text style={styles.label}>Vehicle Type *</Text>
             <View style={styles.typeRow}>
               {VEHICLE_TYPES.map((vt) => (
-                <TouchableOpacity
+                <SpringPress
                   key={vt.key}
                   style={[styles.typeBtn, vehicleType === vt.key && styles.typeBtnActive]}
                   onPress={() => setVehicleType(vt.key)}
                 >
                   <Ionicons name={vt.icon as any} size={20} color={vehicleType === vt.key ? colors.accent : "#fff"} />
                   <Text style={[styles.typeLabel, vehicleType === vt.key && { color: colors.accent }]}>{vt.label}</Text>
-                </TouchableOpacity>
+                </SpringPress>
               ))}
             </View>
 
@@ -363,16 +384,17 @@ export default function DriverOnboarding() {
             </View>
           </View>
         )}
+        </Animated.View>
       </ScrollView>
 
       {/* Bottom bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         {currentIdx > 0 && (
-          <TouchableOpacity style={styles.backBtn} onPress={() => setStep(steps[currentIdx - 1])}>
+          <SpringPress style={styles.backBtn} onPress={() => setStep(steps[currentIdx - 1])}>
             <Text style={styles.backText}>Back</Text>
-          </TouchableOpacity>
+          </SpringPress>
         )}
-        <TouchableOpacity
+        <SpringPress
           style={[styles.nextBtn, currentIdx === steps.length - 1 && styles.submitBtn]}
           onPress={() => {
             if (currentIdx < steps.length - 1) {
@@ -386,7 +408,7 @@ export default function DriverOnboarding() {
             {currentIdx === steps.length - 1 ? "Submit Application" : "Continue"}
           </Text>
           {currentIdx < steps.length - 1 && <Ionicons name="arrow-forward" size={18} color="#fff" />}
-        </TouchableOpacity>
+        </SpringPress>
       </View>
     </View>
   );

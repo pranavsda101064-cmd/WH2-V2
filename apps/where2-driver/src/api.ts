@@ -95,10 +95,9 @@ export type Ride = {
   vehicle_id: string;
   stops: RideStop[];
   fare: number;
-  payment_method: "card" | "upi";
+  payment_method: "card" | "upi" | "cash";
   tip: number;
   status: "arriving" | "onboard" | "arrived" | "completed" | "cancelled";
-  ride_pin?: string;
   created_at: string;
 };
 

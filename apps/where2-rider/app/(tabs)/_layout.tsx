@@ -1,8 +1,13 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 import { BlurView } from "expo-blur";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 
 import { colors } from "@/src/theme";
 
@@ -44,7 +49,7 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={focused ? "home" : "home-outline"} color={color as string} size={focused ? 26 : 24} />
+            <TabIcon name={focused ? "home" : "home-outline"} color={color as string} size={focused ? 26 : 24} focused={focused} />
           ),
         }}
       />
@@ -57,6 +62,7 @@ export default function TabsLayout() {
               name={focused ? "map" : "map-outline"}
               color={color as string}
               size={focused ? 26 : 24}
+              focused={focused}
             />
           ),
         }}
@@ -70,6 +76,7 @@ export default function TabsLayout() {
               name={focused ? "person-circle" : "person-circle-outline"}
               color={color as string}
               size={focused ? 26 : 24}
+              focused={focused}
             />
           ),
         }}
@@ -82,14 +89,22 @@ function TabIcon({
   name,
   color,
   size = 24,
+  focused,
 }: {
   name: keyof typeof Ionicons.glyphMap;
   color: string;
   size?: number;
+  focused: boolean;
 }) {
+  const scale = useSharedValue(focused ? 1.15 : 1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: withSpring(scale.value, { damping: 12, stiffness: 300 }) }],
+  }));
+
   return (
-    <View style={{ alignItems: "center", justifyContent: "center" }}>
+    <Animated.View style={[{ alignItems: "center", justifyContent: "center" }, animatedStyle]}>
       <Ionicons name={name} size={size} color={color as string} />
-    </View>
+    </Animated.View>
   );
 }

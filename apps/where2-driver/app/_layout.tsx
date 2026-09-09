@@ -3,16 +3,26 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { LogBox, Platform, View } from "react-native";
+import { LogBox, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import * as Notifications from "expo-notifications";
-import * as Haptics from "expo-haptics";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { colors } from "@/src/theme";
 import { api } from "@/src/api";
 import { loadNotificationSound, playNotificationSound } from "@/src/utils/notification-sound";
+
+// Guard expo-notifications — removed from Expo Go in SDK 53+
+let Notifications: any = null;
+try {
+  Notifications = require("expo-notifications");
+} catch {}
+
+// Guard expo-haptics for Expo Go compatibility
+let Haptics: any = null;
+try {
+  Haptics = require("expo-haptics");
+} catch {}
 
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
@@ -30,15 +40,18 @@ LogBox.ignoreAllLogs(true);
 // the family is registered — which throws on Android Expo Go.
 SplashScreen.preventAutoHideAsync();
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 async function registerForPushNotifications() {
+  if (!Notifications) return;
   try {
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
@@ -55,7 +68,7 @@ async function registerForPushNotifications() {
 
 export default Sentry.wrap(function RootLayout() {
   const [loaded, error] = useIconFonts();
-  const notificationListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<any>(null);
 
   useEffect(() => {
     if (loaded || error) {
@@ -65,18 +78,23 @@ export default Sentry.wrap(function RootLayout() {
 
   useEffect(() => {
     loadNotificationSound();
-    registerForPushNotifications();
 
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        // Foreground notification — play sound + haptic for new ride requests
-        playNotificationSound();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      },
-    );
+    if (Notifications) {
+      registerForPushNotifications();
+
+      notificationListener.current = Notifications.addNotificationReceivedListener(
+        (notification: any) => {
+          // Foreground notification — play sound + haptic for new ride requests
+          playNotificationSound();
+          if (Haptics) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+        },
+      );
+    }
 
     return () => {
-      if (notificationListener.current) {
+      if (Notifications && notificationListener.current) {
         Notifications.removeNotificationSubscription(notificationListener.current);
       }
     };
@@ -97,7 +115,9 @@ export default Sentry.wrap(function RootLayout() {
               contentStyle: { backgroundColor: colors.bg },
               animation: "slide_from_right",
             }}
-          />
+          >
+            <Stack.Screen name="ride" options={{ animation: "fade" }} />
+          </Stack>
         </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>

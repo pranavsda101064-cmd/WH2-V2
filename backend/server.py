@@ -1,5 +1,7 @@
+import hmac
 import logging
 import os
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -11,8 +13,7 @@ import httpx
 import sentry_sdk
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from pydantic import BaseModel, EmailStr, Field
 from pythonjsonlogger import json as jsonlogger
 from slowapi import Limiter
@@ -182,7 +183,6 @@ class RideStop(BaseModel):
 class RideCreate(BaseModel):
     vehicle_id: str = Field(..., max_length=10)
     stops: List[RideStop] = Field(..., min_length=1, max_length=10)
-    fare: int = Field(..., ge=0, le=100000)
     payment_method: Literal["card", "upi", "cash"]
     tip: Optional[int] = Field(0, ge=0, le=10000)
 
@@ -198,6 +198,19 @@ class RideOut(BaseModel):
     tip: int = 0
     status: Literal["pending", "arriving", "onboard", "arrived", "completed", "cancelled"] = "pending"
     ride_pin: Optional[str] = None
+    created_at: str
+
+
+class RideOutDriver(BaseModel):
+    id: str
+    user_id: str
+    driver_id: Optional[str] = None
+    vehicle_id: str
+    stops: List[RideStop]
+    fare: int
+    payment_method: Literal["card", "upi", "cash"]
+    tip: int = 0
+    status: Literal["pending", "arriving", "onboard", "arrived", "completed", "cancelled"] = "pending"
     created_at: str
 
 
@@ -272,10 +285,37 @@ def ride_to_out(ride: RideModel) -> RideOut:
     )
 
 
+def ride_to_out_driver(ride: RideModel) -> RideOutDriver:
+    return RideOutDriver(
+        id=ride.id,
+        user_id=str(ride.user_id),
+        driver_id=ride.driver_id,
+        vehicle_id=ride.vehicle_id,
+        stops=[RideStop(**s) for s in (ride.stops or [])],
+        fare=ride.fare,
+        payment_method=ride.payment_method,
+        tip=ride.tip,
+        status=ride.status,
+        created_at=ride.created_at.isoformat() if ride.created_at else "",
+    )
+
+
 def calculate_fare(vehicle_fare: int, num_stops: int) -> int:
     stops_fee = 200 if num_stops > 1 else 0
     gst = round((vehicle_fare + stops_fee) * 0.05)
     return vehicle_fare + stops_fee + gst
+
+
+async def require_ride_access(ride_id: str, current_user, db):
+    result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
+    ride = result.scalar_one_or_none()
+    if not ride:
+        raise HTTPException(status_code=404, detail="Ride not found")
+    is_rider = str(ride.user_id) == str(current_user.id)
+    is_driver = ride.driver_id == str(current_user.id)
+    if not is_rider and not is_driver:
+        raise HTTPException(status_code=403, detail="Not authorized to access this ride")
+    return ride, is_rider, is_driver
 
 
 # ---------- Router ----------
@@ -513,10 +553,19 @@ async def upload_avatar(
         if not profile:
             raise HTTPException(400, detail="Create profile first")
 
-        ext = os.path.splitext(file.filename or "avatar.jpg")[1] or ".jpg"
+        MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB
+        ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
+
+        ext = os.path.splitext(file.filename or "avatar.jpg")[1].lower() or ".jpg"
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(400, detail="File type not allowed. Use: jpg, jpeg, png, pdf")
+
+        content = await file.read()
+        if len(content) > MAX_UPLOAD_SIZE:
+            raise HTTPException(413, detail="File too large (max 5MB)")
+
         filename = f"avatar_{current_user.id}{ext}"
         filepath = os.path.join(UPLOADS_DIR, filename)
-        content = await file.read()
         with open(filepath, "wb") as f:
             f.write(content)
 
@@ -657,12 +706,19 @@ async def create_ride(
         now = datetime.now(timezone.utc)
         ride_pin = f"{int.from_bytes(os.urandom(2), 'big') % 10000:04d}"
 
+        vehicle_result = await db.execute(select(VehicleModel).where(VehicleModel.id == payload.vehicle_id))
+        vehicle = vehicle_result.scalar_one_or_none()
+        if not vehicle:
+            raise HTTPException(400, detail="Invalid vehicle")
+
+        fare = calculate_fare(vehicle.fare, len(payload.stops))
+
         ride = RideModel(
             id=ride_id,
             user_id=str(current_user.id),
             vehicle_id=payload.vehicle_id,
             stops=[{"label": s.label, "sub": s.sub, "lat": s.lat, "lng": s.lng} for s in payload.stops],
-            fare=payload.fare,
+            fare=fare,
             payment_method=payload.payment_method,
             tip=payload.tip or 0,
             status="pending",
@@ -694,7 +750,7 @@ async def create_ride(
             drop=drop_label,
             distance="",
             duration="",
-            fare=payload.fare,
+            fare=fare,
             rider=rider_name,
             rating=0.0,
             tag="",
@@ -709,7 +765,7 @@ async def create_ride(
             await notify_drivers(
                 db,
                 title="New ride request",
-                body=f"{pickup_label} → {drop_label}  •  ₹{payload.fare}",
+                body=f"{pickup_label} → {drop_label}  •  ₹{fare}",
                 data={"ride_id": ride_id, "type": "new_request"},
             )
         except Exception:
@@ -763,10 +819,7 @@ async def get_ride(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
-        ride = result.scalar_one_or_none()
-        if not ride:
-            raise HTTPException(404, detail="Ride not found")
+        ride, _, _ = await require_ride_access(ride_id, current_user, db)
         return ride_to_out(ride)
     except HTTPException:
         raise
@@ -782,10 +835,7 @@ async def get_ride_driver(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
-        ride = result.scalar_one_or_none()
-        if not ride:
-            raise HTTPException(404, detail="Ride not found")
+        ride, _, _ = await require_ride_access(ride_id, current_user, db)
         if not ride.driver_id:
             raise HTTPException(404, detail="No driver assigned yet")
 
@@ -826,10 +876,16 @@ async def update_ride_status(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
-        ride = result.scalar_one_or_none()
-        if not ride:
-            raise HTTPException(404, detail="Ride not found")
+        ride, _, _ = await require_ride_access(ride_id, current_user, db)
+
+        valid_transitions = {
+            "customer": {"cancelled"},
+            "driver": {"arriving", "onboard", "arrived", "completed"},
+        }
+        allowed = valid_transitions.get(current_user.role, set())
+        if payload.status not in allowed:
+            raise HTTPException(403, detail=f"Cannot set status to '{payload.status}'")
+
         ride.status = payload.status
         await db.flush()
         return ride_to_out(ride)
@@ -857,6 +913,10 @@ async def create_rating(
             raise HTTPException(404, detail="Ride not found")
         if str(ride.user_id) != str(current_user.id):
             raise HTTPException(403, detail="You can only rate your own rides")
+
+        existing = await db.execute(select(RatingModel).where(RatingModel.ride_id == payload.ride_id))
+        if existing.scalar_one_or_none():
+            raise HTTPException(400, detail="Rating already submitted for this ride")
 
         rating = RatingModel(
             id=str(uuid.uuid4()),
@@ -1042,10 +1102,19 @@ async def upload_document(
         if not profile:
             raise HTTPException(400, detail="Create driver profile first")
 
-        ext = os.path.splitext(file.filename or "doc")[1] or ".jpg"
+        MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB
+        ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
+
+        ext = os.path.splitext(file.filename or "doc")[1].lower() or ".jpg"
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(400, detail="File type not allowed. Use: jpg, jpeg, png, pdf")
+
+        content = await file.read()
+        if len(content) > MAX_UPLOAD_SIZE:
+            raise HTTPException(413, detail="File too large (max 5MB)")
+
         filename = f"{profile.id}_{doc_type}_{uuid.uuid4().hex[:8]}{ext}"
         filepath = os.path.join(UPLOADS_DIR, filename)
-        content = await file.read()
         with open(filepath, "wb") as f:
             f.write(content)
 
@@ -1218,7 +1287,7 @@ async def list_driver_requests(
         raise HTTPException(500, detail="Failed to fetch driver requests")
 
 
-@api_router.post("/driver/requests/{req_id}/accept", response_model=RideOut)
+@api_router.post("/driver/requests/{req_id}/accept", response_model=RideOutDriver)
 async def accept_request(
     req_id: str,
     current_user: User = Depends(get_current_user),
@@ -1252,6 +1321,9 @@ async def accept_request(
             ride = ride_result.scalar_one_or_none()
 
         if ride:
+            # Race condition guard
+            if ride.driver_id is not None:
+                raise HTTPException(409, detail="Ride already accepted by another driver")
             # Update existing ride with driver info
             ride.driver_id = str(current_user.id)
             if vehicle_id:
@@ -1296,7 +1368,7 @@ async def accept_request(
         except Exception:
             pass  # Don't fail acceptance if notification fails
 
-        return RideOut(
+        return RideOutDriver(
             id=ride.id,
             user_id=ride.user_id,
             driver_id=ride.driver_id,
@@ -1306,7 +1378,6 @@ async def accept_request(
             payment_method=ride.payment_method,
             tip=ride.tip,
             status=ride.status,
-            ride_pin=ride.ride_pin,
             created_at=ride.created_at.isoformat(),
         )
     except HTTPException:
@@ -1391,7 +1462,6 @@ async def list_driver_rides(
                 "payment_method": r.payment_method,
                 "tip": r.tip or 0,
                 "status": r.status,
-                "ride_pin": r.ride_pin,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             }
             for r in rides
@@ -1400,8 +1470,6 @@ async def list_driver_rides(
         logger.error("list_driver_rides failed", extra={"error": str(exc)})
         raise HTTPException(500, detail="Failed to fetch driver rides")
 
-
-# ---------- Static files (uploads) ----------
 
 # ---------- Driver Location Tracking ----------
 class DriverLocationUpdate(BaseModel):
@@ -1446,10 +1514,7 @@ async def get_driver_location(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
-    ride = result.scalar_one_or_none()
-    if not ride:
-        raise HTTPException(404, detail="Ride not found")
+    ride, _, _ = await require_ride_access(ride_id, current_user, db)
     return {
         "lat": ride.driver_lat,
         "lng": ride.driver_lng,
@@ -1465,7 +1530,9 @@ class RidePinVerify(BaseModel):
 
 
 @api_router.post("/rides/{ride_id}/verify-pin")
+@limiter.limit("5/minute")
 async def verify_ride_pin(
+    request: Request,
     ride_id: str,
     payload: RidePinVerify,
     current_user: User = Depends(get_current_user),
@@ -1481,7 +1548,7 @@ async def verify_ride_pin(
     ride = result.scalar_one_or_none()
     if not ride:
         raise HTTPException(404, detail="Ride not found")
-    if ride.ride_pin != payload.pin:
+    if not hmac.compare_digest(ride.ride_pin or "", payload.pin):
         raise HTTPException(400, detail="Invalid PIN")
     ride.status = "onboard"
     await db.flush()
@@ -1492,12 +1559,10 @@ async def verify_ride_pin(
 @api_router.get("/rides/{ride_id}/share")
 async def share_ride(
     ride_id: str,
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(RideModel).where(RideModel.id == ride_id))
-    ride = result.scalar_one_or_none()
-    if not ride:
-        raise HTTPException(404, detail="Ride not found")
+    ride, _, _ = await require_ride_access(ride_id, current_user, db)
     return {
         "ride_id": ride.id,
         "status": ride.status,
@@ -1508,8 +1573,32 @@ async def share_ride(
     }
 
 
-# ---------- Static files (uploads) ----------
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+# ---------- Authenticated file serving ----------
+@api_router.get("/uploads/{filename}")
+async def serve_upload(
+    filename: str,
+    current_user: User = Depends(get_current_user),
+):
+    if not re.match(r"^[\w\-\.]+$", filename):
+        raise HTTPException(400, detail="Invalid filename")
+
+    file_path = os.path.join(UPLOADS_DIR, filename)
+    if not os.path.isfile(file_path):
+        raise HTTPException(404, detail="File not found")
+
+    if filename.startswith("avatar_"):
+        try:
+            owner_id = filename.split("_")[1].split(".")[0]
+        except IndexError:
+            raise HTTPException(403, detail="Access denied")
+        if str(current_user.id) != owner_id:
+            raise HTTPException(403, detail="Access denied")
+    elif current_user.role == "customer":
+        raise HTTPException(403, detail="Access denied")
+
+    import mimetypes
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    return FileResponse(file_path, media_type=content_type)
 
 # ---------- Include router ----------
 app.include_router(api_router)

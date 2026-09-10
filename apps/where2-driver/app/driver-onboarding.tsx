@@ -200,7 +200,7 @@ export default function DriverOnboarding() {
       <StatusBar style="light" />
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <SpringPress style={styles.iconBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={20} color="#fff" />
+          <Ionicons name="chevron-back" size={20} color={colors.text} />
         </SpringPress>
         <View style={{ flex: 1, alignItems: "center" }}>
           <Text style={styles.headKicker}>DRIVER ONBOARDING</Text>
@@ -323,7 +323,7 @@ export default function DriverOnboarding() {
                   style={[styles.typeBtn, vehicleType === vt.key && styles.typeBtnActive]}
                   onPress={() => setVehicleType(vt.key)}
                 >
-                  <Ionicons name={vt.icon as any} size={20} color={vehicleType === vt.key ? colors.accent : "#fff"} />
+                  <Ionicons name={vt.icon as any} size={20} color={vehicleType === vt.key ? colors.accent : colors.textDim} />
                   <Text style={[styles.typeLabel, vehicleType === vt.key && { color: colors.accent }]}>{vt.label}</Text>
                 </SpringPress>
               ))}
@@ -433,11 +433,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headKicker: { color: colors.textMuted, fontSize: 10, fontWeight: "700", letterSpacing: 1.4 },
-  headTitle: { color: "#fff", fontSize: 15, fontWeight: "700", marginTop: 2 },
+  headTitle: { color: colors.text, fontSize: 15, fontWeight: "700", marginTop: 2 },
   progressRow: { flexDirection: "row", justifyContent: "center", gap: 8, marginBottom: 20 },
-  progressDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.2)" },
+  progressDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.border },
   progressDotActive: { backgroundColor: colors.accent, width: 24 },
-  sectionTitle: { color: "#fff", fontSize: 20, fontWeight: "800", marginBottom: 4 },
+  sectionTitle: { color: colors.text, fontSize: 20, fontWeight: "800", marginBottom: 4 },
   sectionSub: { color: colors.textMuted, fontSize: 13, marginBottom: 20 },
   label: { color: colors.textMuted, fontSize: 12, fontWeight: "700", marginBottom: 6, marginTop: 12, letterSpacing: 0.5 },
   input: {
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 14,
-    color: "#fff",
+    color: colors.text,
     fontSize: 15,
   },
   photoBtn: {
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  docLabel: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  docLabel: { color: colors.text, fontSize: 14, fontWeight: "600" },
   docStatus: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
   typeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
   typeBtn: {
@@ -497,8 +497,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  typeBtnActive: { borderColor: colors.accent, backgroundColor: "rgba(30,107,255,0.1)" },
-  typeLabel: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  typeBtnActive: { borderColor: colors.accent, backgroundColor: "rgba(0,137,123,0.1)" },
+  typeLabel: { color: colors.text, fontSize: 13, fontWeight: "600" },
   reviewCard: {
     padding: 16,
     borderRadius: radius.lg,
@@ -508,15 +508,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   reviewHead: { color: colors.textMuted, fontSize: 11, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", marginBottom: 8 },
-  reviewItem: { color: "#fff", fontSize: 14, marginBottom: 4 },
+  reviewItem: { color: colors.text, fontSize: 14, marginBottom: 4 },
   infoBox: {
     flexDirection: "row",
     gap: 10,
     padding: 14,
     borderRadius: radius.md,
-    backgroundColor: "rgba(30,107,255,0.08)",
+    backgroundColor: "rgba(0,137,123,0.08)",
     borderWidth: 1,
-    borderColor: "rgba(30,107,255,0.2)",
+    borderColor: "rgba(0,137,123,0.2)",
     marginTop: 8,
   },
   infoText: { color: colors.textMuted, fontSize: 13, flex: 1 },
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  backText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  backText: { color: colors.text, fontSize: 15, fontWeight: "700" },
   nextBtn: {
     flex: 1,
     height: 52,
@@ -560,9 +560,9 @@ const styles = StyleSheet.create({
     gap: 6,
     height: 40,
     borderRadius: radius.md,
-    backgroundColor: "rgba(30,107,255,0.08)",
+    backgroundColor: "rgba(0,137,123,0.08)",
     borderWidth: 1,
-    borderColor: "rgba(30,107,255,0.2)",
+    borderColor: "rgba(0,137,123,0.2)",
     paddingHorizontal: 12,
     marginBottom: 8,
   },

@@ -85,7 +85,7 @@ export default function DriverProfileScreen() {
         <StatusBar style="light" />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
           <Ionicons name="person-add-outline" size={48} color={colors.textMuted} />
-          <Text style={{ color: "#fff", fontSize: 20, fontWeight: "800", marginTop: 16 }}>Complete Your Profile</Text>
+          <Text style={{ color: colors.text, fontSize: 20, fontWeight: "800", marginTop: 16 }}>Complete Your Profile</Text>
           <Text style={{ color: colors.textMuted, fontSize: 14, marginTop: 8, textAlign: "center" }}>
             Set up your driver profile, upload documents, and register your vehicle to start earning.
           </Text>
@@ -132,7 +132,7 @@ export default function DriverProfileScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{profile.full_name}</Text>
               <View style={styles.ratingRow}>
-                <Ionicons name="star" size={12} color="#fff" />
+                <Ionicons name="star" size={12} color={colors.accent} />
                 <Text style={styles.rating}>—</Text>
                 <Text style={styles.tripCount}>· {profile.status}</Text>
               </View>
@@ -158,7 +158,7 @@ export default function DriverProfileScreen() {
                 }
               }
             }}>
-              <Ionicons name="camera-outline" size={16} color="#fff" />
+              <Ionicons name="camera-outline" size={16} color={colors.accent} />
             </TouchableOpacity>
           </View>
         </FadeIn>
@@ -354,7 +354,7 @@ function EditField({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingBottom: 20 },
-  h1: { color: "#fff", fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
+  h1: { color: colors.text, fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
   profileCard: {
     marginHorizontal: 16,
     padding: 16,
@@ -367,9 +367,9 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   avatar: { width: 56, height: 56, borderRadius: 28 },
-  name: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  name: { color: colors.text, fontSize: 17, fontWeight: "700" },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  rating: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  rating: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
   tripCount: { color: colors.textMuted, fontSize: 12 },
   uploadBtn: {
     width: 36,
@@ -415,9 +415,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   fieldLabel: { color: colors.textMuted, fontSize: 12 },
-  fieldValue: { color: "#fff", fontSize: 15, fontWeight: "500", marginTop: 3 },
+  fieldValue: { color: colors.text, fontSize: 15, fontWeight: "500", marginTop: 3 },
   editInput: {
-    color: "#fff",
+    color: colors.text,
     fontSize: 15,
     fontWeight: "500",
     marginTop: 3,
@@ -455,5 +455,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  signOutText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  signOutText: { color: colors.text, fontSize: 15, fontWeight: "700" },
 });

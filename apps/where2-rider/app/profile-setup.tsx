@@ -240,7 +240,7 @@ export default function ProfileSetup() {
           style={[styles.backHeader, { paddingTop: insets.top + 8 }]}
           onPress={() => router.back()}
         >
-          <Ionicons name="chevron-back" size={22} color="#fff" />
+          <Ionicons name="chevron-back" size={22} color={colors.text} />
           <Text style={styles.backHeaderText}>Edit Profile</Text>
         </SpringPress>
       )}
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingHorizontal: 20, paddingBottom: 12,
   },
-  backHeaderText: { color: "#fff", fontSize: 17, fontWeight: "600" },
+  backHeaderText: { color: colors.text, fontSize: 17, fontWeight: "600" },
   progressContainer: {
     flexDirection: "row", justifyContent: "center", gap: 8,
     paddingBottom: 12, paddingHorizontal: spacing.md,
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   progressDotCurrent: { width: 56 },
   content: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingBottom: 40 },
   title: {
-    color: "#fff", fontSize: 26, fontWeight: "800", letterSpacing: -0.5, marginTop: spacing.sm,
+    color: colors.text, fontSize: 26, fontWeight: "800", letterSpacing: -0.5, marginTop: spacing.sm,
   },
   subtitle: {
     color: colors.textMuted, fontSize: font.label, marginTop: 6, marginBottom: 28,
@@ -472,14 +472,14 @@ const styles = StyleSheet.create({
   input: {
     height: 52, borderRadius: radius.md, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14,
-    color: "#fff", fontSize: font.body,
+    color: colors.text, fontSize: font.body,
   },
   genderRow: { flexDirection: "row", gap: 10 },
   genderBtn: {
     flex: 1, height: 48, borderRadius: radius.md, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  genderBtnActive: { backgroundColor: "rgba(30,107,255,0.15)", borderColor: colors.accent },
+  genderBtnActive: { backgroundColor: "rgba(0,137,123,0.15)", borderColor: colors.accent },
   genderText: { color: colors.textMuted, fontSize: font.label, fontWeight: "600" },
   genderTextActive: { color: colors.accent },
   avatarGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     gap: 8, height: 52, borderRadius: radius.md, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border,
   },
-  uploadText: { color: "#fff", fontSize: font.small, fontWeight: "600" },
+  uploadText: { color: colors.text, fontSize: font.small, fontWeight: "600" },
   previewContainer: { alignItems: "center", marginBottom: 16 },
   previewImage: { width: 100, height: 100, borderRadius: 50 },
   previewRemove: { position: "absolute", top: -4, right: -4 },
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
     ...shadows.accent,
   },
   welcomeTitle: {
-    color: "#fff", fontSize: 28, fontWeight: "800", letterSpacing: -0.5, marginBottom: 12,
+    color: colors.text, fontSize: 28, fontWeight: "800", letterSpacing: -0.5, marginBottom: 12,
   },
   welcomeSubtitle: {
     color: colors.textMuted, fontSize: font.body, textAlign: "center", lineHeight: 22, marginBottom: 40,

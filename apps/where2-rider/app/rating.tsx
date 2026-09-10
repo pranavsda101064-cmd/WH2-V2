@@ -228,13 +228,13 @@ export default function Rating() {
             onPress={() => router.replace("/(tabs)/home")}
             testID="rating-close"
           >
-            <Ionicons name="close" size={20} color="#fff" />
+            <Ionicons name="close" size={20} color={colors.text} />
           </SpringPress>
 
           {/* Driver */}
           <View style={styles.driverBlock}>
             <View style={styles.avatar}>
-              <Ionicons name="person" size={28} color="#fff" />
+              <Ionicons name="person" size={28} color={colors.accent} />
             </View>
             <Text style={styles.driverName}>Ravi Kumar</Text>
             <Text style={styles.driverSub}>Silver SUV · KA 13 X 4421</Text>
@@ -284,7 +284,7 @@ export default function Rating() {
                       <Ionicons
                         name={c.icon}
                         size={14}
-                        color={active ? colors.accent : "#fff"}
+                        color={active ? colors.accent : colors.textMuted}
                       />
                       <Text
                         style={[styles.tagText, active && { color: colors.accent }]}
@@ -381,10 +381,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 14,
   },
-  driverName: { color: "#fff", fontSize: font.h3, fontWeight: "800" },
+  driverName: { color: colors.text, fontSize: font.h3, fontWeight: "800" },
   driverSub: { color: colors.textMuted, fontSize: font.small, marginTop: spacing.xs },
   q: {
-    color: "#fff",
+    color: colors.text,
     fontSize: font.title,
     fontWeight: "800",
     textAlign: "center",
@@ -425,9 +425,9 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: "rgba(30,107,255,0.12)",
   },
-  tagText: { color: "#fff", fontSize: font.small, fontWeight: "600" },
+  tagText: { color: colors.text, fontSize: font.small, fontWeight: "600" },
   section: {
-    color: "#fff",
+    color: colors.text,
     fontSize: font.body,
     fontWeight: "700",
     marginTop: 8,
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: 14,
-    color: "#fff",
+    color: colors.text,
     fontSize: font.label,
     textAlignVertical: "top",
     marginBottom: 8,
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     backgroundColor: "rgba(30,107,255,0.12)",
   },
-  tipText: { color: "#fff", fontSize: font.label, fontWeight: "700" },
+  tipText: { color: colors.text, fontSize: font.label, fontWeight: "700" },
   bottomBar: {
     position: "absolute",
     left: 0,
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
     ...shadows.accent,
   },
   doneTitle: {
-    color: "#fff",
+    color: colors.text,
     fontSize: 26,
     fontWeight: "800",
     letterSpacing: -0.5,

@@ -52,7 +52,7 @@ export default function Privacy() {
       >
         <View style={styles.headRow}>
           <SpringPress style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color="#fff" />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </SpringPress>
           <Text style={styles.h1}>Privacy Policy</Text>
         </View>
@@ -83,12 +83,12 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { color: "#fff", fontSize: font.title, fontWeight: "800" },
+  h1: { color: colors.text, fontSize: font.title, fontWeight: "800" },
   updated: { color: colors.textDim, fontSize: font.caption, paddingHorizontal: 20, marginBottom: 20 },
   card: {
     marginHorizontal: 20, marginBottom: 12, padding: 18, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  cardTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700", marginBottom: spacing.sm },
+  cardTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "700", marginBottom: spacing.sm },
   cardBody: { color: colors.textMuted, fontSize: font.label, lineHeight: 21 },
 });

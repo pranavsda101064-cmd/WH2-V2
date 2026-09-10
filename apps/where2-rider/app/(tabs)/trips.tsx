@@ -118,7 +118,7 @@ export default function Trips() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingBottom: 20 },
-  h1: { color: "#fff", fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
+  h1: { color: colors.text, fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
   sub: { color: colors.textMuted, fontSize: font.small, marginTop: spacing.xs },
   card: {
     flexDirection: "row",
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   thumb: { width: 60, height: 60, borderRadius: 10, backgroundColor: colors.surfaceAlt },
-  title: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  title: { color: colors.text, fontSize: font.body, fontWeight: "700" },
   date: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   metaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
   meta: { color: colors.textMuted, fontSize: font.caption },
@@ -141,6 +141,6 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     gap: spacing.sm,
   },
-  emptyText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  emptyText: { color: colors.text, fontSize: 18, fontWeight: "700" },
   emptySub: { color: colors.textMuted, fontSize: font.small },
 });

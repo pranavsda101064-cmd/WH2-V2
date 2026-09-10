@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "rgba(30,107,255,0.2)",
+    backgroundColor: "rgba(0,137,123,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: colors.border,
   },
   grabber: {
     alignSelf: "center",
@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   headline: {
-    color: "#fff",
+    color: colors.text,
     fontSize: font.title,
     fontWeight: "800",
     letterSpacing: -0.5,
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pinLabel: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
-  pinValue: { color: "#fff", fontSize: font.title, fontWeight: "800", letterSpacing: 6 },
+  pinValue: { color: colors.text, fontSize: font.title, fontWeight: "800", letterSpacing: 6 },
   pinHint: { color: colors.textDim, fontSize: font.micro },
   pinInputGroup: {
     marginTop: 12,
@@ -649,7 +649,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   pinDigitFilled: { borderColor: colors.accent },
-  pinDigitText: { color: "#fff", fontSize: font.h2, fontWeight: "800" },
+  pinDigitText: { color: colors.text, fontSize: font.h2, fontWeight: "800" },
   pinHiddenInput: {
     position: "absolute",
     opacity: 0,
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  driverName: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  driverName: { color: colors.text, fontSize: font.body, fontWeight: "700" },
   driverMeta: { flexDirection: "row", alignItems: "center", marginTop: 3, gap: 6 },
   driverPlate: { color: colors.textMuted, fontSize: font.caption, fontWeight: "600" },
   ratingBadge: {
@@ -697,9 +697,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    backgroundColor: "rgba(30,107,255,0.12)",
+    backgroundColor: "rgba(0,137,123,0.12)",
   },
-  ratingText: { color: "#fff", fontSize: font.micro, fontWeight: "700" },
+  ratingText: { color: colors.text, fontSize: font.micro, fontWeight: "700" },
   actionRow: { flexDirection: "row", gap: 8 },
   actBtn: {
     width: 42,
@@ -730,10 +730,10 @@ const styles = StyleSheet.create({
     maxWidth: 100,
   },
   progStepDone: {
-    backgroundColor: "rgba(30,107,255,0.15)",
+    backgroundColor: "rgba(0,137,123,0.15)",
     borderColor: colors.accent,
   },
-  progText: { color: "#fff", fontSize: font.micro, fontWeight: "600" },
+  progText: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
   progLine: {
     flex: 1,
     height: 2,
@@ -755,9 +755,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-  shareBtn: { borderColor: "rgba(30,107,255,0.35)" },
+  shareBtn: { borderColor: "rgba(0,137,123,0.35)" },
   cancelBtn: { borderColor: "rgba(228,72,60,0.35)" },
-  secondaryText: { color: "#fff", fontSize: font.small, fontWeight: "700" },
+  secondaryText: { color: colors.text, fontSize: font.small, fontWeight: "700" },
   doneBtn: {
     marginTop: 22,
     height: 56,

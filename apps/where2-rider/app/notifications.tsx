@@ -32,7 +32,7 @@ export default function Notifications() {
       >
         <View style={styles.headRow}>
           <SpringPress style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color="#fff" />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </SpringPress>
           <Text style={styles.h1}>Notifications</Text>
           <SpringPress
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { flex: 1, color: "#fff", fontSize: font.title, fontWeight: "800" },
+  h1: { flex: 1, color: colors.text, fontSize: font.title, fontWeight: "800" },
   markBtn: { paddingHorizontal: 12, height: 32, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   markText: { color: colors.accent, fontSize: font.caption, fontWeight: "600" },
   card: {
@@ -83,13 +83,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, marginBottom: 10, padding: spacing.md, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  cardUnread: { borderColor: "rgba(30,107,255,0.3)", backgroundColor: "rgba(30,107,255,0.06)" },
+  cardUnread: { borderColor: "rgba(0,137,123,0.3)", backgroundColor: "rgba(0,137,123,0.06)" },
   iconWrap: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceAlt,
     alignItems: "center", justifyContent: "center",
   },
   iconWrapUnread: { backgroundColor: colors.accent },
-  cardTitle: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  cardTitle: { color: colors.text, fontSize: font.body, fontWeight: "700" },
   cardDesc: { color: colors.textMuted, fontSize: font.small, marginTop: spacing.xs, lineHeight: 18 },
   cardTime: { color: colors.textDim, fontSize: font.micro, marginTop: 6 },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent, marginTop: spacing.xs },

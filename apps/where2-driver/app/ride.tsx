@@ -608,7 +608,7 @@ const styles = StyleSheet.create({
   routeIndicator: { width: 10, alignItems: "center", paddingTop: 4 },
   routeDot: { width: 8, height: 8, borderRadius: 4 },
   routeLine: { width: 2, height: 20, backgroundColor: colors.border, marginTop: 4 },
-  routeLabel: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  routeLabel: { color: colors.text, fontSize: 14, fontWeight: "600" },
   routeSub: { color: colors.textMuted, fontSize: 11, marginTop: 2, marginBottom: 8 },
 
   /* PIN section */
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.accent,
   },
-  showPinBtnText: { flex: 1, color: "#fff", fontSize: 14, fontWeight: "600" },
+  showPinBtnText: { flex: 1, color: colors.text, fontSize: 14, fontWeight: "600" },
   pinInputGroup: {
     padding: 14,
     borderRadius: radius.md,
@@ -649,8 +649,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  pinDigitFilled: { borderColor: colors.accent, backgroundColor: "rgba(30,107,255,0.10)" },
-  pinDigitText: { color: "#fff", fontSize: 26, fontWeight: "800" },
+  pinDigitFilled: { borderColor: colors.accent, backgroundColor: "rgba(0,137,123,0.10)" },
+  pinDigitText: { color: colors.text, fontSize: 26, fontWeight: "800" },
   pinError: { color: colors.danger, fontSize: 12, marginTop: 10, textAlign: "center" },
   verifyBtn: {
     marginTop: 14,
@@ -679,7 +679,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   fareHeaderText: {
-    color: "#fff",
+    color: colors.text,
     fontSize: 16,
     fontWeight: "700",
   },
@@ -694,8 +694,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   fareLabel: { color: colors.textMuted, fontSize: 13 },
-  fareValue: { color: "#fff", fontSize: 22, fontWeight: "800" },
-  fareValueSmall: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  fareValue: { color: colors.text, fontSize: 22, fontWeight: "800" },
+  fareValueSmall: { color: colors.text, fontSize: 14, fontWeight: "600" },
 
   /* Action button */
   actionBtn: {
@@ -737,5 +737,5 @@ const styles = StyleSheet.create({
     borderColor: "rgba(228,72,60,0.35)",
     backgroundColor: colors.surface,
   },
-  sosBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  sosBtnText: { color: colors.text, fontSize: 13, fontWeight: "700" },
 });

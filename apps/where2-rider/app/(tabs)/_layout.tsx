@@ -1,47 +1,36 @@
-import { Tabs } from "expo-router";
+import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { StyleSheet } from "react-native";
-import { BlurView } from "expo-blur";
+import { StyleSheet, View, TouchableOpacity } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
 } from "react-native-reanimated";
 
-import { colors } from "@/src/theme";
+import { colors, shadows } from "@/src/theme";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.textDim,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarShowLabel: true,
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600", marginTop: -2 },
         tabBarStyle: {
-          backgroundColor: "transparent",
-          borderTopColor: "rgba(255,255,255,0.06)",
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: 60 + insets.bottom,
+          height: 64 + insets.bottom,
           paddingBottom: insets.bottom + 6,
           paddingTop: 8,
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          elevation: 0,
+          ...shadows.md,
         },
-        tabBarBackground: () => (
-          <BlurView
-            intensity={80}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-          />
-        ),
       }}
     >
       <Tabs.Screen
@@ -56,10 +45,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="trips"
         options={{
-          title: "Trips",
+          title: "Discover",
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
-              name={focused ? "map" : "map-outline"}
+              name={focused ? "compass" : "compass-outline"}
               color={color as string}
               size={focused ? 26 : 24}
               focused={focused}
@@ -70,10 +59,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: "My Trips",
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
-              name={focused ? "person-circle" : "person-circle-outline"}
+              name={focused ? "map" : "map-outline"}
               color={color as string}
               size={focused ? 26 : 24}
               focused={focused}

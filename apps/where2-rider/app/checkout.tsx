@@ -170,7 +170,7 @@ export default function Checkout() {
           onPress={() => router.back()}
           testID="checkout-back"
         >
-          <Ionicons name="chevron-back" size={20} color="#fff" />
+          <Ionicons name="chevron-back" size={20} color={colors.text} />
         </SpringPress>
         <Text style={styles.topTitle}>Confirm & Pay</Text>
         <View style={{ width: 40 }} />
@@ -244,7 +244,7 @@ export default function Checkout() {
           <View style={styles.card}>
             <View style={styles.vehicleRow}>
               <View style={styles.vIcon}>
-                <Ionicons name="car-outline" size={22} color="#fff" />
+                <Ionicons name="car-outline" size={22} color={colors.accent} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.vName}>Sedan · Comfortable</Text>
@@ -373,7 +373,7 @@ function MethodBtn({ active, onPress, icon, label, sub, id }: {
       testID={`method-${id}`}
     >
       <View style={styles.methodIcon}>
-        <Ionicons name={icon} size={20} color={active ? colors.accent : "#fff"} />
+        <Ionicons name={icon} size={20} color={active ? colors.accent : colors.textDim} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.methodLabel}>{label}</Text>
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
+  topTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "700" },
   card: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -435,22 +435,22 @@ const styles = StyleSheet.create({
   routeIndicator: { width: 12, alignItems: "center", paddingTop: spacing.xs },
   routeDot: { width: 10, height: 10, borderRadius: 5 },
   routeLine: { width: 2, height: 26, backgroundColor: colors.border, marginTop: spacing.xs },
-  routeLabel: { color: "#fff", fontSize: font.label, fontWeight: "600" },
+  routeLabel: { color: colors.text, fontSize: font.label, fontWeight: "600" },
   routeSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   vehicleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   vIcon: {
     width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center",
   },
-  vName: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  vName: { color: colors.text, fontSize: font.body, fontWeight: "700" },
   vSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   change: { color: colors.accent, fontSize: font.small, fontWeight: "600" },
   fareRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
   fareLabel: { color: colors.textMuted, fontSize: font.small },
-  fareValue: { color: "#fff", fontSize: font.small, fontWeight: "500" },
+  fareValue: { color: colors.text, fontSize: font.small, fontWeight: "500" },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: 10 },
   totalRow: { flexDirection: "row", justifyContent: "space-between" },
-  totalLabel: { color: "#fff", fontSize: font.body, fontWeight: "700" },
-  totalValue: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  totalLabel: { color: colors.text, fontSize: font.body, fontWeight: "700" },
+  totalValue: { color: colors.text, fontSize: 18, fontWeight: "800" },
   sectionTitle: {
     color: colors.textMuted, fontSize: font.caption, fontWeight: "700", letterSpacing: 1.4,
     textTransform: "uppercase", marginBottom: 10, marginTop: 8, marginLeft: 4,
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
   methodIcon: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center",
   },
-  methodLabel: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  methodLabel: { color: colors.text, fontSize: font.body, fontWeight: "700" },
   methodSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   radio: {
     width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.borderStrong,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingTop: spacing.md, flexDirection: "row", alignItems: "center", gap: 12,
   },
   barLabel: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
-  barTotal: { color: "#fff", fontSize: font.title, fontWeight: "800", marginTop: 2 },
+  barTotal: { color: colors.text, fontSize: font.title, fontWeight: "800", marginTop: 2 },
   payBtn: {
     height: 54, paddingHorizontal: 32, borderRadius: radius.md, backgroundColor: colors.accent,
     alignItems: "center", justifyContent: "center",
@@ -493,6 +493,6 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", marginBottom: 24,
     ...shadows.accent,
   },
-  doneTitle: { color: "#fff", fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
+  doneTitle: { color: colors.text, fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
   doneSub: { color: colors.textMuted, fontSize: font.body, marginTop: spacing.sm, textAlign: "center" },
 });

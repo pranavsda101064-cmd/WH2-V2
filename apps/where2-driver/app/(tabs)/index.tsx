@@ -305,12 +305,12 @@ export default function DriverDashboard() {
 
                     <View style={styles.reqTop}>
                       <View style={styles.riderPhoto}>
-                        <Ionicons name="person" size={16} color="#fff" />
+                        <Ionicons name="person" size={16} color={colors.textMuted} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.riderName}>{r.rider}</Text>
                         <View style={styles.riderMeta}>
-                          <Ionicons name="star" size={10} color="#fff" />
+                          <Ionicons name="star" size={10} color={colors.accent} />
                           <Text style={styles.riderRating}>{r.rating.toFixed(1)}</Text>
                           <Text style={styles.riderDot}> · </Text>
                           <Text style={styles.riderTag}>{r.tag}</Text>
@@ -323,7 +323,7 @@ export default function DriverDashboard() {
                     </View>
 
                     <View style={styles.route}>
-                      <RouteRow color="#fff" label={r.pickup} sub="Pickup" isFirst />
+                      <RouteRow color={colors.text} label={r.pickup} sub="Pickup" isFirst />
                       <RouteRow color={colors.accent} label={r.drop} sub="Drop-off" />
                     </View>
 
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   headKicker: { color: colors.textMuted, fontSize: 11, fontWeight: "700", letterSpacing: 1.4 },
-  headTitle: { color: "#fff", fontSize: 16, fontWeight: "700", marginTop: 2 },
+  headTitle: { color: colors.text, fontSize: 16, fontWeight: "700", marginTop: 2 },
   toggleCard: {
     marginHorizontal: 16,
     padding: 18,
@@ -422,7 +422,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   toggleLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1.6 },
-  toggleSub: { color: "#fff", fontSize: 15, fontWeight: "700", marginTop: 4 },
+  toggleSub: { color: colors.text, fontSize: 15, fontWeight: "700", marginTop: 4 },
   statsRow: {
     marginHorizontal: 16,
     marginTop: 12,
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   statDivider: { width: 1, height: 28, backgroundColor: colors.border },
-  statValue: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  statValue: { color: colors.text, fontSize: 18, fontWeight: "800" },
   statLabel: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
   sectionHead: {
     marginTop: 26,
@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 6,
   },
-  sectionTitle: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  sectionTitle: { color: colors.text, fontSize: 17, fontWeight: "700" },
   sectionCount: { color: colors.textMuted, fontSize: 11, fontWeight: "700", letterSpacing: 1, textTransform: "uppercase" },
   offlineNotice: {
     marginHorizontal: 16,
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 3,
-    backgroundColor: "rgba(255,255,255,0.06)",
+    backgroundColor: colors.surfaceAlt,
   },
   countdownFill: {
     height: 3,
@@ -500,19 +500,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  riderName: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  riderName: { color: colors.text, fontSize: 14, fontWeight: "700" },
   riderMeta: { flexDirection: "row", alignItems: "center", marginTop: 3 },
-  riderRating: { color: "#fff", fontSize: 11, marginLeft: 3 },
+  riderRating: { color: colors.textMuted, fontSize: 11, marginLeft: 3 },
   riderDot: { color: colors.textDim, fontSize: 11 },
   riderTag: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
-  fareLg: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  fareLg: { color: colors.text, fontSize: 18, fontWeight: "800" },
   fareSub: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   route: { marginTop: 14, gap: 2 },
   routeRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   routeIndicator: { width: 10, alignItems: "center", paddingTop: 4 },
   routeDot: { width: 8, height: 8, borderRadius: 4 },
   routeLine: { width: 2, height: 22, backgroundColor: colors.border, marginTop: 4 },
-  routeLabel: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  routeLabel: { color: colors.text, fontSize: 13, fontWeight: "600" },
   routeSub: { color: colors.textMuted, fontSize: 11, marginTop: 1, marginBottom: 8 },
   routePreview: {
     flexDirection: "row",
@@ -522,7 +522,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: radius.sm,
-    backgroundColor: "rgba(255,255,255,0.04)",
+    backgroundColor: colors.surfaceAlt,
   },
   routePreviewDot: {
     width: 6,
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   routePreviewDuration: {
-    color: "#fff",
+    color: colors.textMuted,
     fontSize: 11,
     fontWeight: "600",
   },

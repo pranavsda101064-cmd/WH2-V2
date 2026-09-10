@@ -32,7 +32,7 @@ export default function Help() {
       >
         <View style={styles.headRow}>
           <SpringPress style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color="#fff" />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </SpringPress>
           <Text style={styles.h1}>Help</Text>
         </View>
@@ -88,21 +88,21 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { color: "#fff", fontSize: font.title, fontWeight: "800" },
+  h1: { color: colors.text, fontSize: font.title, fontWeight: "800" },
   sectionTitle: { color: colors.textMuted, fontSize: font.small, fontWeight: "600", paddingHorizontal: 20, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 },
   faqCard: {
     marginHorizontal: 20, marginBottom: 10, padding: spacing.md, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   faqRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  faqQ: { color: "#fff", fontSize: font.body, fontWeight: "600", flex: 1, marginRight: 12 },
+  faqQ: { color: colors.text, fontSize: font.body, fontWeight: "600", flex: 1, marginRight: 12 },
   faqA: { color: colors.textMuted, fontSize: font.label, lineHeight: 20, marginTop: 12 },
   contactCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
     marginHorizontal: 20, marginTop: 20, padding: 18, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  contactTitle: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  contactTitle: { color: colors.text, fontSize: font.body, fontWeight: "700" },
   contactSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   contactBtn: {
     paddingHorizontal: spacing.md, height: 36, borderRadius: 18, backgroundColor: colors.accent,

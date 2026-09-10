@@ -72,7 +72,7 @@ export default function SavedAddresses() {
       >
         <View style={styles.headRow}>
           <SpringPress style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color="#fff" />
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
           </SpringPress>
           <Text style={styles.h1}>Saved Addresses</Text>
         </View>
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { color: "#fff", fontSize: font.title, fontWeight: "800" },
+  h1: { color: colors.text, fontSize: font.title, fontWeight: "800" },
   card: {
     flexDirection: "row", alignItems: "center", gap: 14,
     marginHorizontal: 20, marginBottom: 10, padding: spacing.md, borderRadius: radius.lg,
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(30,107,255,0.12)",
     alignItems: "center", justifyContent: "center",
   },
-  cardLabel: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  cardLabel: { color: colors.text, fontSize: font.body, fontWeight: "700" },
   cardAddress: { color: colors.textMuted, fontSize: font.small, marginTop: 2 },
   deleteBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(239,68,68,0.1)", alignItems: "center", justifyContent: "center" },
   addBtn: {
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20, marginTop: 10, padding: spacing.md, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  addFormTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700", marginBottom: 12 },
+  addFormTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "700", marginBottom: 12 },
   typeRow: { flexDirection: "row", gap: 8, marginBottom: 14 },
   typeBtn: {
     flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, height: 36,
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   input: {
     height: 48, borderRadius: radius.md, backgroundColor: colors.surfaceAlt,
     borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14,
-    color: "#fff", fontSize: font.label, marginBottom: 10,
+    color: colors.text, fontSize: font.label, marginBottom: 10,
   },
   addFormActions: { flexDirection: "row", gap: 10, marginTop: 4 },
   cancelFormBtn: {

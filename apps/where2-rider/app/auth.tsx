@@ -293,7 +293,7 @@ export default function Auth() {
             {/* Sign in — glossy gradient */}
             <FadeIn delay={450}>
               <LinearGradient
-                colors={["#1E6BFF", "#4A90FF"]}
+                colors={[colors.accent, colors.accentLight]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.ctaGradient}

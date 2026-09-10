@@ -137,7 +137,7 @@ export default function Landing() {
           {/* Glossy CTA button */}
           <FadeIn delay={900} duration={500}>
             <LinearGradient
-              colors={["#1E6BFF", "#4A90FF"]}
+              colors={[colors.accent, colors.accentLight]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.ctaGradient}

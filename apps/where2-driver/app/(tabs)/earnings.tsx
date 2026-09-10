@@ -186,7 +186,7 @@ export default function Earnings() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingBottom: 20 },
-  h1: { color: "#fff", fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
+  h1: { color: colors.text, fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
   sub: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
   statsRow: {
     flexDirection: "row",
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: "center",
   },
-  statValue: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  statValue: { color: colors.text, fontSize: 18, fontWeight: "800" },
   statLabel: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
   tipBanner: {
     flexDirection: "row",
@@ -213,9 +213,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     padding: 12,
     borderRadius: radius.md,
-    backgroundColor: "rgba(30,107,255,0.08)",
+    backgroundColor: "rgba(0,137,123,0.08)",
     borderWidth: 1,
-    borderColor: "rgba(30,107,255,0.2)",
+    borderColor: "rgba(0,137,123,0.2)",
   },
   tipText: { color: colors.accent, fontSize: 13, fontWeight: "600" },
   sectionTitle: {
@@ -243,9 +243,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  rideRoute: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  rideRoute: { color: colors.text, fontSize: 14, fontWeight: "600" },
   rideDate: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
-  rideFare: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  rideFare: { color: colors.text, fontSize: 16, fontWeight: "800" },
   ridePayment: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   rideStatus: {
     flexDirection: "row",
@@ -269,6 +269,6 @@ const styles = StyleSheet.create({
     paddingTop: 80,
     gap: 8,
   },
-  emptyText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  emptyText: { color: colors.text, fontSize: 18, fontWeight: "700" },
   emptySub: { color: colors.textMuted, fontSize: 13 },
 });

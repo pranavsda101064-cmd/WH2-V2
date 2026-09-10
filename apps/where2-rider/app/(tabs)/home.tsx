@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { colors, radius, font, spacing } from "@/src/theme";
+import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { pastTrips as mockTrips, savedRoutes } from "@/src/data/mock";
 import { api, Package, Ride, getUserName } from "@/src/api";
 import { storage } from "@/src/utils/storage";
@@ -25,19 +25,21 @@ import { TOURIST_PLACES } from "@/src/utils/location";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 32;
-const CAROUSEL_H = Math.round(SCREEN_H * 0.3); // 30vh
+const CAROUSEL_H = Math.round(SCREEN_H * 0.28);
+
+const CATEGORY_CHIPS = ["Pickup House", "Trip Buyers", "The Movie", "Homestay", "Circuit"];
 
 export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const listRef = useRef<FlatList>(null);
   const [active, setActive] = useState(0);
+  const [selectedChip, setSelectedChip] = useState("Pickup House");
   const [packages, setPackages] = useState<Package[]>([]);
   const [trips, setTrips] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
 
-  // Fetch from backend (falls back to mock inside api client)
   useEffect(() => {
     Promise.all([api.listPackages(), api.listRides()])
       .then(([p, t]) => { setPackages(p); setTrips(t); })
@@ -46,7 +48,6 @@ export default function Home() {
     getUserName().then((n) => { if (n) setUserName(n); });
   }, []);
 
-  // Auto-play carousel
   useEffect(() => {
     if (packages.length === 0) return;
     const t = setInterval(() => {
@@ -65,7 +66,7 @@ export default function Home() {
   if (loading) {
     return (
       <View style={styles.root}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100, paddingTop: insets.top + 12 }}
@@ -78,7 +79,7 @@ export default function Home() {
 
   return (
     <View style={styles.root} testID="home-screen">
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -87,31 +88,57 @@ export default function Home() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.hello}>Namaste,</Text>
+            <Text style={styles.hello}>Explore Sakleshpur,</Text>
             <Text style={styles.name}>{userName || "Explorer"}</Text>
           </View>
           <SpringPress style={styles.iconBtn} onPress={() => router.push("/notifications")} testID="notifications-button">
-            <Ionicons name="notifications-outline" size={20} color="#fff" />
+            <Ionicons name="notifications-outline" size={20} color={colors.text} />
           </SpringPress>
         </View>
 
-        {/* Where to? search bar */}
+        {/* Rounded Search Bar - Screen 2 Style */}
         <SpringPress
           style={[styles.searchBar, { marginHorizontal: 16, marginTop: 4 }]}
           onPress={() => router.push("/location-picker?target=dropoff")}
           testID="search-bar"
         >
-          <View style={styles.searchDot} />
-          <Text style={styles.searchText}>Where to?</Text>
+          <Ionicons name="search-outline" size={20} color={colors.textMuted} />
+          <Text style={styles.searchText}>Search destination, homestay...</Text>
           <View style={styles.searchIconRight}>
-            <Ionicons name="time-outline" size={16} color={colors.textDim} />
+            <Ionicons name="options-outline" size={16} color={colors.accent} />
           </View>
         </SpringPress>
 
-        {/* Quick Routes */}
+        {/* Category Chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 14, gap: 8 }}
+        >
+          {CATEGORY_CHIPS.map((chip) => {
+            const isSelected = chip === selectedChip;
+            return (
+              <SpringPress
+                key={chip}
+                style={[styles.chip, isSelected && styles.chipActive]}
+                onPress={() => setSelectedChip(chip)}
+              >
+                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                  {chip}
+                </Text>
+              </SpringPress>
+            );
+          })}
+        </ScrollView>
+
+        {/* Nearby Locations Horizontal Scroll */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Quick routes</Text>
+          <Text style={styles.sectionTitle}>Nearby Locations</Text>
+          <SpringPress onPress={() => router.push("/plan")}>
+            <Text style={styles.sectionAction}>See all</Text>
+          </SpringPress>
         </View>
+
         <FlatList
           data={savedRoutes}
           horizontal
@@ -122,24 +149,27 @@ export default function Home() {
           renderItem={({ item }) => (
             <FadeIn delay={80}>
               <SpringPress
-                style={styles.routeCard}
+                style={styles.nearbyCard}
                 onPress={() => router.push("/location-picker?target=dropoff")}
               >
-                <View style={styles.routeIcon}>
-                  <Ionicons name={item.icon} size={18} color={colors.accent} />
+                <View style={styles.nearbyIcon}>
+                  <Ionicons name={item.icon} size={20} color={colors.accent} />
                 </View>
-                <Text style={styles.routeFrom} numberOfLines={1}>{item.from}</Text>
-                <Text style={styles.routeTo} numberOfLines={1}>{item.to}</Text>
-                <View style={styles.routeTag}>
-                  <Ionicons name="navigate-outline" size={10} color={colors.accent} />
-                  <Text style={styles.routeTagText}>{item.tag}</Text>
-                </View>
+                <Text style={styles.nearbyTitle} numberOfLines={1}>{item.to}</Text>
+                <Text style={styles.nearbySub} numberOfLines={1}>{item.tag}</Text>
               </SpringPress>
             </FadeIn>
           )}
         />
 
-        {/* 30vh Carousel */}
+        {/* Curated Trip Plans Section - Screen 2 */}
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>Curated Trip Plans</Text>
+          <SpringPress onPress={() => router.push("/plan")}>
+            <Text style={styles.sectionAction}>See all</Text>
+          </SpringPress>
+        </View>
+
         <View style={{ height: CAROUSEL_H }} testID="package-carousel">
           <FlatList
             ref={listRef}
@@ -153,39 +183,43 @@ export default function Home() {
             ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
             keyExtractor={(i) => i.id}
             onMomentumScrollEnd={(e) => {
-              const i = Math.round(
-                e.nativeEvent.contentOffset.x / (CARD_W + 12),
-              );
+              const i = Math.round(e.nativeEvent.contentOffset.x / (CARD_W + 12));
               setActive(i);
             }}
             renderItem={({ item }) => (
               <SpringPress
-                style={[styles.card, { width: CARD_W, height: CAROUSEL_H - 16 }]}
+                style={[styles.card, { width: CARD_W, height: CAROUSEL_H - 12 }]}
                 onPress={() => router.push("/plan")}
                 testID={`package-card-${item.id}`}
               >
                 <Image source={{ uri: item.image }} style={styles.cardImg} />
                 <LinearGradient
-                  colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.85)"]}
+                  colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.75)"]}
                   style={styles.cardShade}
                 />
+                <View style={styles.cardBadge}>
+                  <Text style={styles.cardBadgeText}>{item.duration} · {item.stops} STOPS</Text>
+                </View>
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardKicker}>
-                    {item.duration.toUpperCase()} · {item.stops} STOPS
-                  </Text>
                   <Text style={styles.cardTitle} numberOfLines={1}>
-                    {item.title}
+                    {item.title.toUpperCase()}
                   </Text>
-                  <Text style={styles.cardPrice}>
-                    ₹{item.price.toLocaleString("en-IN")}
+                  <Text style={styles.cardSubtitle} numberOfLines={1}>
+                    {item.subtitle}
                   </Text>
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.cardPrice}>₹{item.price.toLocaleString("en-IN")}</Text>
+                    <View style={styles.readRoomBtn}>
+                      <Text style={styles.readRoomText}>Read Details</Text>
+                    </View>
+                  </View>
                 </View>
               </SpringPress>
             )}
           />
         </View>
 
-        {/* Dots */}
+        {/* Dots Indicator */}
         <View style={styles.dots}>
           {packages.map((_, i) => (
             <View
@@ -195,25 +229,25 @@ export default function Home() {
           ))}
         </View>
 
-        {/* Plan Your Trip */}
+        {/* Action Card - Trip Route Builder */}
         <SpringPress
           style={styles.actionCard}
           onPress={() => router.push("/plan")}
           testID="plan-trip-button"
         >
           <View style={styles.actionIcon}>
-            <Ionicons name="navigate" size={20} color="#fff" />
+            <Ionicons name="map" size={20} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.actionTitle}>Plan Your Trip</Text>
-            <Text style={styles.actionSub}>Add stops, choose a ride, go</Text>
+            <Text style={styles.actionTitle}>Trip Route Builder</Text>
+            <Text style={styles.actionSub}>Customize homestays, stops & rides</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </SpringPress>
 
-        {/* Popular tourist spots */}
+        {/* Popular Tourist Destinations */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Popular places to visit</Text>
+          <Text style={styles.sectionTitle}>Related Stays & Spots</Text>
         </View>
         <FlatList
           data={TOURIST_PLACES.slice(0, 6)}
@@ -241,25 +275,9 @@ export default function Home() {
           )}
         />
 
-        {/* Quick access card */}
-        <SpringPress
-          style={styles.quickCard}
-          onPress={() => router.push("/ride")}
-          testID="track-ride-card"
-        >
-          <View style={styles.quickIcon}>
-            <Ionicons name="pulse" size={18} color={colors.accent} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.quickTitle}>Track a live ride</Text>
-            <Text style={styles.quickSub}>See your driver on the map</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
-        </SpringPress>
-
         {/* Previous Trips */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Your previous trips</Text>
+          <Text style={styles.sectionTitle}>My Past Bookings</Text>
           <SpringPress onPress={() => router.push("/(tabs)/trips")}>
             <Text style={styles.sectionAction}>See all</Text>
           </SpringPress>
@@ -277,22 +295,15 @@ export default function Home() {
             const title = item.stops?.[0]?.label ?? mock.title;
 
             return (
-              <SpringPress
-                style={styles.tripCard}
-                testID={`past-trip-${item.id}`}
-              >
+              <SpringPress style={styles.tripCard} testID={`past-trip-${item.id}`}>
                 <Image source={{ uri: mock.image }} style={styles.tripImg} />
                 <LinearGradient
-                  colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.85)"]}
+                  colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.8)"]}
                   style={styles.tripShade}
                 />
                 <View style={styles.tripBody}>
-                  <Text style={styles.tripTitle} numberOfLines={1}>
-                    {title}
-                  </Text>
-                  <Text style={styles.tripDate}>
-                    ₹{item.fare.toLocaleString("en-IN")}
-                  </Text>
+                  <Text style={styles.tripTitle} numberOfLines={1}>{title}</Text>
+                  <Text style={styles.tripDate}>₹{item.fare.toLocaleString("en-IN")}</Text>
                 </View>
               </SpringPress>
             );
@@ -309,10 +320,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 20,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  hello: { color: colors.textMuted, fontSize: font.small },
-  name: { color: "#fff", fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
+  hello: { color: colors.textMuted, fontSize: font.small, fontWeight: "500" },
+  name: { color: colors.text, fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
   iconBtn: {
     width: 40,
     height: 40,
@@ -322,6 +333,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
+    ...shadows.sm,
   },
   searchBar: {
     flexDirection: "row",
@@ -329,35 +341,81 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 26,
-    height: 52,
+    borderRadius: radius.pill,
+    height: 50,
     paddingHorizontal: 16,
-    gap: 12,
-  },
-  searchDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.accent,
+    gap: 10,
+    ...shadows.sm,
   },
   searchText: {
     flex: 1,
     color: colors.textMuted,
-    fontSize: font.subtitle,
+    fontSize: font.body,
     fontWeight: "500",
   },
   searchIconRight: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.surfaceTint,
     alignItems: "center",
     justifyContent: "center",
   },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  chipText: {
+    color: colors.textMuted,
+    fontSize: font.small,
+    fontWeight: "600",
+  },
+  chipTextActive: {
+    color: "#FFFFFF",
+  },
+  sectionHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
+  sectionAction: { color: colors.accent, fontSize: font.small, fontWeight: "700" },
+  nearbyCard: {
+    width: 130,
+    padding: 12,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  nearbyIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surfaceTint,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  nearbyTitle: { color: colors.text, fontSize: font.small, fontWeight: "700" },
+  nearbySub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   card: {
     borderRadius: radius.lg,
     overflow: "hidden",
     backgroundColor: colors.surface,
+    ...shadows.md,
   },
   cardImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" },
   cardShade: {
@@ -365,48 +423,70 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: "70%",
+    height: "75%",
   },
+  cardBadge: {
+    position: "absolute",
+    top: 14,
+    left: 14,
+    backgroundColor: colors.accent,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+  },
+  cardBadgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
   cardBody: {
     position: "absolute",
-    left: 20,
-    right: 20,
-    bottom: 20,
-  },
-  cardKicker: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: font.micro,
-    letterSpacing: 1.5,
-    fontWeight: "600",
-    marginBottom: spacing.xs,
+    left: 16,
+    right: 16,
+    bottom: 14,
   },
   cardTitle: {
-    color: "#fff",
-    fontSize: font.h2,
+    color: "#FFFFFF",
+    fontSize: font.h3,
     fontWeight: "800",
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
+  },
+  cardSubtitle: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: font.small,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  cardFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
   },
   cardPrice: {
-    color: "#fff",
-    fontSize: font.label,
-    fontWeight: "600",
-    marginTop: 6,
-    opacity: 0.95,
+    color: "#FFFFFF",
+    fontSize: font.title,
+    fontWeight: "800",
   },
+  readRoomBtn: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.5)",
+  },
+  readRoomText: { color: "#FFFFFF", fontSize: font.caption, fontWeight: "700" },
   dots: {
     flexDirection: "row",
     justifyContent: "center",
     gap: 6,
-    marginTop: 12,
-    marginBottom: spacing.sm,
+    marginTop: 10,
+    marginBottom: 6,
   },
   dot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    backgroundColor: colors.borderStrong,
   },
-  dotActive: { backgroundColor: "#fff", width: 18 },
+  dotActive: { backgroundColor: colors.accent, width: 18 },
   actionCard: {
     marginHorizontal: spacing.md,
     marginTop: spacing.md,
@@ -414,90 +494,49 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.lg,
-    padding: 18,
+    padding: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
+    ...shadows.sm,
   },
   actionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
-  actionTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
+  actionTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "800" },
   actionSub: { color: colors.textMuted, fontSize: font.small, marginTop: 2 },
-  quickCard: {
-    marginHorizontal: spacing.md,
-    marginTop: 10,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-  },
-  quickIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(30,107,255,0.12)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  quickTitle: { color: "#fff", fontSize: font.body, fontWeight: "700" },
-  quickSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
-  sectionHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginTop: 28,
-    marginBottom: 12,
-  },
-  sectionTitle: { color: "#fff", fontSize: 17, fontWeight: "700" },
-  sectionAction: { color: colors.accent, fontSize: font.small, fontWeight: "600" },
-  routeCard: {
-    width: 140, padding: 14, borderRadius: radius.lg,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-  },
-  routeIcon: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(30,107,255,0.12)",
-    alignItems: "center", justifyContent: "center", marginBottom: 10,
-  },
-  routeFrom: { color: "#fff", fontSize: font.small, fontWeight: "700" },
-  routeTo: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
-  routeTag: { flexDirection: "row", alignItems: "center",     gap: 4, marginTop: spacing.sm },
-  routeTagText: { color: colors.accent, fontSize: font.micro, fontWeight: "600" },
   spotCard: {
     width: 150,
-    padding: 14,
+    padding: 12,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    ...shadows.sm,
   },
   spotTag: {
     alignSelf: "flex-start",
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    backgroundColor: "rgba(30,107,255,0.12)",
-    marginBottom: spacing.sm,
+    backgroundColor: colors.surfaceTint,
+    marginBottom: spacing.xs,
   },
-  spotTagText: { color: colors.accent, fontSize: 10, fontWeight: "700", letterSpacing: 0.6 },
-  spotName: { color: "#fff", fontSize: font.label, fontWeight: "700" },
-  spotDesc: { color: colors.textMuted, fontSize: font.caption, marginTop: spacing.xs },
+  spotTagText: { color: colors.accent, fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+  spotName: { color: colors.text, fontSize: font.label, fontWeight: "700" },
+  spotDesc: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   tripCard: {
-    width: 200,
-    height: 140,
+    width: 190,
+    height: 130,
     borderRadius: radius.md,
     overflow: "hidden",
     backgroundColor: colors.surface,
+    ...shadows.sm,
   },
   tripImg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   tripShade: {
@@ -508,6 +547,6 @@ const styles = StyleSheet.create({
     height: "70%",
   },
   tripBody: { position: "absolute", left: 12, right: 12, bottom: 10 },
-  tripTitle: { color: "#fff", fontSize: font.label, fontWeight: "700" },
-  tripDate: { color: "rgba(255,255,255,0.7)", fontSize: font.micro, marginTop: 2 },
+  tripTitle: { color: "#FFFFFF", fontSize: font.label, fontWeight: "700" },
+  tripDate: { color: "rgba(255,255,255,0.85)", fontSize: font.micro, marginTop: 2 },
 });

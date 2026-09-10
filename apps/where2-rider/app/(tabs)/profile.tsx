@@ -113,7 +113,7 @@ export default function Profile() {
         <View style={styles.headRow}>
           <Text style={styles.h1}>Profile</Text>
           <SpringPress style={styles.iconBtn} onPress={() => Alert.alert("Settings", "App settings coming soon!")}>
-            <Ionicons name="settings-outline" size={18} color="#fff" />
+            <Ionicons name="settings-outline" size={18} color={colors.text} />
           </SpringPress>
         </View>
 
@@ -134,7 +134,7 @@ export default function Profile() {
                 </View>
               ) : null}
               <View style={styles.ratingRow}>
-                <Ionicons name="star" size={12} color="#fff" />
+                <Ionicons name="star" size={12} color={colors.accent} />
                 <Text style={styles.rating}>4.92 rider rating</Text>
               </View>
             </View>
@@ -143,7 +143,7 @@ export default function Profile() {
               onPress={() => router.push("/profile-setup")}
               testID="edit-profile-button"
             >
-              <Ionicons name="create-outline" size={16} color="#fff" />
+              <Ionicons name="create-outline" size={16} color={colors.text} />
               <Text style={styles.editText}>Edit</Text>
             </SpringPress>
           </View>
@@ -174,7 +174,7 @@ export default function Profile() {
                   }
                 }}
               >
-                <Ionicons name={row.icon} size={20} color="#fff" />
+                <Ionicons name={row.icon} size={20} color={colors.textMuted} />
                 <Text style={styles.rowLabel}>{row.label}</Text>
                 {row.hint && <Text style={styles.rowHint}>{row.hint}</Text>}
                 <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, marginBottom: 20,
   },
-  h1: { color: "#fff", fontSize: 28, fontWeight: "800" },
+  h1: { color: colors.text, fontSize: 28, fontWeight: "800" },
   iconBtn: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surfaceAlt,
   },
-  name: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  name: { color: colors.text, fontSize: 17, fontWeight: "700" },
   phone: { color: colors.textMuted, fontSize: font.small, marginTop: 2 },
   addressRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
   addressText: { color: colors.textDim, fontSize: font.caption, flex: 1 },
@@ -215,15 +215,15 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: spacing.md,
     height: 44, borderRadius: 22,
-    borderWidth: 1, borderColor: colors.border, backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt,
   },
-  editText: { color: "#fff", fontSize: font.small, fontWeight: "600" },
+  editText: { color: colors.text, fontSize: font.small, fontWeight: "600" },
   statsRow: {
     flexDirection: "row", marginHorizontal: 20, marginTop: spacing.md, padding: spacing.md,
     borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   stat: { flex: 1, alignItems: "center" },
-  statValue: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  statValue: { color: colors.text, fontSize: 18, fontWeight: "800" },
   statLabel: { color: colors.textMuted, fontSize: font.caption, marginTop: spacing.xs },
   statDivider: { width: 1, backgroundColor: colors.border },
   list: {
@@ -235,6 +235,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, height: 52,
   },
   rowDivider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  rowLabel: { flex: 1, color: "#fff", fontSize: font.body, fontWeight: "500" },
+  rowLabel: { flex: 1, color: colors.text, fontSize: font.body, fontWeight: "500" },
   rowHint: { color: colors.textDim, fontSize: font.small },
 });

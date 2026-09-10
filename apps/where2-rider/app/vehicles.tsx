@@ -54,7 +54,7 @@ export default function Vehicles() {
           onPress={() => router.back()}
           testID="vehicles-back"
         >
-          <Ionicons name="chevron-back" size={20} color="#fff" />
+          <Ionicons name="chevron-back" size={20} color={colors.text} />
         </SpringPress>
         <View style={{ flex: 1, alignItems: "center" }}>
           <Text style={styles.topKicker}>3 stops · 46 km</Text>
@@ -84,7 +84,7 @@ export default function Vehicles() {
                   <Ionicons
                     name={v.icon}
                     size={26}
-                    color={isActive ? colors.accent : "#fff"}
+                    color={isActive ? colors.accent : colors.textMuted}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted, fontSize: font.micro, fontWeight: "700",
     letterSpacing: 1.4, textTransform: "uppercase",
   },
-  topTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "700", marginTop: 2 },
+  topTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "700", marginTop: 2 },
   card: {
     flexDirection: "row", alignItems: "center", gap: 14,
     padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface,
@@ -155,19 +155,19 @@ const styles = StyleSheet.create({
   },
   cardActive: {
     borderColor: colors.accent, borderWidth: 2, padding: 15,
-    backgroundColor: "rgba(30,107,255,0.04)",
+    backgroundColor: "rgba(0,137,123,0.04)",
   },
   vIcon: {
     width: 52, height: 52, borderRadius: 26, backgroundColor: colors.surfaceAlt,
     alignItems: "center", justifyContent: "center",
   },
-  vIconActive: { backgroundColor: "rgba(30,107,255,0.14)" },
+  vIconActive: { backgroundColor: "rgba(0,137,123,0.14)" },
   rowTop: { flexDirection: "row", alignItems: "center", gap: 6 },
-  vName: { color: "#fff", fontSize: font.subtitle, fontWeight: "700", marginRight: 4 },
+  vName: { color: colors.text, fontSize: font.subtitle, fontWeight: "700", marginRight: 4 },
   vSeats: { color: colors.textMuted, fontSize: font.caption },
   vDesc: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   vEta: { color: colors.text, fontSize: font.micro, marginTop: 4, opacity: 0.7 },
-  vFare: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
+  vFare: { color: colors.text, fontSize: font.subtitle, fontWeight: "700" },
   vFareSub: { color: colors.textDim, fontSize: 10, marginTop: 2 },
   bottomBar: {
     position: "absolute", left: 0, right: 0, bottom: 0,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingTop: 14, flexDirection: "row", alignItems: "center", gap: 12,
   },
   barLabel: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
-  barFare: { color: "#fff", fontSize: font.title, fontWeight: "800", marginTop: 2 },
+  barFare: { color: colors.text, fontSize: font.title, fontWeight: "800", marginTop: 2 },
   barBtn: {
     height: 52, paddingHorizontal: 20, borderRadius: radius.md, backgroundColor: colors.accent,
     flexDirection: "row", alignItems: "center", gap: 8,

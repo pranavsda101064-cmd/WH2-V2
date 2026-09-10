@@ -1,9 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   Alert,
-  Animated,
-  Easing,
   ScrollView,
   StyleSheet,
   Text,
@@ -17,8 +15,9 @@ import { StatusBar } from "expo-status-bar";
 import { colors, radius, font, spacing } from "@/src/theme";
 import { api, getUserEmail, getUserName } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
-import { FadeIn } from "@/src/components/fade-in";
 import { SkeletonCircle } from "@/src/components/loading";
+
+const DICEBEAR_FALLBACK = "https://api.dicebear.com/10.x/adventurer-neutral/png?seed=explorer&size=128&backgroundColor=transparent";
 
 const rows: {
   icon: keyof typeof Ionicons.glyphMap;
@@ -27,7 +26,6 @@ const rows: {
   route?: string;
 }[] = [
   { icon: "person-outline", label: "Personal information", route: "/profile-setup" },
-  { icon: "card-outline", label: "Payments" },
   { icon: "location-outline", label: "Saved addresses", route: "/saved-addresses" },
   { icon: "notifications-outline", label: "Notifications", route: "/notifications" },
   { icon: "help-circle-outline", label: "Help", route: "/help" },
@@ -36,34 +34,12 @@ const rows: {
   { icon: "log-out-outline", label: "Sign out" },
 ];
 
-function AnimatedStat({ label, value, delay }: { label: string; value: string; delay: number }) {
-  const anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(anim, {
-      toValue: 1,
-      duration: 600,
-      delay,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, []);
-
-  return (
-    <View style={styles.stat}>
-      <Animated.Text style={[styles.statValue, { opacity: anim }]}>
-        {value}
-      </Animated.Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 export default function Profile() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("");
+  const [userPhone, setUserPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [profileAddress, setProfileAddress] = useState<string | null>(null);
   const [tripCount, setTripCount] = useState(0);
@@ -78,6 +54,7 @@ export default function Profile() {
         setUserName(p.full_name);
         setAvatarUrl(p.avatar_url);
         setProfileAddress(p.address);
+        setUserPhone(p.phone);
       }
     }).catch(() => {});
 
@@ -97,12 +74,30 @@ export default function Profile() {
     if (avatarUrl && avatarUrl.startsWith("/") && process.env.EXPO_PUBLIC_BACKEND_URL) {
       return { uri: `${process.env.EXPO_PUBLIC_BACKEND_URL}${avatarUrl}` };
     }
-    return { uri: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=200&q=70" };
+    return { uri: DICEBEAR_FALLBACK };
+  };
+
+  const handleSignOut = () => {
+    Alert.alert(
+      "Sign out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: async () => {
+            await api.logout();
+            router.replace("/");
+          },
+        },
+      ],
+    );
   };
 
   return (
     <View style={styles.root} testID="profile-screen">
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ScrollView
         contentContainerStyle={{
           paddingTop: insets.top + 16,
@@ -112,76 +107,80 @@ export default function Profile() {
       >
         <View style={styles.headRow}>
           <Text style={styles.h1}>Profile</Text>
-          <SpringPress style={styles.iconBtn} onPress={() => Alert.alert("Settings", "App settings coming soon!")}>
-            <Ionicons name="settings-outline" size={18} color={colors.text} />
+        </View>
+
+        {/* Profile Card */}
+        <View style={styles.card}>
+          {avatarUrl ? (
+            <Image source={getAvatarSource()} style={styles.avatar} />
+          ) : (
+            <SkeletonCircle size={56} />
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={styles.name}>{displayName}</Text>
+            <Text style={styles.email}>{userEmail || "Not signed in"}</Text>
+            {userPhone ? (
+              <View style={styles.infoRow}>
+                <Ionicons name="call-outline" size={12} color={colors.textDim} />
+                <Text style={styles.infoText}>{userPhone}</Text>
+              </View>
+            ) : null}
+            {profileAddress ? (
+              <View style={styles.infoRow}>
+                <Ionicons name="location-outline" size={12} color={colors.textDim} />
+                <Text style={styles.infoText} numberOfLines={1}>{profileAddress}</Text>
+              </View>
+            ) : null}
+          </View>
+          <SpringPress
+            style={styles.editBtn}
+            onPress={() => router.push("/profile-setup")}
+            testID="edit-profile-button"
+          >
+            <Ionicons name="create-outline" size={16} color={colors.text} />
+            <Text style={styles.editText}>Edit</Text>
           </SpringPress>
         </View>
 
-        <FadeIn delay={50}>
-          <View style={styles.card}>
-            {avatarUrl ? (
-              <Image source={getAvatarSource()} style={styles.avatar} />
-            ) : (
-              <SkeletonCircle size={56} />
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{displayName}</Text>
-              <Text style={styles.phone}>{userEmail || "Not signed in"}</Text>
-              {profileAddress ? (
-                <View style={styles.addressRow}>
-                  <Ionicons name="location-outline" size={12} color={colors.textDim} />
-                  <Text style={styles.addressText} numberOfLines={1}>{profileAddress}</Text>
-                </View>
-              ) : null}
-              <View style={styles.ratingRow}>
-                <Ionicons name="star" size={12} color={colors.accent} />
-                <Text style={styles.rating}>4.92 rider rating</Text>
-              </View>
-            </View>
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{tripCount}</Text>
+            <Text style={styles.statLabel}>Trips</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>{totalDistance} km</Text>
+            <Text style={styles.statLabel}>Distance</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={styles.statValue}>₹{totalSaved.toLocaleString("en-IN")}</Text>
+            <Text style={styles.statLabel}>Saved</Text>
+          </View>
+        </View>
+
+        {/* Settings List */}
+        <View style={styles.list}>
+          {rows.map((row, i) => (
             <SpringPress
-              style={styles.editBtn}
-              onPress={() => router.push("/profile-setup")}
-              testID="edit-profile-button"
+              key={row.label}
+              style={[styles.row, i < rows.length - 1 && styles.rowDivider]}
+              onPress={async () => {
+                if (row.label === "Sign out") {
+                  handleSignOut();
+                } else if (row.route) {
+                  router.push(row.route as any);
+                }
+              }}
             >
-              <Ionicons name="create-outline" size={16} color={colors.text} />
-              <Text style={styles.editText}>Edit</Text>
+              <Ionicons name={row.icon} size={20} color={colors.textMuted} />
+              <Text style={styles.rowLabel}>{row.label}</Text>
+              {row.hint ? <Text style={styles.rowHint}>{row.hint}</Text> : null}
+              <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
             </SpringPress>
-          </View>
-        </FadeIn>
-
-        <FadeIn delay={100}>
-          <View style={styles.statsRow}>
-            <AnimatedStat label="Trips" value={String(tripCount)} delay={150} />
-            <View style={styles.statDivider} />
-            <AnimatedStat label="Distance" value={`${totalDistance} km`} delay={250} />
-            <View style={styles.statDivider} />
-            <AnimatedStat label="Saved" value={`₹${totalSaved.toLocaleString("en-IN")}`} delay={350} />
-          </View>
-        </FadeIn>
-
-        <FadeIn delay={150}>
-          <View style={styles.list}>
-            {rows.map((row, i) => (
-              <SpringPress
-                key={row.label}
-                style={[styles.row, i < rows.length - 1 && styles.rowDivider]}
-                onPress={async () => {
-                  if (row.label === "Sign out") {
-                    await api.logout();
-                    router.replace("/");
-                  } else if (row.route) {
-                    router.push(row.route as any);
-                  }
-                }}
-              >
-                <Ionicons name={row.icon} size={20} color={colors.textMuted} />
-                <Text style={styles.rowLabel}>{row.label}</Text>
-                {row.hint && <Text style={styles.rowHint}>{row.hint}</Text>}
-                <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
-              </SpringPress>
-            ))}
-          </View>
-        </FadeIn>
+          ))}
+        </View>
       </ScrollView>
     </View>
   );
@@ -193,11 +192,9 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, marginBottom: 20,
   },
-  h1: { color: colors.text, fontSize: 28, fontWeight: "800" },
-  iconBtn: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
-  },
+  h1: { color: colors.text, fontSize: font.title, fontWeight: "600" },
+
+  // Profile card
   card: {
     marginHorizontal: 20, padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 14,
@@ -205,27 +202,28 @@ const styles = StyleSheet.create({
   avatar: {
     width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surfaceAlt,
   },
-  name: { color: colors.text, fontSize: 17, fontWeight: "700" },
-  phone: { color: colors.textMuted, fontSize: font.small, marginTop: 2 },
-  addressRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
-  addressText: { color: colors.textDim, fontSize: font.caption, flex: 1 },
-  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: spacing.xs },
-  rating: { color: colors.textMuted, fontSize: font.caption },
+  name: { color: colors.text, fontSize: 17, fontWeight: "600" },
+  email: { color: colors.textMuted, fontSize: font.small, marginTop: 2 },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 },
+  infoText: { color: colors.textDim, fontSize: font.caption, flex: 1 },
   editBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: spacing.md,
-    height: 44, borderRadius: 22,
+    paddingHorizontal: spacing.md, height: 44, borderRadius: 22,
     borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt,
   },
   editText: { color: colors.text, fontSize: font.small, fontWeight: "600" },
+
+  // Stats
   statsRow: {
     flexDirection: "row", marginHorizontal: 20, marginTop: spacing.md, padding: spacing.md,
     borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   stat: { flex: 1, alignItems: "center" },
-  statValue: { color: colors.text, fontSize: 18, fontWeight: "800" },
+  statValue: { color: colors.text, fontSize: 16, fontWeight: "700" },
   statLabel: { color: colors.textMuted, fontSize: font.caption, marginTop: spacing.xs },
   statDivider: { width: 1, backgroundColor: colors.border },
+
+  // Settings list
   list: {
     marginHorizontal: 20, marginTop: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, overflow: "hidden",

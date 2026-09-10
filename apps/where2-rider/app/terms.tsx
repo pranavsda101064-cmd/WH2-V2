@@ -53,7 +53,7 @@ export default function Terms() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
@@ -65,9 +65,7 @@ export default function Terms() {
           <Text style={styles.h1}>Terms of Service</Text>
         </View>
 
-        <FadeIn delay={50}>
-          <Text style={styles.updated}>Last updated: September 2026</Text>
-        </FadeIn>
+        <Text style={styles.updated}>Last updated: September 2026</Text>
 
         {SECTIONS.map((s, i) => (
           <FadeIn key={i} delay={i * 60}>
@@ -91,7 +89,7 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { color: colors.text, fontSize: font.title, fontWeight: "800" },
+  h1: { color: colors.text, fontSize: font.title, fontWeight: "600" },
   updated: { color: colors.textDim, fontSize: font.caption, paddingHorizontal: 20, marginBottom: 20 },
   card: {
     marginHorizontal: 20, marginBottom: 12, padding: 18, borderRadius: radius.lg,

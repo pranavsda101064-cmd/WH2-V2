@@ -1,0 +1,265 @@
+import { useRef, useState } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { StatusBar } from "expo-status-bar";
+
+import { colors, radius, font, spacing } from "@/src/theme";
+import { SpringPress } from "@/src/components/spring-press";
+
+const QUICK_QUESTIONS = [
+  "I'm at the pickup point",
+  "Where are you?",
+  "Please wait 2 min",
+  "I can't find you",
+  "Going towards you",
+  "Call me",
+];
+
+type Message = {
+  id: string;
+  text: string;
+  sent: boolean;
+  time: string;
+};
+
+function formatTime(): string {
+  const now = new Date();
+  const h = now.getHours();
+  const m = now.getMinutes().toString().padStart(2, "0");
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${m} ${ampm}`;
+}
+
+export default function Chat() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { rideId, driverName, driverPhone } = useLocalSearchParams<{
+    rideId: string;
+    driverName: string;
+    driverPhone: string;
+  }>();
+
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "system-1",
+      text: `Chat with ${driverName || "your driver"}. Send a message or pick a quick question below.`,
+      sent: false,
+      time: formatTime(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const flatListRef = useRef<FlatList>(null);
+
+  const sendMessage = (text: string) => {
+    if (!text.trim()) return;
+    const msg: Message = {
+      id: `msg-${Date.now()}`,
+      text: text.trim(),
+      sent: true,
+      time: formatTime(),
+    };
+    setMessages((prev) => [...prev, msg]);
+    setInput("");
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const handleCall = () => {
+    if (driverPhone) {
+      Linking.openURL(`tel:${driverPhone}`);
+    }
+  };
+
+  const renderMessage = ({ item }: { item: Message }) => (
+    <View
+      style={[
+        styles.msgBubble,
+        item.sent ? styles.msgSent : styles.msgReceived,
+      ]}
+    >
+      <Text style={[styles.msgText, item.sent && styles.msgTextSent]}>
+        {item.text}
+      </Text>
+      <Text style={[styles.msgTime, item.sent && styles.msgTimeSent]}>
+        {item.time}
+      </Text>
+    </View>
+  );
+
+  return (
+    <View style={styles.root}>
+      <StatusBar style="dark" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+      >
+        {/* Header */}
+        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+          <SpringPress style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={22} color={colors.text} />
+          </SpringPress>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerTitle}>{driverName || "Driver"}</Text>
+            <Text style={styles.headerSub}>Tap a question or type below</Text>
+          </View>
+          <SpringPress style={styles.callBtn} onPress={handleCall}>
+            <Ionicons name="call-outline" size={20} color="#fff" />
+          </SpringPress>
+        </View>
+
+        {/* Quick questions */}
+        <View style={styles.quickSection}>
+          <Text style={styles.quickLabel}>Quick questions</Text>
+          <View style={styles.quickGrid}>
+            {QUICK_QUESTIONS.map((q) => (
+              <SpringPress
+                key={q}
+                style={styles.quickChip}
+                onPress={() => sendMessage(q)}
+              >
+                <Text style={styles.quickChipText}>{q}</Text>
+              </SpringPress>
+            ))}
+          </View>
+        </View>
+
+        {/* Messages */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMessage}
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingBottom: 16,
+            paddingTop: 8,
+          }}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() =>
+            flatListRef.current?.scrollToEnd({ animated: false })
+          }
+        />
+
+        {/* Input bar */}
+        <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder="Type a message..."
+            placeholderTextColor={colors.textDim}
+            onSubmitEditing={() => sendMessage(input)}
+            returnKeyType="send"
+          />
+          <SpringPress
+            style={[styles.sendBtn, !input.trim() && styles.sendBtnDisabled]}
+            onPress={() => sendMessage(input)}
+            disabled={!input.trim()}
+          >
+            <Ionicons
+              name="arrow-forward"
+              size={18}
+              color={input.trim() ? "#fff" : colors.textDim}
+            />
+          </SpringPress>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
+  },
+  headerTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "600" },
+  headerSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
+  callBtn: {
+    width: 42, height: 42, borderRadius: 21, backgroundColor: colors.accent,
+    alignItems: "center", justifyContent: "center",
+  },
+
+  quickSection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  quickLabel: {
+    color: colors.textMuted, fontSize: font.caption, fontWeight: "600",
+    textTransform: "uppercase", letterSpacing: 1, marginBottom: 8,
+  },
+  quickGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  quickChip: {
+    paddingHorizontal: 14, height: 36, borderRadius: 18,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    alignItems: "center", justifyContent: "center",
+  },
+  quickChipText: { color: colors.text, fontSize: font.small, fontWeight: "500" },
+
+  msgBubble: {
+    maxWidth: "78%",
+    padding: 12,
+    borderRadius: radius.lg,
+    marginBottom: 8,
+  },
+  msgSent: {
+    alignSelf: "flex-end",
+    backgroundColor: colors.accent,
+    borderBottomRightRadius: 4,
+  },
+  msgReceived: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomLeftRadius: 4,
+  },
+  msgText: { color: colors.text, fontSize: font.label, lineHeight: 20 },
+  msgTextSent: { color: "#fff" },
+  msgTime: {
+    color: colors.textDim, fontSize: font.micro, marginTop: 4, alignSelf: "flex-end",
+  },
+  msgTimeSent: { color: "rgba(255,255,255,0.7)" },
+
+  inputBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 16, paddingTop: 8,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  input: {
+    flex: 1, height: 44, borderRadius: radius.pill,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 16, color: colors.text, fontSize: font.label,
+  },
+  sendBtn: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent,
+    alignItems: "center", justifyContent: "center",
+  },
+  sendBtnDisabled: { backgroundColor: colors.surfaceAlt },
+});

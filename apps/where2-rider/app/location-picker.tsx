@@ -16,7 +16,6 @@ import * as Location from "expo-location";
 
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { storage } from "@/src/utils/storage";
-import { FadeIn } from "@/src/components/fade-in";
 import { SpringPress } from "@/src/components/spring-press";
 import {
   isWithinServiceArea,
@@ -229,39 +228,37 @@ export default function LocationPicker() {
 
   return (
     <View style={styles.root}>
-      {/* Header - Trip Route Builder (Screen 3) */}
-      <FadeIn delay={100}>
-        <View style={[styles.searchContainer, { top: insets.top + 8 }]}>
-          <Text style={styles.headerTitle}>Trip Route Builder</Text>
-          <View style={[styles.searchBox, outsideArea && styles.searchBoxError]}>
-            <Ionicons name="search" size={18} color={colors.textMuted} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Add a new stopover..."
-              placeholderTextColor={colors.textMuted}
-              value={searchQuery}
-              onChangeText={handleSearchInput}
-            />
-            {parsingUrl && <ActivityIndicator size="small" color={colors.accent} />}
-            {!parsingUrl && searchQuery.length > 0 && (
-              <SpringPress onPress={() => { setSearchQuery(""); setSearchResults([]); }}>
-                <Ionicons name="close-circle" size={18} color={colors.textMuted} />
-              </SpringPress>
-            )}
-          </View>
-
-          {searchResults.length > 0 && (
-            <View style={styles.resultsList}>
-              {searchResults.map((item, i) => (
-                <SpringPress key={i} style={styles.resultItem} onPress={() => handleSearchSelect(item)}>
-                  <Ionicons name="location-outline" size={16} color={colors.textMuted} />
-                  <Text style={styles.resultText} numberOfLines={2}>{item.display_name}</Text>
-                </SpringPress>
-              ))}
-            </View>
+      {/* Header */}
+      <View style={[styles.searchContainer, { top: insets.top + 8 }]}>
+        <Text style={styles.headerTitle}>Choose Location</Text>
+        <View style={[styles.searchBox, outsideArea && styles.searchBoxError]}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search for a location..."
+            placeholderTextColor={colors.textMuted}
+            value={searchQuery}
+            onChangeText={handleSearchInput}
+          />
+          {parsingUrl && <ActivityIndicator size="small" color={colors.accent} />}
+          {!parsingUrl && searchQuery.length > 0 && (
+            <SpringPress onPress={() => { setSearchQuery(""); setSearchResults([]); }}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </SpringPress>
           )}
         </View>
-      </FadeIn>
+
+        {searchResults.length > 0 && (
+          <View style={styles.resultsList}>
+            {searchResults.map((item, i) => (
+              <SpringPress key={i} style={styles.resultItem} onPress={() => handleSearchSelect(item)}>
+                <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+                <Text style={styles.resultText} numberOfLines={2}>{item.display_name}</Text>
+              </SpringPress>
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* Outside area banner */}
       {outsideArea && (
@@ -315,45 +312,34 @@ export default function LocationPicker() {
 
       {/* Tourist suggestions */}
       {showSuggestions && !marker && (
-        <FadeIn delay={200}>
-          <View style={[styles.suggestionsRow, { bottom: insets.bottom + 180 }]}>
-            <View style={{ flexDirection: "row", paddingHorizontal: 16, gap: 8 }}>
-              {TOURIST_PLACES.slice(0, 4).map((place) => (
-                <SpringPress
-                  key={place.name}
-                  style={styles.suggestionChip}
-                  onPress={() => handleSuggestionSelect(place)}
-                >
-                  <Text style={styles.suggestionTag}>{place.tag}</Text>
-                  <Text style={styles.suggestionName}>{place.name}</Text>
-                </SpringPress>
-              ))}
-            </View>
+        <View style={[styles.suggestionsRow, { bottom: insets.bottom + 180 }]}>
+          <View style={{ flexDirection: "row", paddingHorizontal: 16, gap: 8 }}>
+            {TOURIST_PLACES.slice(0, 4).map((place) => (
+              <SpringPress
+                key={place.name}
+                style={styles.suggestionChip}
+                onPress={() => handleSuggestionSelect(place)}
+              >
+                <Text style={styles.suggestionTag}>{place.tag}</Text>
+                <Text style={styles.suggestionName}>{place.name}</Text>
+              </SpringPress>
+            ))}
           </View>
-        </FadeIn>
+        </View>
       )}
 
-      {/* Bottom Map Location Cards (Screen 3) */}
-      <FadeIn delay={250}>
-        <View style={[styles.bottomPanel, { paddingBottom: insets.bottom + 16 }]}>
+      {/* Bottom panel */}
+      <View style={[styles.bottomPanel, { paddingBottom: insets.bottom + 16 }]}>
           {marker && (
             <View style={styles.locationCard}>
               <View style={styles.nodeBadge}>
                 <Text style={styles.nodeBadgeText}>1</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.locationCardTitle}>Map Location #1</Text>
+                <Text style={styles.locationCardTitle}>Selected Location</Text>
                 <Text style={styles.locationCardSub} numberOfLines={1}>
-                  {label || "LOCAL FOREST STAY"}
+                  {label || "Tap map to select"}
                 </Text>
-              </View>
-              <View style={styles.cardModifierBtns}>
-                <SpringPress style={styles.modifierBtn}>
-                  <Ionicons name="remove" size={16} color="#FFFFFF" />
-                </SpringPress>
-                <SpringPress style={styles.modifierBtn}>
-                  <Ionicons name="add" size={16} color="#FFFFFF" />
-                </SpringPress>
               </View>
             </View>
           )}
@@ -374,11 +360,10 @@ export default function LocationPicker() {
                 }
               }}
             >
-              <Text style={styles.confirmText}>Confirm Route Stop</Text>
+              <Text style={styles.confirmText}>Confirm Location</Text>
             </SpringPress>
           </View>
         </View>
-      </FadeIn>
     </View>
   );
 }
@@ -396,7 +381,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: "800",
+    fontWeight: "600",
     marginBottom: 2,
   },
   searchBox: {
@@ -532,20 +517,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   nodeBadgeText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" },
-  locationCardTitle: { color: colors.text, fontSize: font.label, fontWeight: "800" },
+  locationCardTitle: { color: colors.text, fontSize: font.label, fontWeight: "600" },
   locationCardSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
-  cardModifierBtns: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  modifierBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   bottomActions: { flexDirection: "row", gap: 12 },
   cancelBtn: {
     flex: 1,
@@ -567,5 +540,5 @@ const styles = StyleSheet.create({
     ...shadows.accent,
   },
   confirmBtnDisabled: { opacity: 0.4 },
-  confirmText: { color: "#FFFFFF", fontSize: font.body, fontWeight: "800" },
+  confirmText: { color: "#FFFFFF", fontSize: font.body, fontWeight: "700" },
 });

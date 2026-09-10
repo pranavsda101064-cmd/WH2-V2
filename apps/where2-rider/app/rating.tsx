@@ -19,7 +19,6 @@ import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { SpringPress } from "@/src/components/spring-press";
-import { FadeIn } from "@/src/components/fade-in";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -33,6 +32,8 @@ const COMPLIMENTS = [
   { id: "c6", label: "On time", icon: "time-outline" as const },
 ];
 
+const CONFETTI_COLORS = [colors.accent, "#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#F7DC6F"];
+
 /* ── Confetti particle ──────────────────────────────────── */
 function ConfettiParticle({ delay, color, startX }: { delay: number; color: string; startX: number }) {
   const translateY = useRef(new Animated.Value(0)).current;
@@ -45,7 +46,7 @@ function ConfettiParticle({ delay, color, startX }: { delay: number; color: stri
       Animated.sequence([
         Animated.delay(delay),
         Animated.timing(translateY, {
-          toValue: -300 - Math.random() * 200,
+          toValue: -300 - (delay % 200),
           duration: 1200,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
@@ -54,7 +55,7 @@ function ConfettiParticle({ delay, color, startX }: { delay: number; color: stri
       Animated.sequence([
         Animated.delay(delay),
         Animated.timing(translateX, {
-          toValue: (Math.random() - 0.5) * 200,
+          toValue: ((delay % 100) - 50) * 4,
           duration: 1200,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
@@ -144,17 +145,15 @@ function SuccessScreen() {
     ]).start();
   }, []);
 
-  const confettiColors = [colors.accent, "#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#F7DC6F"];
-
   return (
     <View style={styles.done} testID="rating-success">
-      {/* Confetti */}
+      {/* Confetti — deterministic positions */}
       {Array.from({ length: 18 }).map((_, i) => (
         <ConfettiParticle
           key={i}
           delay={i * 40}
-          color={confettiColors[i % confettiColors.length]}
-          startX={SCREEN_W * 0.3 + Math.random() * SCREEN_W * 0.4}
+          color={CONFETTI_COLORS[i % CONFETTI_COLORS.length]}
+          startX={SCREEN_W * 0.3 + (i * 37) % (SCREEN_W * 0.4)}
         />
       ))}
 
@@ -181,6 +180,23 @@ export default function Rating() {
   const [tags, setTags] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [driverName, setDriverName] = useState("Driver");
+  const [driverVehicle, setDriverVehicle] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const rideId = await storage.getItem<string>("active_ride_id", "");
+        if (rideId) {
+          const driver = await api.getRideDriver(rideId);
+          if (driver?.name) setDriverName(driver.name);
+          const vehicleParts = [driver?.vehicle_make, driver?.vehicle_model].filter(Boolean);
+          if (vehicleParts.length > 0) setDriverVehicle(vehicleParts.join(" "));
+          if (driver?.vehicle_reg) setDriverVehicle((prev) => prev ? `${prev} · ${driver.vehicle_reg}` : driver.vehicle_reg || "");
+        }
+      } catch {}
+    })();
+  }, []);
 
   const toggle = (id: string) =>
     setTags((prev) =>
@@ -210,7 +226,7 @@ export default function Rating() {
 
   return (
     <View style={styles.root} testID="rating-screen">
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -236,8 +252,10 @@ export default function Rating() {
             <View style={styles.avatar}>
               <Ionicons name="person" size={28} color={colors.accent} />
             </View>
-            <Text style={styles.driverName}>Ravi Kumar</Text>
-            <Text style={styles.driverSub}>Silver SUV · KA 13 X 4421</Text>
+            <Text style={styles.driverName}>{driverName}</Text>
+            {driverVehicle ? (
+              <Text style={styles.driverSub}>{driverVehicle}</Text>
+            ) : null}
           </View>
 
           <Text style={styles.q}>How was your ride?</Text>
@@ -255,87 +273,79 @@ export default function Rating() {
           </View>
 
           {stars > 0 && (
-            <FadeIn delay={100}>
-              <Text style={styles.starHint}>
-                {stars === 5
-                  ? "Amazing! What made it great?"
-                  : stars >= 4
-                    ? "Glad it was good — anything to highlight?"
-                    : stars >= 3
-                      ? "Thanks — how can we do better?"
-                      : "Sorry to hear that. Tell us what happened."}
-              </Text>
-            </FadeIn>
+            <Text style={styles.starHint}>
+              {stars === 5
+                ? "Amazing! What made it great?"
+                : stars >= 4
+                  ? "Glad it was good — anything to highlight?"
+                  : stars >= 3
+                    ? "Thanks — how can we do better?"
+                    : "Sorry to hear that. Tell us what happened."}
+            </Text>
           )}
 
           {/* Compliments */}
           {stars > 0 && (
-            <FadeIn delay={150}>
-              <View style={styles.tagsWrap} testID="compliment-tags">
-                {COMPLIMENTS.map((c) => {
-                  const active = tags.includes(c.id);
-                  return (
-                    <SpringPress
-                      key={c.id}
-                      onPress={() => toggle(c.id)}
-                      style={[styles.tag, active && styles.tagActive]}
-                      testID={`tag-${c.id}`}
-                    >
-                      <Ionicons
-                        name={c.icon}
-                        size={14}
-                        color={active ? colors.accent : colors.textMuted}
-                      />
-                      <Text
-                        style={[styles.tagText, active && { color: colors.accent }]}
-                      >
-                        {c.label}
-                      </Text>
-                    </SpringPress>
-                  );
-                })}
-              </View>
-            </FadeIn>
-          )}
-
-          {/* Note */}
-          <FadeIn delay={200}>
-            <Text style={styles.section}>Add a note (optional)</Text>
-            <TextInput
-              value={note}
-              onChangeText={setNote}
-              multiline
-              placeholder="Anything else you want to share?"
-              placeholderTextColor={colors.textDim}
-              style={styles.noteInput}
-              testID="note-input"
-            />
-          </FadeIn>
-
-          {/* Tip */}
-          <FadeIn delay={250}>
-            <Text style={styles.section}>Add a tip</Text>
-            <Text style={styles.sectionSub}>100% goes to your driver</Text>
-            <View style={styles.tipRow}>
-              {TIP_PRESETS.map((amt) => {
-                const active = tip === amt;
+            <View style={styles.tagsWrap} testID="compliment-tags">
+              {COMPLIMENTS.map((c) => {
+                const active = tags.includes(c.id);
                 return (
                   <SpringPress
-                    key={amt}
-                    onPress={() => setTip(amt)}
-                    style={[styles.tipBtn, active && styles.tipBtnActive]}
-                    testID={`tip-${amt}`}
+                    key={c.id}
+                    onPress={() => toggle(c.id)}
+                    style={[styles.tag, active && styles.tagActive]}
+                    testID={`tag-${c.id}`}
                   >
+                    <Ionicons
+                      name={c.icon}
+                      size={14}
+                      color={active ? colors.accent : colors.textMuted}
+                    />
                     <Text
-                      style={[styles.tipText, active && { color: colors.accent }]}
+                      style={[styles.tagText, active && { color: colors.accent }]}
                     >
-                      {amt === 0 ? "No tip" : `₹${amt}`}
+                      {c.label}
                     </Text>
                   </SpringPress>
                 );
               })}
             </View>
-          </FadeIn>
+          )}
+
+          {/* Note */}
+          <Text style={styles.section}>Add a note (optional)</Text>
+          <TextInput
+            value={note}
+            onChangeText={setNote}
+            multiline
+            placeholder="Anything else you want to share?"
+            placeholderTextColor={colors.textDim}
+            style={styles.noteInput}
+            testID="note-input"
+          />
+
+          {/* Tip */}
+          <Text style={styles.section}>Add a tip</Text>
+          <Text style={styles.sectionSub}>100% goes to your driver</Text>
+          <View style={styles.tipRow}>
+            {TIP_PRESETS.map((amt) => {
+              const active = tip === amt;
+              return (
+                <SpringPress
+                  key={amt}
+                  onPress={() => setTip(amt)}
+                  style={[styles.tipBtn, active && styles.tipBtnActive]}
+                  testID={`tip-${amt}`}
+                >
+                  <Text
+                    style={[styles.tipText, active && { color: colors.accent }]}
+                  >
+                    {amt === 0 ? "No tip" : `₹${amt}`}
+                  </Text>
+                </SpringPress>
+              );
+            })}
+          </View>
         </ScrollView>
 
         {/* Submit */}
@@ -359,161 +369,77 @@ export default function Rating() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   closeBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
     marginBottom: 20,
   },
   driverBlock: { alignItems: "center", marginBottom: 28 },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
     marginBottom: 14,
   },
-  driverName: { color: colors.text, fontSize: font.h3, fontWeight: "800" },
+  driverName: { color: colors.text, fontSize: font.subtitle, fontWeight: "600" },
   driverSub: { color: colors.textMuted, fontSize: font.small, marginTop: spacing.xs },
   q: {
-    color: colors.text,
-    fontSize: font.title,
-    fontWeight: "800",
-    textAlign: "center",
-    letterSpacing: -0.5,
-    marginBottom: 20,
+    color: colors.text, fontSize: font.title, fontWeight: "600",
+    textAlign: "center", marginBottom: 20,
   },
   starsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: spacing.md,
-    paddingHorizontal: 8,
+    flexDirection: "row", justifyContent: "space-between",
+    marginBottom: spacing.md, paddingHorizontal: 8,
   },
   starHint: {
-    color: colors.textMuted,
-    fontSize: font.small,
-    textAlign: "center",
-    marginBottom: 20,
+    color: colors.textMuted, fontSize: font.small,
+    textAlign: "center", marginBottom: 20,
   },
   tagsWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: spacing.lg,
-    justifyContent: "center",
+    flexDirection: "row", flexWrap: "wrap", gap: 8,
+    marginBottom: spacing.lg, justifyContent: "center",
   },
   tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    height: 36,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    flexDirection: "row", alignItems: "center", gap: 6, height: 36,
+    paddingHorizontal: 14, borderRadius: 18, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border,
   },
-  tagActive: {
-    borderColor: colors.accent,
-    backgroundColor: "rgba(30,107,255,0.12)",
-  },
+  tagActive: { borderColor: colors.accent, backgroundColor: "rgba(0,137,123,0.12)" },
   tagText: { color: colors.text, fontSize: font.small, fontWeight: "600" },
   section: {
-    color: colors.text,
-    fontSize: font.body,
-    fontWeight: "700",
-    marginTop: 8,
-    marginBottom: 4,
+    color: colors.text, fontSize: font.body, fontWeight: "600",
+    marginTop: 8, marginBottom: 4,
   },
   sectionSub: { color: colors.textMuted, fontSize: font.caption, marginBottom: 10 },
   noteInput: {
-    minHeight: 90,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    color: colors.text,
-    fontSize: font.label,
-    textAlignVertical: "top",
-    marginBottom: 8,
+    minHeight: 90, borderRadius: radius.md, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, padding: 14,
+    color: colors.text, fontSize: font.label, textAlignVertical: "top", marginBottom: 8,
   },
   tipRow: { flexDirection: "row", gap: 8 },
   tipBtn: {
-    flex: 1,
-    height: 46,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
+    flex: 1, height: 46, borderRadius: radius.md, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  tipBtnActive: {
-    borderColor: colors.accent,
-    borderWidth: 2,
-    backgroundColor: "rgba(30,107,255,0.12)",
-  },
-  tipText: { color: colors.text, fontSize: font.label, fontWeight: "700" },
+  tipBtnActive: { borderColor: colors.accent, borderWidth: 2, backgroundColor: "rgba(0,137,123,0.12)" },
+  tipText: { color: colors.text, fontSize: font.label, fontWeight: "600" },
   bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.bg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: 20,
-    paddingTop: 14,
+    position: "absolute", left: 0, right: 0, bottom: 0,
+    backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.border,
+    paddingHorizontal: 20, paddingTop: 14,
   },
   submit: {
-    height: 56,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadows.accent,
+    height: 56, borderRadius: radius.pill, backgroundColor: colors.accent,
+    alignItems: "center", justifyContent: "center", ...shadows.accent,
   },
-  submitDisabled: {
-    backgroundColor: colors.surfaceAlt,
-    shadowOpacity: 0,
-  },
-  submitText: { color: "#fff", fontSize: font.subtitle, fontWeight: "800" },
+  submitDisabled: { backgroundColor: colors.surfaceAlt, shadowOpacity: 0 },
+  submitText: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
   done: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    alignItems: "center",
-    justifyContent: "center",
+    flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center",
     paddingHorizontal: spacing.xl,
   },
   successCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 24,
-    ...shadows.accent,
+    width: 96, height: 96, borderRadius: 48, backgroundColor: colors.accent,
+    alignItems: "center", justifyContent: "center", marginBottom: 24, ...shadows.accent,
   },
-  doneTitle: {
-    color: colors.text,
-    fontSize: 26,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  doneSub: {
-    color: colors.textMuted,
-    fontSize: font.body,
-    marginTop: 8,
-    textAlign: "center",
-  },
+  doneTitle: { color: colors.text, fontSize: 22, fontWeight: "600" },
+  doneSub: { color: colors.textMuted, fontSize: font.body, marginTop: 8, textAlign: "center" },
 });

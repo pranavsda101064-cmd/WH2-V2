@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
@@ -14,6 +15,8 @@ from database import get_db
 from models import User
 
 settings = get_settings()
+
+GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
@@ -73,6 +76,40 @@ def decode_token(token: str) -> dict:
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+# ---------- Google ID Token Verification ----------
+async def verify_google_id_token(id_token: str) -> dict:
+    """Verify a Google ID token using Google's public JWKS keys."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(GOOGLE_JWKS_URL, timeout=10.0)
+        resp.raise_for_status()
+        keys = resp.json().get("keys", [])
+
+    last_error = None
+    for key_data in keys:
+        try:
+            public_key = jwt.algorithms.RSAAlgorithm.from_jwk(key_data)
+            payload = jwt.decode(
+                id_token,
+                public_key,
+                algorithms=["RS256"],
+                options={"verify_aud": False},
+            )
+            # Verify issuer
+            iss = payload.get("iss", "")
+            if iss not in ("accounts.google.com", "https://accounts.google.com"):
+                raise ValueError(f"Invalid issuer: {iss}")
+            # Verify audience matches our client ID
+            aud = payload.get("aud", "")
+            if settings.GOOGLE_WEB_CLIENT_ID and aud != settings.GOOGLE_WEB_CLIENT_ID:
+                raise ValueError(f"Invalid audience: {aud}")
+            return payload
+        except Exception as exc:
+            last_error = exc
+            continue
+
+    raise HTTPException(401, detail=f"Could not verify Google token: {last_error}")
 
 
 # ---------- Dependency ----------

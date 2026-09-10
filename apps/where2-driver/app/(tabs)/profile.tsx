@@ -44,7 +44,7 @@ export default function DriverProfileScreen() {
   useEffect(() => {
     Promise.all([api.getDriverProfile(), api.listDocuments(), api.listVehiclesDriver()])
       .then(([p, d, v]) => { setProfile(p); setDocuments(d); setVehicles(v); })
-      .catch(() => {})
+      .catch(() => Alert.alert("Error", "Failed to load profile data"))
       .finally(() => setLoading(false));
   }, []);
 

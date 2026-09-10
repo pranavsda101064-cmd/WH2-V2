@@ -45,10 +45,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="trips"
         options={{
-          title: "Discover",
+          title: "Trips",
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
-              name={focused ? "compass" : "compass-outline"}
+              name={focused ? "time" : "time-outline"}
               color={color as string}
               size={focused ? 26 : 24}
               focused={focused}
@@ -59,10 +59,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "My Trips",
+          title: "Profile",
           tabBarIcon: ({ color, focused }) => (
             <TabIcon
-              name={focused ? "map" : "map-outline"}
+              name={focused ? "person" : "person-outline"}
               color={color as string}
               size={focused ? 26 : 24}
               focused={focused}

@@ -10,12 +10,16 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export function SpringPress({
   children,
   onPress,
+  onPressIn: onPressInCb,
+  onPressOut: onPressOutCb,
   style,
   testID,
   disabled,
 }: {
   children: React.ReactNode;
   onPress?: (e: GestureResponderEvent) => void;
+  onPressIn?: () => void;
+  onPressOut?: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
   disabled?: boolean;
@@ -32,6 +36,7 @@ export function SpringPress({
       stiffness: 400,
       mass: 0.8,
     });
+    onPressInCb?.();
   };
 
   const handlePressOut = () => {
@@ -40,6 +45,7 @@ export function SpringPress({
       stiffness: 300,
       mass: 0.6,
     });
+    onPressOutCb?.();
   };
 
   return (

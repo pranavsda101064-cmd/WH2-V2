@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   StyleSheet,
   Text,
@@ -30,13 +31,13 @@ export default function Earnings() {
 
   useEffect(() => {
     fetchData()
-      .catch(() => {})
+      .catch(() => Alert.alert("Error", "Failed to load earnings data"))
       .finally(() => setLoading(false));
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchData().catch(() => {});
+    await fetchData().catch(() => Alert.alert("Error", "Failed to refresh data"));
     setRefreshing(false);
   };
 

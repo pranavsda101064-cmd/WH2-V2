@@ -233,7 +233,7 @@ export const stopsSeed = [
 
 export const savedRoutes = [
   { id: "sr1", from: "Hotel Entrance", to: "Sakleshpura Bus Stand", icon: "bus-outline" as const, tag: "2.3 km" },
-  { id: "sr2", from: "Homestay", to: "Manjarabad Fort", icon: "fort-outline" as const, tag: "12 km" },
-  { id: "sr3", from: "Resort", to: "Bisle Ghat Viewpoint", icon: "mountain-outline" as const, tag: "34 km" },
+  { id: "sr2", from: "Homestay", to: "Manjarabad Fort", icon: "business-outline" as const, tag: "12 km" },
+  { id: "sr3", from: "Resort", to: "Bisle Ghat Viewpoint", icon: "leaf-outline" as const, tag: "34 km" },
   { id: "sr4", from: "Town Center", to: "Coffee Estate Tour", icon: "leaf-outline" as const, tag: "8 km" },
 ];

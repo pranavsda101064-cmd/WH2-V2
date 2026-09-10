@@ -50,6 +50,11 @@ export default function Ride() {
   const pickup = stops[0];
   const drop = stops[stops.length - 1];
 
+  const handleBackToDashboard = () => {
+    storage.removeItem("active_ride_id");
+    router.replace("/(tabs)");
+  };
+
   useEffect(() => {
     if (status === "completed" || status === "cancelled") return;
     pulse.setValue(0);
@@ -78,7 +83,15 @@ export default function Ride() {
           setLoading(false);
         }
       } catch {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          Alert.alert("Error", "Failed to load ride details. Going back to dashboard.", [
+            { text: "OK", onPress: () => {
+              storage.removeItem("active_ride_id");
+              router.replace("/(tabs)");
+            }},
+          ]);
+        }
       }
     }
     load();
@@ -94,7 +107,7 @@ export default function Ride() {
         const r = await api.getRide(activeRideId);
         setRide(r);
       } catch {
-        // silent
+        // Polling failure is non-critical; will retry next interval
       }
     }, POLL_INTERVAL);
 
@@ -173,11 +186,6 @@ export default function Ride() {
         { text: "Call 112", style: "destructive", onPress: () => Linking.openURL("tel:112") },
       ],
     );
-  };
-
-  const handleBackToDashboard = () => {
-    storage.removeItem("active_ride_id");
-    router.replace("/(tabs)");
   };
 
   if (loading) return <LoadingScreen message="Loading ride..." />;

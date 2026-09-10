@@ -9,10 +9,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect } from "react";
 
 import { colors, radius } from "@/src/theme";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
+import { getToken } from "@/src/api";
 
 // Green mountain ranges, Chikmagalur — Karnataka, Western Ghats.
 const BG =
@@ -21,6 +23,12 @@ const BG =
 export default function Landing() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    getToken().then((token) => {
+      if (token) router.replace("/(tabs)");
+    });
+  }, []);
 
   return (
     <View style={styles.root} testID="landing-screen">

@@ -25,7 +25,7 @@ export default function Notifications() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { flex: 1, color: colors.text, fontSize: font.title, fontWeight: "800" },
+  h1: { flex: 1, color: colors.text, fontSize: font.title, fontWeight: "600" },
   markBtn: { paddingHorizontal: 12, height: 32, borderRadius: 16, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   markText: { color: colors.accent, fontSize: font.caption, fontWeight: "600" },
   card: {

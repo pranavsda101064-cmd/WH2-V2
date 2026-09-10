@@ -16,10 +16,9 @@ let Haptics: any = null;
 try { Haptics = require("expo-haptics"); } catch {}
 
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
-import { api } from "@/src/api";
+import { api, Vehicle } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { SpringPress } from "@/src/components/spring-press";
-import { FadeIn } from "@/src/components/fade-in";
 import { LoadingBar } from "@/src/components/loading";
 import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder, DARK_MAP_STYLE } from "@/src/components/map-view";
 
@@ -86,6 +85,7 @@ export default function Checkout() {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState("");
   const [vehicleId, setVehicleId] = useState("v1");
+  const [vehicleInfo, setVehicleInfo] = useState<{ name: string; desc: string; seats: number } | null>(null);
   const [baseFare, setBaseFare] = useState(2199);
   const [pickup, setPickup] = useState<LocationData | null>(null);
   const [dropoff, setDropoff] = useState<LocationData | null>(null);
@@ -102,6 +102,15 @@ export default function Checkout() {
         if (f) setBaseFare(f);
         if (pRaw) setPickup(pRaw);
         if (dRaw) setDropoff(dRaw);
+
+        // Fetch actual vehicle info
+        try {
+          const vehicles = await api.listVehicles();
+          const found = vehicles.find((veh) => veh.id === v);
+          if (found) {
+            setVehicleInfo({ name: found.name, desc: found.desc, seats: found.seats });
+          }
+        } catch {}
       } catch {}
     })();
   }, []);
@@ -162,7 +171,7 @@ export default function Checkout() {
 
   return (
     <View style={styles.root} testID="checkout-screen">
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
         <SpringPress
@@ -215,103 +224,101 @@ export default function Checkout() {
         )}
 
         {/* Route recap */}
-        <FadeIn delay={50}>
-          <View style={styles.card}>
-            <Text style={styles.cardHead}>TRIP</Text>
-            <SpringPress onPress={() => router.push("/location-picker?target=pickup")}>
-              <RouteRow
-                first
-                color="#fff"
-                label={pickupLabel}
-                sub={pickup ? "GPS location set" : "Tap to set pickup"}
-                editable
-              />
-            </SpringPress>
-            <SpringPress onPress={() => router.push("/location-picker?target=dropoff")}>
-              <RouteRow
-                last
-                color={colors.accent}
-                label={dropoffLabel}
-                sub={dropoff ? "GPS location set" : "Tap to set drop-off"}
-                editable
-              />
-            </SpringPress>
-          </View>
-        </FadeIn>
+        <View style={styles.card}>
+          <Text style={styles.cardHead}>TRIP</Text>
+          <SpringPress onPress={() => router.push("/location-picker?target=pickup")}>
+            <RouteRow
+              first
+              color="#fff"
+              label={pickupLabel}
+              sub={pickup ? "GPS location set" : "Tap to set pickup"}
+              editable
+            />
+          </SpringPress>
+          <SpringPress onPress={() => router.push("/location-picker?target=dropoff")}>
+            <RouteRow
+              last
+              color={colors.accent}
+              label={dropoffLabel}
+              sub={dropoff ? "GPS location set" : "Tap to set drop-off"}
+              editable
+            />
+          </SpringPress>
+        </View>
 
         {/* Vehicle */}
-        <FadeIn delay={100}>
-          <View style={styles.card}>
-            <View style={styles.vehicleRow}>
-              <View style={styles.vIcon}>
-                <Ionicons name="car-outline" size={22} color={colors.accent} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.vName}>Sedan · Comfortable</Text>
-                <Text style={styles.vSub}>4 seats · 3 min away</Text>
-              </View>
-              <SpringPress onPress={() => router.back()}>
-                <Text style={styles.change}>Change</Text>
-              </SpringPress>
+        <View style={styles.card}>
+          <View style={styles.vehicleRow}>
+            <View style={styles.vIcon}>
+              <Ionicons name="car-outline" size={22} color={colors.accent} />
             </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.vName}>
+                {vehicleInfo ? `${vehicleInfo.name} · ${vehicleInfo.desc}` : "Loading vehicle..."}
+              </Text>
+              <Text style={styles.vSub}>
+                {vehicleInfo ? `${vehicleInfo.seats} seats` : ""}
+              </Text>
+            </View>
+            <SpringPress onPress={() => router.back()}>
+              <Text style={styles.change}>Change</Text>
+            </SpringPress>
           </View>
-        </FadeIn>
+        </View>
 
         {/* Fare breakdown */}
-        <FadeIn delay={150}>
-          <View style={styles.card}>
-            <Text style={styles.cardHead}>FARE BREAKDOWN</Text>
-            <FareRow label="Base fare" value={base} />
-            <FareRow label="Multi-stop fee" value={stopsFee} />
-            <FareRow label="Taxes & GST" value={gst} />
-            <View style={styles.divider} />
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>₹{total.toLocaleString("en-IN")}</Text>
-            </View>
+        <View style={styles.card}>
+          <Text style={styles.cardHead}>FARE BREAKDOWN</Text>
+          <FareRow label="Base fare" value={base} />
+          <FareRow label="Multi-stop fee" value={stopsFee} />
+          <FareRow label="Taxes & GST" value={gst} />
+          <View style={styles.divider} />
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>₹{total.toLocaleString("en-IN")}</Text>
           </View>
-        </FadeIn>
+        </View>
 
         {/* Payment method */}
-        <FadeIn delay={200}>
-          <Text style={styles.sectionTitle}>PAYMENT METHOD</Text>
-          <View style={styles.methodRow}>
-            <MethodBtn
-              id="card"
-              active={method === "card"}
-              onPress={() => setMethod("card")}
-              icon="card-outline"
-              label="Card"
-              sub="•••• 4421"
-            />
-            <MethodBtn
-              id="upi"
-              active={method === "upi"}
-              onPress={() => setMethod("upi")}
-              icon="qr-code-outline"
-              label="UPI"
-              sub="explorer@okhdfc"
-            />
-            <MethodBtn
-              id="cash"
-              active={method === "cash"}
-              onPress={() => setMethod("cash")}
-              icon="cash-outline"
-              label="Cash"
-              sub="Pay driver"
-            />
-          </View>
-          {error ? (
-            <Text style={{ color: colors.danger, fontSize: 13, marginTop: 8, marginLeft: 4 }}>{error}</Text>
-          ) : null}
-        </FadeIn>
+        <Text style={styles.sectionTitle}>PAYMENT METHOD</Text>
+        <View style={styles.methodRow}>
+          <MethodBtn
+            id="card"
+            active={method === "card"}
+            onPress={() => setMethod("card")}
+            icon="card-outline"
+            label="Card"
+            sub="Pay with card"
+          />
+          <MethodBtn
+            id="upi"
+            active={method === "upi"}
+            onPress={() => setMethod("upi")}
+            icon="qr-code-outline"
+            label="UPI"
+            sub="Pay via UPI"
+          />
+          <MethodBtn
+            id="cash"
+            active={method === "cash"}
+            onPress={() => setMethod("cash")}
+            icon="cash-outline"
+            label="Cash"
+            sub="Pay driver directly"
+          />
+        </View>
+        {error ? (
+          <Text style={{ color: colors.danger, fontSize: 13, marginTop: 8, marginLeft: 4 }}>{error}</Text>
+        ) : null}
       </ScrollView>
 
       {/* Pay bar */}
       <View style={[styles.payBar, { paddingBottom: insets.bottom + 16 }]}>
         {paying && <LoadingBar />}
         <View style={{ flex: 1 }}>
-          <Text style={styles.barLabel}>{method === "card" ? "Card •••• 4421" : method === "upi" ? "UPI · explorer@okhdfc" : "Cash on ride"}</Text>
+          <Text style={styles.barLabel}>
+            {method === "card" ? "Card" : method === "upi" ? "UPI" : "Cash on ride"}
+          </Text>
           <Text style={styles.barTotal}>₹{total.toLocaleString("en-IN")}</Text>
         </View>
         <SpringPress
@@ -414,7 +421,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "700" },
+  topTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "600" },
   card: {
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -426,7 +433,7 @@ const styles = StyleSheet.create({
   cardHead: {
     color: colors.textMuted,
     fontSize: font.micro,
-    fontWeight: "700",
+    fontWeight: "600",
     letterSpacing: 1.4,
     textTransform: "uppercase",
     marginBottom: 12,
@@ -441,7 +448,7 @@ const styles = StyleSheet.create({
   vIcon: {
     width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center",
   },
-  vName: { color: colors.text, fontSize: font.body, fontWeight: "700" },
+  vName: { color: colors.text, fontSize: font.body, fontWeight: "600" },
   vSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   change: { color: colors.accent, fontSize: font.small, fontWeight: "600" },
   fareRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
@@ -449,10 +456,10 @@ const styles = StyleSheet.create({
   fareValue: { color: colors.text, fontSize: font.small, fontWeight: "500" },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: 10 },
   totalRow: { flexDirection: "row", justifyContent: "space-between" },
-  totalLabel: { color: colors.text, fontSize: font.body, fontWeight: "700" },
-  totalValue: { color: colors.text, fontSize: 18, fontWeight: "800" },
+  totalLabel: { color: colors.text, fontSize: font.body, fontWeight: "600" },
+  totalValue: { color: colors.text, fontSize: 18, fontWeight: "700" },
   sectionTitle: {
-    color: colors.textMuted, fontSize: font.caption, fontWeight: "700", letterSpacing: 1.4,
+    color: colors.textMuted, fontSize: font.caption, fontWeight: "600", letterSpacing: 1.4,
     textTransform: "uppercase", marginBottom: 10, marginTop: 8, marginLeft: 4,
   },
   methodRow: { flexDirection: "column", gap: 10 },
@@ -464,7 +471,7 @@ const styles = StyleSheet.create({
   methodIcon: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surfaceAlt, alignItems: "center", justifyContent: "center",
   },
-  methodLabel: { color: colors.text, fontSize: font.body, fontWeight: "700" },
+  methodLabel: { color: colors.text, fontSize: font.body, fontWeight: "600" },
   methodSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
   radio: {
     width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.borderStrong,
@@ -478,21 +485,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingTop: spacing.md, flexDirection: "row", alignItems: "center", gap: 12,
   },
   barLabel: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
-  barTotal: { color: colors.text, fontSize: font.title, fontWeight: "800", marginTop: 2 },
+  barTotal: { color: colors.text, fontSize: font.title, fontWeight: "700", marginTop: 2 },
   payBtn: {
-    height: 54, paddingHorizontal: 32, borderRadius: radius.md, backgroundColor: colors.accent,
+    height: 54, paddingHorizontal: 32, borderRadius: radius.pill, backgroundColor: colors.accent,
     alignItems: "center", justifyContent: "center",
     ...shadows.accent,
   },
-  payText: { color: "#fff", fontSize: font.subtitle, fontWeight: "800" },
+  payText: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
   done: {
-    flex: 1, backgroundColor: colors.bg,     alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.xl,
+    flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.xl,
   },
   successCircle: {
     width: 96, height: 96, borderRadius: 48, backgroundColor: colors.accent,
     alignItems: "center", justifyContent: "center", marginBottom: 24,
     ...shadows.accent,
   },
-  doneTitle: { color: colors.text, fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
+  doneTitle: { color: colors.text, fontSize: 22, fontWeight: "600" },
   doneSub: { color: colors.textMuted, fontSize: font.body, marginTop: spacing.sm, textAlign: "center" },
 });

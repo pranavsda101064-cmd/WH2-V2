@@ -25,7 +25,7 @@ export default function Help() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
@@ -37,9 +37,7 @@ export default function Help() {
           <Text style={styles.h1}>Help</Text>
         </View>
 
-        <FadeIn delay={50}>
-          <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-        </FadeIn>
+        <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
 
         {FAQ.map((item, i) => (
           <FadeIn key={i} delay={i * 60}>
@@ -62,18 +60,16 @@ export default function Help() {
           </FadeIn>
         ))}
 
-        <FadeIn delay={400}>
-          <View style={styles.contactCard}>
-            <Ionicons name="chatbubble-ellipses-outline" size={28} color={colors.accent} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.contactTitle}>Still need help?</Text>
-              <Text style={styles.contactSub}>Our support team is available 24/7</Text>
-            </View>
-            <SpringPress style={styles.contactBtn} onPress={() => Alert.alert("Contact Support", "Email us at support@where2.app or call +91 98765 43210")}>
-              <Text style={styles.contactBtnText}>Contact us</Text>
-            </SpringPress>
+        <View style={styles.contactCard}>
+          <Ionicons name="chatbubble-ellipses-outline" size={28} color={colors.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.contactTitle}>Still need help?</Text>
+            <Text style={styles.contactSub}>Our support team is available 24/7</Text>
           </View>
-        </FadeIn>
+          <SpringPress style={styles.contactBtn} onPress={() => Alert.alert("Contact Support", "Email us at support@where2.app or call +91 98765 43210")}>
+            <Text style={styles.contactBtnText}>Contact us</Text>
+          </SpringPress>
+        </View>
       </ScrollView>
     </View>
   );
@@ -88,7 +84,7 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { color: colors.text, fontSize: font.title, fontWeight: "800" },
+  h1: { color: colors.text, fontSize: font.title, fontWeight: "600" },
   sectionTitle: { color: colors.textMuted, fontSize: font.small, fontWeight: "600", paddingHorizontal: 20, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 },
   faqCard: {
     marginHorizontal: 20, marginBottom: 10, padding: spacing.md, borderRadius: radius.lg,

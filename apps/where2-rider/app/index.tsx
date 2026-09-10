@@ -1,7 +1,8 @@
+import { useRef } from "react";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import {
-  ImageBackground,
+  Animated,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,293 +10,362 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+
 let Haptics: any = null;
-try { Haptics = require("expo-haptics"); } catch {}
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withDelay,
-  Easing,
-} from "react-native-reanimated";
+try {
+  Haptics = require("expo-haptics");
+} catch {}
 
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { SpringPress } from "@/src/components/spring-press";
-import { FadeIn } from "@/src/components/fade-in";
 import { storage } from "@/src/utils/storage";
 import { TOURIST_PLACES } from "@/src/utils/location";
 
-const BG =
-  "https://images.unsplash.com/photo-b-GcKW0Vqpc?auto=format&fit=crop&w=1400&q=80";
+const PHOTO =
+  "https://images.unsplash.com/photo-1754164366303-d4e15c2e54b2?auto=format&fit=crop&w=800&q=80";
 
-const EASE = Easing.out(Easing.cubic);
+// Sakleshpura center for distance calculation
+const CENTER = { lat: 13.037, lng: 75.784 };
+
+function getDistanceKm(lat: number, lng: number): number {
+  const R = 6371;
+  const dLat = ((lat - CENTER.lat) * Math.PI) / 180;
+  const dLng = ((lng - CENTER.lng) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((CENTER.lat * Math.PI) / 180) *
+      Math.cos((lat * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const PLACES = TOURIST_PLACES.slice(0, 5).map((p) => ({
+  ...p,
+  distance: getDistanceKm(p.lat, p.lng).toFixed(1),
+}));
 
 export default function Landing() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const contentOpacity = useSharedValue(1);
-  const contentTranslateY = useSharedValue(0);
-  const headlineScale = useSharedValue(1);
-  const headlineOpacity = useSharedValue(1);
-
-  const contentAnim = useAnimatedStyle(() => ({
-    opacity: contentOpacity.value,
-    transform: [{ translateY: contentTranslateY.value }],
-  }));
-
-  const headlineAnim = useAnimatedStyle(() => ({
-    opacity: headlineOpacity.value,
-    transform: [{ scale: headlineScale.value }],
-  }));
+  const arrowX = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
 
   const handleGetStarted = () => {
     if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push("/auth");
+  };
 
-    contentOpacity.value = withTiming(0, { duration: 350, easing: EASE });
-    contentTranslateY.value = withTiming(40, { duration: 350, easing: EASE });
+  const handlePressIn = () => {
+    Animated.spring(arrowX, {
+      toValue: 4,
+      useNativeDriver: true,
+      damping: 12,
+      stiffness: 300,
+    }).start();
+  };
 
-    headlineOpacity.value = withDelay(80, withTiming(0, { duration: 300, easing: EASE }));
-    headlineScale.value = withDelay(80, withTiming(1.08, { duration: 300, easing: EASE }));
-
-    setTimeout(() => router.push("/auth"), 380);
+  const handlePressOut = () => {
+    Animated.spring(arrowX, {
+      toValue: 0,
+      useNativeDriver: true,
+      damping: 12,
+      stiffness: 300,
+    }).start();
   };
 
   return (
-    <View style={styles.root} testID="landing-screen">
-      <ImageBackground source={{ uri: BG }} style={styles.bg} resizeMode="cover">
-        {/* Top gradient — subtle sky darken */}
-        <LinearGradient
-          colors={["rgba(0,0,0,0.4)", "rgba(0,0,0,0)"]}
-          style={styles.topFade}
-          pointerEvents="none"
+    <View style={styles.root}>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.xl },
+        ]}
+      >
+        {/* Wordmark + tagline */}
+        <View style={styles.brand}>
+          <Text style={styles.wordmark}>where2</Text>
+          <Text style={styles.tagline}>Your way around Sakleshpura</Text>
+        </View>
+
+        {/* Landscape photo */}
+        <Image
+          source={{ uri: PHOTO }}
+          style={styles.photo}
+          resizeMode="cover"
         />
 
-        {/* Headline — left-aligned */}
-        <Animated.View style={[styles.headlineWrap, headlineAnim]} pointerEvents="none">
-          <FadeIn delay={300} duration={800} direction="up" scale={{ from: 0.85, to: 1 }}>
-            <Text style={styles.headline} testID="landing-headline">
-              Where2!?
-            </Text>
-          </FadeIn>
-        </Animated.View>
+        {/* Question */}
+        <Text style={styles.question}>
+          Where do you want{"\n"}to go?
+        </Text>
 
-        {/* Hills mask — lighter, more image visible */}
-        <LinearGradient
-          colors={[
-            "rgba(0,0,0,0)",
-            "rgba(0,0,0,0.15)",
-            "rgba(0,0,0,0.55)",
-            "rgba(0,0,0,0.92)",
-            "#000000",
-          ]}
-          locations={[0, 0.25, 0.5, 0.75, 1]}
-          style={styles.hillsMask}
-          pointerEvents="none"
-        />
-
-        {/* Bottom content — animated exit */}
-        <Animated.View
-          style={[styles.bottom, { paddingBottom: insets.bottom + 24 }, contentAnim]}
+        {/* Search bar — tap opens location picker */}
+        <SpringPress
+          style={styles.searchBar}
+          onPress={() => router.push("/location-picker?target=dropoff")}
         >
-          <FadeIn delay={500} duration={600}>
-            <Text style={styles.heroSub}>Go Beyond the Map.</Text>
-          </FadeIn>
+          <Ionicons name="search" size={18} color={colors.textDim} />
+          <Text style={styles.searchPlaceholder}>Search destination...</Text>
+        </SpringPress>
 
-          <FadeIn delay={650} duration={600}>
-            <Text style={styles.heroDesc}>
-              Discover new places, create{"\n"}unforgettable journeys.
-            </Text>
-          </FadeIn>
+        <Text style={styles.locationLabel}>Sakleshpura, Karnataka</Text>
 
-          {/* Destination suggestions */}
-          <FadeIn delay={800} duration={500}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.suggestionsRow}
+        {/* Divider */}
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* Explore nearby — outlined button */}
+        <SpringPress
+          style={styles.exploreBtn}
+          onPress={() => scrollRef.current?.scrollTo({ y: 480, animated: true })}
+        >
+          <Text style={styles.exploreBtnText}>Explore nearby places</Text>
+          <Ionicons name="arrow-forward" size={16} color={colors.textMuted} />
+        </SpringPress>
+
+        {/* Tourist places */}
+        <View style={styles.placesSection}>
+          {PLACES.map((place, i) => (
+            <SpringPress
+              key={place.name}
+              style={styles.placeRow}
+              onPress={() => {
+                storage.setItem(
+                  "dropoff_location",
+                  { lat: place.lat, lng: place.lng, label: place.name } as any,
+                );
+                router.push("/location-picker?target=dropoff");
+              }}
             >
-              {TOURIST_PLACES.slice(0, 6).map((place) => (
-                <SpringPress
-                  key={place.name}
-                  style={styles.chip}
-                  onPress={() => {
-                    storage.setItem(
-                      "dropoff_location",
-                      { lat: place.lat, lng: place.lng, label: place.name },
-                    );
-                    router.push("/location-picker?target=dropoff");
-                  }}
-                >
-                  <Text style={styles.chipTag}>{place.tag}</Text>
-                  <Text style={styles.chipName}>{place.name}</Text>
-                </SpringPress>
-              ))}
-            </ScrollView>
-          </FadeIn>
+              <View style={styles.placeInfo}>
+                <Text style={styles.placeName}>{place.name}</Text>
+                <Text style={styles.placeMeta}>
+                  {place.tag} · {place.distance} km
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={colors.textDim}
+              />
+            </SpringPress>
+          ))}
+        </View>
 
-          {/* Glossy CTA button */}
-          <FadeIn delay={900} duration={500}>
-            <LinearGradient
-              colors={[colors.accent, colors.accentLight]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.ctaGradient}
-            >
-              <SpringPress
-                style={styles.cta}
-                onPress={handleGetStarted}
-                testID="landing-continue-button"
-              >
-                <View style={styles.ctaShine} pointerEvents="none" />
-                <Text style={styles.ctaText}>Get Started</Text>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
-              </SpringPress>
-            </LinearGradient>
-          </FadeIn>
+        {/* Legal */}
+        <Text style={styles.legal}>
+          By continuing you agree to our{" "}
+          <Text
+            style={styles.legal}
+            onPress={() => router.push("/terms")}
+          >
+            Terms
+          </Text>
+          {" & "}
+          <Text
+            style={styles.legal}
+            onPress={() => router.push("/privacy")}
+          >
+            Privacy Policy
+          </Text>
+          .
+        </Text>
+      </ScrollView>
 
-          {/* Tappable legal */}
-          <FadeIn delay={1000} duration={500}>
-            <Text style={styles.legal}>
-              By continuing you agree to our{" "}
-              <Text style={styles.legalLink} onPress={() => router.push("/terms")}>
-                Terms
-              </Text>
-              {" & "}
-              <Text style={styles.legalLink} onPress={() => router.push("/privacy")}>
-                Privacy Policy
-              </Text>.
-            </Text>
-          </FadeIn>
-        </Animated.View>
-      </ImageBackground>
+      {/* CTA — pinned at bottom */}
+      <View style={[styles.ctaWrap, { paddingBottom: insets.bottom + spacing.md }]}>
+        <SpringPress
+          style={styles.cta}
+          onPress={handleGetStarted}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          testID="landing-continue-button"
+        >
+          <Text style={styles.ctaText}>Get Started</Text>
+          <Animated.View style={{ transform: [{ translateX: arrowX }] }}>
+            <Ionicons name="arrow-forward" size={16} color="#fff" />
+          </Animated.View>
+        </SpringPress>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  bg: { flex: 1 },
-  topFade: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "25%",
+  root: {
+    flex: 1,
+    backgroundColor: colors.bg,
   },
-  headlineWrap: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "55%",
-    justifyContent: "flex-end",
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  headline: {
-    color: "#fff",
-    fontSize: 62,
-    fontWeight: "900",
-    letterSpacing: -2,
-    textAlign: "left",
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowRadius: 20,
-    textShadowOffset: { width: 0, height: 4 },
-  },
-  hillsMask: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "58%",
-  },
-  bottom: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
+  scroll: {
     paddingHorizontal: spacing.lg,
   },
-  heroSub: {
-    color: "#fff",
-    fontSize: font.title,
-    fontWeight: "600",
-    letterSpacing: -0.3,
-    marginTop: spacing.sm,
+
+  // Brand
+  brand: {
+    alignItems: "center",
+    marginBottom: spacing.xl,
   },
-  heroDesc: {
-    color: colors.textMuted,
-    fontSize: font.body,
+  wordmark: {
+    fontSize: 18,
     fontWeight: "400",
-    marginTop: 6,
-    lineHeight: 22,
+    color: colors.text,
+    letterSpacing: 2,
+    textTransform: "lowercase",
   },
-  suggestionsRow: {
-    gap: 10,
-    marginTop: spacing.lg,
-    paddingBottom: spacing.xs,
+  tagline: {
+    fontSize: font.caption,
+    fontWeight: "400",
+    color: colors.textMuted,
+    marginTop: 2,
   },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: radius.md,
-    backgroundColor: "rgba(255,255,255,0.08)",
+
+  // Photo
+  photo: {
+    width: "100%",
+    aspectRatio: 1.5,
+    borderRadius: radius.lg,
+    marginBottom: spacing.xl,
+  },
+
+  // Question
+  question: {
+    fontSize: font.h3,
+    fontWeight: "500",
+    color: colors.text,
+    lineHeight: 28,
+    marginBottom: spacing.md,
+  },
+
+  // Search bar
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    minWidth: 120,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    gap: spacing.sm,
   },
-  chipTag: {
-    color: colors.accent,
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
+  searchPlaceholder: {
+    fontSize: font.body,
+    color: colors.textDim,
+    flex: 1,
   },
-  chipName: {
-    color: "#fff",
-    fontSize: font.small,
-    fontWeight: "600",
-    marginTop: 3,
+
+  // Location
+  locationLabel: {
+    fontSize: font.caption,
+    color: colors.textDim,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
   },
-  ctaGradient: {
-    borderRadius: radius.pill,
-    marginTop: spacing.lg,
-    ...shadows.accent,
+
+  // Divider
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    fontSize: font.caption,
+    color: colors.textDim,
+  },
+
+  // Explore button
+  exploreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    height: 48,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  exploreBtnText: {
+    fontSize: font.body,
+    fontWeight: "500",
+    color: colors.text,
+  },
+
+  // Tourist places
+  placesSection: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  placeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  placeInfo: {
+    flex: 1,
+  },
+  placeName: {
+    fontSize: font.body,
+    fontWeight: "500",
+    color: colors.text,
+  },
+  placeMeta: {
+    fontSize: font.caption,
+    fontWeight: "400",
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+
+  // Legal
+  legal: {
+    fontSize: font.caption,
+    fontWeight: "400",
+    color: colors.textDim,
+    textAlign: "center",
+    marginTop: spacing.xl,
+    lineHeight: 18,
+  },
+
+  // CTA — pinned bottom
+  ctaWrap: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    backgroundColor: colors.bg,
   },
   cta: {
-    height: 58,
+    height: 52,
     borderRadius: radius.pill,
+    backgroundColor: colors.accent,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    paddingHorizontal: 36,
-    overflow: "hidden",
-  },
-  ctaShine: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "50%",
-    borderRadius: radius.pill,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    gap: spacing.sm,
+    ...shadows.accent,
   },
   ctaText: {
-    color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-  legal: {
-    color: colors.textDim,
-    fontSize: font.caption,
-    textAlign: "center",
-    marginTop: spacing.md,
-  },
-  legalLink: {
-    color: colors.accent,
+    fontSize: 15,
     fontWeight: "600",
+    color: "#fff",
   },
 });

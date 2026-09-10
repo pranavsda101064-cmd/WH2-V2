@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import {
+  Alert,
   Animated,
   ImageBackground,
   KeyboardAvoidingView,
@@ -16,17 +17,21 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import * as Google from "expo-auth-session/providers/google";
+import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
 
 import { colors, radius } from "@/src/theme";
-import { api } from "@/src/api";
+import { api, getProfileCompleted } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
 
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  scopes: ["profile", "email"],
+  offlineAccess: false,
+});
+
 const BG =
   "https://images.unsplash.com/photo-DY4ZEkiPPPA?auto=format&fit=crop&w=1400&q=80";
-
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 
 function ShakeError({ text }: { text: string }) {
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -60,30 +65,27 @@ export default function Auth() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    selectAccount: true,
-  });
-
-  useEffect(() => {
-    if (!response) return;
-    if (response.type === "success") {
-      const accessToken = response.authentication?.accessToken;
-      if (!accessToken) {
-        setError("No access token received from Google");
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      if (response.type !== "success") return;
+      const idToken = response.data.idToken;
+      if (!idToken) {
+        setError("No ID token received from Google");
         return;
       }
       setGoogleLoading(true);
-      api.googleAuth(accessToken, "driver")
-        .then(() => {
-          router.replace("/driver-onboarding");
-        })
-        .catch(() => setError("Google sign-in failed"))
-        .finally(() => setGoogleLoading(false));
-    } else if (response.type === "error") {
-      setError("Google sign-in failed: " + (response.error?.description || "unknown error"));
+      await api.googleAuth(idToken, "driver");
+      const completed = await getProfileCompleted();
+      router.replace(completed ? "/(tabs)" : "/driver-onboarding");
+    } catch (err: any) {
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) return;
+      setError(err.message || "Google sign-in failed");
+    } finally {
+      setGoogleLoading(false);
     }
-  }, [response]);
+  };
 
   const onContinue = async () => {
     if (!email.trim() || !password.trim()) {
@@ -204,8 +206,8 @@ export default function Auth() {
           {/* Google Sign In */}
           <FadeIn delay={700}>
             <SpringPress
-              style={[styles.googleBtn, (googleLoading || !request) && styles.ctaDisabled]}
-              onPress={() => request && promptAsync()}
+              style={[styles.googleBtn, (googleLoading || loading) && styles.ctaDisabled]}
+              onPress={handleGoogleLogin}
               testID="google-sign-in-button"
             >
               {googleLoading ? (

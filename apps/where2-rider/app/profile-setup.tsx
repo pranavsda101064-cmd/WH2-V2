@@ -21,26 +21,70 @@ import * as ImagePicker from "expo-image-picker";
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api, getProfileCompleted, setProfileCompleted, setUserName } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
-import { FadeIn } from "@/src/components/fade-in";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-const AVATAR_SIZE = Math.round((SCREEN_W - 80) / 4);
+const AVATAR_SIZE = Math.round((SCREEN_W - 80) / 3);
 
-const AVATARS = [
-  { id: "m1", label: "Boy 1", gender: "male", color: "#4A90D9" },
-  { id: "m2", label: "Boy 2", gender: "male", color: "#5BA55B" },
-  { id: "m3", label: "Boy 3", gender: "male", color: "#D4A03C" },
-  { id: "m4", label: "Boy 4", gender: "male", color: "#8B5CF6" },
-  { id: "f1", label: "Girl 1", gender: "female", color: "#E8618C" },
-  { id: "f2", label: "Girl 2", gender: "female", color: "#F59E0B" },
-  { id: "f3", label: "Girl 3", gender: "female", color: "#06B6D4" },
-  { id: "f4", label: "Girl 4", gender: "female", color: "#EC4899" },
+const DICEBEAR_BASE = "https://api.dicebear.com/10.x";
+
+const MALE_AVATARS = [
+  { id: "m1", seed: "kai" },
+  { id: "m2", seed: "ronan" },
+  { id: "m3", seed: "avi" },
+  { id: "m4", seed: "zane" },
+  { id: "m5", seed: "leo" },
+  { id: "m6", seed: "omar" },
 ];
+
+const FEMALE_AVATARS = [
+  { id: "f1", seed: "lily" },
+  { id: "f2", seed: "mira" },
+  { id: "f3", seed: "zara" },
+  { id: "f4", seed: "priya" },
+  { id: "f5", seed: "suki" },
+  { id: "f6", seed: "nina" },
+];
+
+const OTHER_AVATARS = [
+  { id: "o1", seed: "sky" },
+  { id: "o2", seed: "river" },
+  { id: "o3", seed: "sage" },
+  { id: "o4", seed: "quinn" },
+  { id: "o5", seed: "fern" },
+  { id: "o6", seed: "nova" },
+];
+
+function getAvatarUrl(seed: string, gender: "male" | "female" | "other"): string {
+  const style = gender === "female" ? "lorelei" : gender === "male" ? "adventurer" : "adventurer-neutral";
+  return `${DICEBEAR_BASE}/${style}/png?seed=${seed}&size=128&backgroundColor=transparent`;
+}
+
+function getAvatarsForGender(gender: string) {
+  switch (gender) {
+    case "male": return MALE_AVATARS;
+    case "female": return FEMALE_AVATARS;
+    case "other": return OTHER_AVATARS;
+    default: return OTHER_AVATARS;
+  }
+}
+
+function getGenderStyle(gender: string): "male" | "female" | "other" {
+  if (gender === "male" || gender === "female") return gender;
+  return "other";
+}
 
 type Step = 1 | 2 | 3;
 
-function AnimatedAvatar({ av, selected, onPress }: {
-  av: typeof AVATARS[0]; selected: boolean; onPress: () => void;
+function AnimatedAvatar({
+  seed,
+  gender,
+  selected,
+  onPress,
+}: {
+  seed: string;
+  gender: "male" | "female" | "other";
+  selected: boolean;
+  onPress: () => void;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -60,12 +104,18 @@ function AnimatedAvatar({ av, selected, onPress }: {
       <Animated.View
         style={[
           styles.avatarCircle,
-          { backgroundColor: av.color, borderColor: selected ? colors.accent : "transparent", transform: [{ scale }] },
+          {
+            borderColor: selected ? colors.accent : "transparent",
+            transform: [{ scale }],
+          },
         ]}
       >
-        <Ionicons name="person" size={28} color="#fff" />
+        <Image
+          source={{ uri: getAvatarUrl(seed, gender) }}
+          style={styles.avatarImage}
+          resizeMode="cover"
+        />
       </Animated.View>
-      <Text style={styles.avatarLabel}>{av.label}</Text>
     </Pressable>
   );
 }
@@ -78,7 +128,6 @@ export default function ProfileSetup() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState<"male" | "female" | "other" | "">("");
-  const [address, setAddress] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -94,6 +143,7 @@ export default function ProfileSetup() {
     ]).start(() => {
       slideAnim.setValue(SCREEN_W);
       setStep(toStep);
+      setError("");
       Animated.parallel([
         Animated.timing(slideAnim, { toValue: 0, duration: 300, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
@@ -108,9 +158,8 @@ export default function ProfileSetup() {
     api.getProfile().then((p) => {
       if (p) {
         if (p.full_name) setName(p.full_name);
-        if (p.phone) setPhone(p.phone);
+        if (p.phone) setPhone(p.phone.replace("+91", "").trim());
         if (p.gender) setGender(p.gender);
-        if (p.address) setAddress(p.address);
         if (p.avatar_url) {
           if (p.avatar_url.startsWith("/avatars/")) {
             const file = p.avatar_url.split("/").pop() || "m1.png";
@@ -153,16 +202,36 @@ export default function ProfileSetup() {
     }
   };
 
+  // Name: only letters, spaces, hyphens, apostrophes
+  const sanitizeName = (text: string) => {
+    return text.replace(/[^a-zA-Z\s\-']/g, "");
+  };
+
+  // Phone: only digits
+  const sanitizePhone = (text: string) => {
+    return text.replace(/[^0-9]/g, "").slice(0, 10);
+  };
+
   const handleStep1Next = async () => {
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       setError("Please enter your name");
       return;
     }
-    if (!phone.trim() || phone.length < 8) {
-      setError("Please enter a valid phone number");
+    if (!/^[a-zA-Z\s\-']+$/.test(trimmedName)) {
+      setError("Name can only contain letters");
+      return;
+    }
+    if (!phone.trim() || phone.length < 10) {
+      setError("Enter a valid 10-digit mobile number");
+      return;
+    }
+    if (!/^[6-9]\d{9}$/.test(phone.trim())) {
+      setError("Enter a valid 10-digit Indian mobile number");
       return;
     }
     setError("");
+
     if (editMode) {
       setSaving(true);
       try {
@@ -170,13 +239,12 @@ export default function ProfileSetup() {
         if (customAvatar) avatarUrl = customAvatar;
         else if (selectedAvatar) avatarUrl = `/avatars/${selectedAvatar}.png`;
         await api.updateProfile({
-          full_name: name.trim(),
-          phone: phone.trim(),
+          full_name: trimmedName,
+          phone: `+91${phone.trim()}`,
           gender: gender || undefined,
           avatar_url: avatarUrl,
-          address: address.trim() || undefined,
         });
-        await setUserName(name.trim());
+        await setUserName(trimmedName);
         router.back();
       } catch {
         setError("Failed to save profile. Please try again.");
@@ -210,10 +278,9 @@ export default function ProfileSetup() {
 
       await api.updateProfile({
         full_name: name.trim(),
-        phone: phone.trim(),
+        phone: `+91${phone.trim()}`,
         gender: gender || undefined,
         avatar_url: avatarUrl,
-        address: address.trim() || undefined,
       });
 
       await setUserName(name.trim());
@@ -231,9 +298,12 @@ export default function ProfileSetup() {
     router.replace("/(tabs)/home");
   };
 
+  const availableAvatars = getAvatarsForGender(gender);
+  const avatarGenderStyle = getGenderStyle(gender);
+
   return (
     <Pressable style={styles.root} testID="profile-setup-screen" onPress={() => Keyboard.dismiss()}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
 
       {editMode && (
         <SpringPress
@@ -272,121 +342,106 @@ export default function ProfileSetup() {
           {/* Step 1: Personal Info */}
           {step === 1 && (
             <>
-              <FadeIn delay={100}>
-                <Text style={styles.title}>{editMode ? "Edit your details" : "Tell us about yourself"}</Text>
-              </FadeIn>
-              <FadeIn delay={200}>
-                <Text style={styles.subtitle}>We'll use this to personalize your experience</Text>
-              </FadeIn>
+              <Text style={styles.title}>{editMode ? "Edit your details" : "Tell us about yourself"}</Text>
+              <Text style={styles.subtitle}>We'll use this to personalize your experience</Text>
 
-              <FadeIn delay={300}>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Full name *</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="Enter your name"
-                    placeholderTextColor={colors.textDim}
-                    autoCapitalize="words"
-                  />
-                </View>
-              </FadeIn>
+              {/* Name */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Full name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={name}
+                  onChangeText={(t) => setName(sanitizeName(t))}
+                  placeholder="Enter your name"
+                  placeholderTextColor={colors.textDim}
+                  autoCapitalize="words"
+                  maxLength={50}
+                  testID="name-input"
+                />
+              </View>
 
-              <FadeIn delay={400}>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Phone number *</Text>
+              {/* Phone with +91 prefix */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Phone number *</Text>
+                <View style={styles.phoneRow}>
+                  <View style={styles.phonePrefix}>
+                    <Text style={styles.phonePrefixText}>+91</Text>
+                  </View>
+                  <View style={styles.phoneDivider} />
                   <TextInput
-                    style={styles.input}
+                    style={styles.phoneInput}
                     value={phone}
-                    onChangeText={setPhone}
-                    placeholder="Enter phone number"
+                    onChangeText={(t) => setPhone(sanitizePhone(t))}
+                    placeholder="98765 43210"
                     placeholderTextColor={colors.textDim}
                     keyboardType="phone-pad"
-                    maxLength={15}
+                    maxLength={10}
+                    testID="phone-input"
                   />
                 </View>
-              </FadeIn>
+              </View>
 
-              <FadeIn delay={500}>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Gender (optional)</Text>
-                  <View style={styles.genderRow}>
-                    {(["male", "female", "other"] as const).map((g) => (
-                      <SpringPress
-                        key={g}
-                        style={[styles.genderBtn, gender === g && styles.genderBtnActive]}
-                        onPress={() => setGender(g === gender ? "" : g)}
-                      >
-                        <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>
-                          {g === "male" ? "Male" : g === "female" ? "Female" : "Other"}
-                        </Text>
-                      </SpringPress>
-                    ))}
-                  </View>
+              {/* Gender */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Gender (optional)</Text>
+                <View style={styles.genderRow}>
+                  {(["male", "female", "other"] as const).map((g) => (
+                    <SpringPress
+                      key={g}
+                      style={[styles.genderBtn, gender === g && styles.genderBtnActive]}
+                      onPress={() => {
+                        setGender(g === gender ? "" : g);
+                        setSelectedAvatar(null);
+                        setCustomAvatar(null);
+                      }}
+                    >
+                      <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>
+                        {g === "male" ? "Male" : g === "female" ? "Female" : "Other"}
+                      </Text>
+                    </SpringPress>
+                  ))}
                 </View>
-              </FadeIn>
-
-              <FadeIn delay={600}>
-                <View style={styles.field}>
-                  <Text style={styles.label}>Address (optional)</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={address}
-                    onChangeText={setAddress}
-                    placeholder="Enter your address"
-                    placeholderTextColor={colors.textDim}
-                    autoCapitalize="words"
-                  />
-                </View>
-              </FadeIn>
+              </View>
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
-              <FadeIn delay={700}>
-                <SpringPress style={styles.nextBtn} onPress={handleStep1Next}>
-                  <Text style={styles.nextBtnText}>{editMode ? "Save" : "Next"}</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
-                </SpringPress>
-              </FadeIn>
+              <SpringPress style={styles.ctaBtn} onPress={handleStep1Next}>
+                <Text style={styles.ctaBtnText}>{editMode ? "Save" : "Next"}</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </SpringPress>
             </>
           )}
 
           {/* Step 2: Avatar */}
           {step === 2 && (
             <>
-              <FadeIn delay={100}>
-                <Text style={styles.title}>Choose your avatar</Text>
-              </FadeIn>
-              <FadeIn delay={200}>
-                <Text style={styles.subtitle}>Pick an avatar or upload your own photo</Text>
-              </FadeIn>
+              <Text style={styles.title}>Choose your avatar</Text>
+              <Text style={styles.subtitle}>
+                {gender ? `Pick a ${gender === "male" ? "male" : gender === "female" ? "female" : "neutral"} avatar or upload your own` : "Pick an avatar or upload your own"}
+              </Text>
 
-              <FadeIn delay={300}>
-                <View style={styles.avatarGrid}>
-                  {AVATARS.map((av) => (
-                    <AnimatedAvatar
-                      key={av.id}
-                      av={av}
-                      selected={selectedAvatar === av.id}
-                      onPress={() => { setSelectedAvatar(av.id); setCustomAvatar(null); }}
-                    />
-                  ))}
-                </View>
-              </FadeIn>
+              <View style={styles.avatarGrid}>
+                {availableAvatars.map((av) => (
+                  <AnimatedAvatar
+                    key={av.id}
+                    seed={av.seed}
+                    gender={avatarGenderStyle}
+                    selected={selectedAvatar === av.id}
+                    onPress={() => { setSelectedAvatar(av.id); setCustomAvatar(null); }}
+                  />
+                ))}
+              </View>
 
-              <FadeIn delay={400}>
-                <View style={styles.uploadRow}>
-                  <SpringPress style={styles.uploadBtn} onPress={takePhoto}>
-                    <Ionicons name="camera-outline" size={22} color={colors.accent} />
-                    <Text style={styles.uploadText}>Take photo</Text>
-                  </SpringPress>
-                  <SpringPress style={styles.uploadBtn} onPress={pickImage}>
-                    <Ionicons name="images-outline" size={22} color={colors.accent} />
-                    <Text style={styles.uploadText}>Choose from gallery</Text>
-                  </SpringPress>
-                </View>
-              </FadeIn>
+              <View style={styles.uploadRow}>
+                <SpringPress style={styles.uploadBtn} onPress={takePhoto}>
+                  <Ionicons name="camera-outline" size={20} color={colors.accent} />
+                  <Text style={styles.uploadText}>Take photo</Text>
+                </SpringPress>
+                <SpringPress style={styles.uploadBtn} onPress={pickImage}>
+                  <Ionicons name="images-outline" size={20} color={colors.accent} />
+                  <Text style={styles.uploadText}>Gallery</Text>
+                </SpringPress>
+              </View>
 
               {customAvatar && (
                 <View style={styles.previewContainer}>
@@ -400,44 +455,36 @@ export default function ProfileSetup() {
               {error ? <Text style={styles.error}>{error}</Text> : null}
 
               <SpringPress
-                style={[styles.nextBtn, saving && styles.nextBtnDisabled]}
+                style={[styles.ctaBtn, saving && styles.ctaBtnDisabled]}
                 onPress={handleStep2Next}
                 disabled={saving}
               >
-                <Text style={styles.nextBtnText}>{saving ? "Saving..." : editMode ? "Save" : "Continue"}</Text>
+                <Text style={styles.ctaBtnText}>{saving ? "Saving..." : editMode ? "Save" : "Continue"}</Text>
                 {!saving && <Ionicons name="arrow-forward" size={18} color="#fff" />}
               </SpringPress>
 
               {!editMode && (
-                <SpringPress style={styles.skipBtn} onPress={() => { setSelectedAvatar("m1"); handleStep2Next(); }}>
+                <SpringPress style={styles.skipBtn} onPress={() => { setSelectedAvatar(availableAvatars[0].id); handleStep2Next(); }}>
                   <Text style={styles.skipText}>Skip for now</Text>
                 </SpringPress>
               )}
             </>
           )}
 
-          {/* Step 3: Welcome (only for first-time setup) */}
+          {/* Step 3: Welcome */}
           {step === 3 && (
             <View style={styles.welcomeContainer}>
-              <FadeIn delay={100}>
-                <View style={styles.welcomeCircle}>
-                  <Ionicons name="checkmark" size={48} color="#fff" />
-                </View>
-              </FadeIn>
-              <FadeIn delay={300}>
-                <Text style={styles.welcomeTitle}>Welcome, {name.split(" ")[0]}!</Text>
-              </FadeIn>
-              <FadeIn delay={500}>
-                <Text style={styles.welcomeSubtitle}>
-                  Your profile is all set.{"\n"}Let's explore Sakleshpura!
-                </Text>
-              </FadeIn>
-              <FadeIn delay={700}>
-                <SpringPress style={styles.startBtn} onPress={handleFinish}>
-                  <Text style={styles.startBtnText}>Start Exploring</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
-                </SpringPress>
-              </FadeIn>
+              <View style={styles.welcomeCircle}>
+                <Ionicons name="checkmark" size={40} color="#fff" />
+              </View>
+              <Text style={styles.welcomeTitle}>Welcome, {name.split(" ")[0]}!</Text>
+              <Text style={styles.welcomeSubtitle}>
+                Your profile is all set.{"\n"}Let's explore Sakleshpura!
+              </Text>
+              <SpringPress style={styles.ctaBtn} onPress={handleFinish}>
+                <Text style={styles.ctaBtnText}>Start Exploring</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </SpringPress>
             </View>
           )}
         </ScrollView>
@@ -450,7 +497,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   backHeader: {
     flexDirection: "row", alignItems: "center", gap: 8,
-    paddingHorizontal: 20, paddingBottom: 12,
+    paddingHorizontal: spacing.lg, paddingBottom: 12,
   },
   backHeaderText: { color: colors.text, fontSize: 17, fontWeight: "600" },
   progressContainer: {
@@ -461,73 +508,116 @@ const styles = StyleSheet.create({
   progressDotActive: { backgroundColor: colors.accent },
   progressDotCurrent: { width: 56 },
   content: { flexGrow: 1, paddingHorizontal: spacing.lg, paddingBottom: 40 },
+
+  // Title
   title: {
-    color: colors.text, fontSize: 26, fontWeight: "800", letterSpacing: -0.5, marginTop: spacing.sm,
+    fontSize: font.title, fontWeight: "600", color: colors.text,
+    marginTop: spacing.sm, marginBottom: spacing.xs,
   },
   subtitle: {
-    color: colors.textMuted, fontSize: font.label, marginTop: 6, marginBottom: 28,
+    fontSize: font.body, fontWeight: "400", color: colors.textMuted,
+    marginBottom: spacing.xl,
   },
-  field: { marginBottom: 20 },
-  label: { color: colors.textMuted, fontSize: font.small, fontWeight: "600", marginBottom: 8 },
+
+  // Fields
+  field: { marginBottom: spacing.lg },
+  label: {
+    fontSize: font.label, fontWeight: "500", color: colors.text,
+    marginBottom: spacing.sm,
+  },
   input: {
-    height: 52, borderRadius: radius.md, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14,
+    height: 52, borderRadius: radius.sm, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md,
     color: colors.text, fontSize: font.body,
   },
-  genderRow: { flexDirection: "row", gap: 10 },
+
+  // Phone with +91
+  phoneRow: {
+    flexDirection: "row", alignItems: "center", height: 52,
+    borderRadius: radius.sm, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border, overflow: "hidden",
+  },
+  phonePrefix: {
+    backgroundColor: colors.surfaceAlt, height: "100%", paddingHorizontal: spacing.md,
+    justifyContent: "center", minWidth: 60,
+  },
+  phonePrefixText: {
+    fontSize: font.body, fontWeight: "600", color: colors.text,
+  },
+  phoneDivider: {
+    width: 1, height: "60%", backgroundColor: colors.border,
+  },
+  phoneInput: {
+    flex: 1, height: "100%", paddingHorizontal: spacing.md,
+    color: colors.text, fontSize: font.body,
+  },
+
+  // Gender
+  genderRow: { flexDirection: "row", gap: spacing.sm },
   genderBtn: {
-    flex: 1, height: 48, borderRadius: radius.md, backgroundColor: colors.surface,
+    flex: 1, height: 48, borderRadius: radius.sm, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
   genderBtnActive: { backgroundColor: "rgba(0,137,123,0.15)", borderColor: colors.accent },
-  genderText: { color: colors.textMuted, fontSize: font.label, fontWeight: "600" },
+  genderText: { fontSize: font.label, fontWeight: "500", color: colors.textMuted },
   genderTextActive: { color: colors.accent },
-  avatarGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 24 },
-  avatarItem: { width: AVATAR_SIZE, alignItems: "center", gap: 6 },
+
+  // Avatar grid — 3 columns
+  avatarGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: spacing.md,
+    marginBottom: spacing.lg, justifyContent: "center",
+  },
+  avatarItem: { width: AVATAR_SIZE, alignItems: "center" },
   avatarItemActive: { opacity: 1 },
   avatarCircle: {
     width: AVATAR_SIZE, height: AVATAR_SIZE, borderRadius: AVATAR_SIZE / 2,
-    alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "transparent",
+    borderWidth: 3, borderColor: "transparent", overflow: "hidden",
   },
-  avatarLabel: { color: colors.textMuted, fontSize: font.micro },
-  uploadRow: { flexDirection: "row", gap: 12, marginBottom: 24 },
+  avatarImage: {
+    width: "100%", height: "100%",
+  },
+
+  // Upload
+  uploadRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.lg },
   uploadBtn: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, height: 52, borderRadius: radius.md, backgroundColor: colors.surface,
+    gap: spacing.sm, height: 48, borderRadius: radius.sm, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border,
   },
-  uploadText: { color: colors.text, fontSize: font.small, fontWeight: "600" },
-  previewContainer: { alignItems: "center", marginBottom: 16 },
+  uploadText: { fontSize: font.small, fontWeight: "500", color: colors.text },
+  previewContainer: { alignItems: "center", marginBottom: spacing.md },
   previewImage: { width: 100, height: 100, borderRadius: 50 },
   previewRemove: { position: "absolute", top: -4, right: -4 },
-  error: { color: colors.danger, fontSize: font.small, marginBottom: 12 },
-  nextBtn: {
-    height: 56, borderRadius: radius.md, backgroundColor: colors.accent,
+
+  // Error
+  error: { fontSize: font.small, color: colors.danger, marginBottom: spacing.md },
+
+  // CTA — consistent pill with Screens 1 & 2
+  ctaBtn: {
+    height: 52, borderRadius: radius.pill, backgroundColor: colors.accent,
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, marginTop: spacing.sm,
-    ...shadows.accent,
+    gap: spacing.sm, marginTop: spacing.sm, ...shadows.accent,
   },
-  nextBtnDisabled: { opacity: 0.6 },
-  nextBtnText: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
-  skipBtn: { alignItems: "center", paddingVertical: 14, marginTop: 4 },
-  skipText: { color: colors.textMuted, fontSize: font.label },
+  ctaBtnDisabled: { opacity: 0.5 },
+  ctaBtnText: { fontSize: 15, fontWeight: "600", color: "#fff" },
+
+  // Skip
+  skipBtn: { alignItems: "center", paddingVertical: spacing.md, marginTop: spacing.xs },
+  skipText: { fontSize: font.label, color: colors.textMuted },
+
+  // Welcome
   welcomeContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
   welcomeCircle: {
     width: 80, height: 80, borderRadius: 40, backgroundColor: colors.accent,
-    alignItems: "center", justifyContent: "center", marginBottom: 24,
+    alignItems: "center", justifyContent: "center", marginBottom: spacing.lg,
     ...shadows.accent,
   },
   welcomeTitle: {
-    color: colors.text, fontSize: 28, fontWeight: "800", letterSpacing: -0.5, marginBottom: 12,
+    fontSize: font.title, fontWeight: "600", color: colors.text,
+    marginBottom: spacing.sm,
   },
   welcomeSubtitle: {
-    color: colors.textMuted, fontSize: font.body, textAlign: "center", lineHeight: 22, marginBottom: 40,
+    fontSize: font.body, color: colors.textMuted, textAlign: "center",
+    lineHeight: 22, marginBottom: spacing.xxl,
   },
-  startBtn: {
-    height: 56, borderRadius: radius.md, backgroundColor: colors.accent,
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 8, width: "100%",
-    ...shadows.accent,
-  },
-  startBtnText: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
 });

@@ -9,7 +9,6 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import List, Literal, Optional
 
-import httpx
 import sentry_sdk
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +30,7 @@ from auth import (
     get_current_user,
     hash_password,
     verify_password,
+    verify_google_id_token,
 )
 from config import get_settings
 from database import async_session_factory, get_db
@@ -398,18 +398,10 @@ class GoogleAuthRequest(BaseModel):
 @limiter.limit("10/minute")
 async def google_auth(request: Request, payload: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
     try:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(
-                "https://www.googleapis.com/oauth2/v3/userinfo",
-                headers={"Authorization": f"Bearer {payload.token}"},
-                timeout=10.0,
-            )
-        if resp.status_code != 200:
-            raise HTTPException(401, detail="Invalid Google token")
-        profile = resp.json()
+        profile = await verify_google_id_token(payload.token)
         email = profile.get("email")
         if not email:
-            raise HTTPException(401, detail="No email in Google profile")
+            raise HTTPException(401, detail="No email in Google token")
         if not profile.get("email_verified", False):
             raise HTTPException(401, detail="Google email not verified")
 

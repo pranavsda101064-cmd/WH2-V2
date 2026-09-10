@@ -51,7 +51,13 @@
       "expo-notifications",
       "expo-location",
       "expo-image-picker",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.524688489029-h02hs91ufjcsu1l6805dks6l724o4klp"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

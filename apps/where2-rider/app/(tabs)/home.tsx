@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -27,14 +27,10 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const CARD_W = SCREEN_W - 32;
 const CAROUSEL_H = Math.round(SCREEN_H * 0.28);
 
-const CATEGORY_CHIPS = ["Pickup House", "Trip Buyers", "The Movie", "Homestay", "Circuit"];
-
 export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const listRef = useRef<FlatList>(null);
   const [active, setActive] = useState(0);
-  const [selectedChip, setSelectedChip] = useState("Pickup House");
   const [packages, setPackages] = useState<Package[]>([]);
   const [trips, setTrips] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,21 +43,6 @@ export default function Home() {
       .finally(() => setLoading(false));
     getUserName().then((n) => { if (n) setUserName(n); });
   }, []);
-
-  useEffect(() => {
-    if (packages.length === 0) return;
-    const t = setInterval(() => {
-      setActive((prev) => {
-        const next = (prev + 1) % packages.length;
-        listRef.current?.scrollToOffset({
-          offset: next * (CARD_W + 12),
-          animated: true,
-        });
-        return next;
-      });
-    }, 4000);
-    return () => clearInterval(t);
-  }, [packages.length]);
 
   if (loading) {
     return (
@@ -89,7 +70,7 @@ export default function Home() {
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={{ flex: 1 }}>
             <Text style={styles.hello}>Explore Sakleshpur,</Text>
-            <Text style={styles.name}>{userName || "Explorer"}</Text>
+            <Text style={styles.name}>{(userName || "Explorer").split(" ")[0]}</Text>
           </View>
           <SpringPress style={styles.iconBtn} onPress={() => router.push("/notifications")} testID="notifications-button">
             <Ionicons name="notifications-outline" size={20} color={colors.text} />
@@ -108,28 +89,6 @@ export default function Home() {
             <Ionicons name="options-outline" size={16} color={colors.accent} />
           </View>
         </SpringPress>
-
-        {/* Category Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 14, gap: 8 }}
-        >
-          {CATEGORY_CHIPS.map((chip) => {
-            const isSelected = chip === selectedChip;
-            return (
-              <SpringPress
-                key={chip}
-                style={[styles.chip, isSelected && styles.chipActive]}
-                onPress={() => setSelectedChip(chip)}
-              >
-                <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
-                  {chip}
-                </Text>
-              </SpringPress>
-            );
-          })}
-        </ScrollView>
 
         {/* Nearby Locations Horizontal Scroll */}
         <View style={styles.sectionHead}>
@@ -164,7 +123,7 @@ export default function Home() {
 
         {/* Curated Trip Plans Section - Screen 2 */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Curated Trip Plans</Text>
+          <Text style={styles.sectionTitle}>Explore Routes</Text>
           <SpringPress onPress={() => router.push("/plan")}>
             <Text style={styles.sectionAction}>See all</Text>
           </SpringPress>
@@ -172,7 +131,6 @@ export default function Home() {
 
         <View style={{ height: CAROUSEL_H }} testID="package-carousel">
           <FlatList
-            ref={listRef}
             data={packages}
             horizontal
             pagingEnabled
@@ -247,7 +205,7 @@ export default function Home() {
 
         {/* Popular Tourist Destinations */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Related Stays & Spots</Text>
+          <Text style={styles.sectionTitle}>Popular Places</Text>
         </View>
         <FlatList
           data={TOURIST_PLACES.slice(0, 6)}
@@ -277,7 +235,7 @@ export default function Home() {
 
         {/* Previous Trips */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>My Past Bookings</Text>
+          <Text style={styles.sectionTitle}>Recent Rides</Text>
           <SpringPress onPress={() => router.push("/(tabs)/trips")}>
             <Text style={styles.sectionAction}>See all</Text>
           </SpringPress>
@@ -361,26 +319,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  chipText: {
-    color: colors.textMuted,
-    fontSize: font.small,
-    fontWeight: "600",
-  },
-  chipTextActive: {
-    color: "#FFFFFF",
-  },
   sectionHead: {
     flexDirection: "row",
     alignItems: "center",
@@ -389,7 +327,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
   },
-  sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "800" },
+  sectionTitle: { color: colors.text, fontSize: 18, fontWeight: "600" },
   sectionAction: { color: colors.accent, fontSize: font.small, fontWeight: "700" },
   nearbyCard: {
     width: 130,
@@ -443,7 +381,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: "#FFFFFF",
-    fontSize: font.h3,
+    fontSize: font.title,
     fontWeight: "800",
     letterSpacing: -0.3,
   },

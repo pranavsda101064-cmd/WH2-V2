@@ -65,7 +65,7 @@ export default function SavedAddresses() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ScrollView
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
@@ -95,45 +95,43 @@ export default function SavedAddresses() {
         ))}
 
         {showAdd && (
-          <FadeIn>
-            <View style={styles.addForm}>
-              <Text style={styles.addFormTitle}>New Address</Text>
-              <View style={styles.typeRow}>
-                {ADDRESS_TYPES.map((t) => (
-                  <SpringPress
-                    key={t.label}
-                    style={[styles.typeBtn, newIcon === t.icon && styles.typeBtnActive]}
-                    onPress={() => setNewIcon(t.icon)}
-                  >
-                    <Ionicons name={t.icon} size={16} color={newIcon === t.icon ? "#fff" : colors.textDim} />
-                    <Text style={[styles.typeText, newIcon === t.icon && styles.typeTextActive]}>{t.label}</Text>
-                  </SpringPress>
-                ))}
-              </View>
-              <TextInput
-                style={styles.input}
-                value={newLabel}
-                onChangeText={setNewLabel}
-                placeholder="Label (e.g. Home)"
-                placeholderTextColor={colors.textDim}
-              />
-              <TextInput
-                style={styles.input}
-                value={newAddress}
-                onChangeText={setNewAddress}
-                placeholder="Full address"
-                placeholderTextColor={colors.textDim}
-              />
-              <View style={styles.addFormActions}>
-                <SpringPress style={styles.cancelFormBtn} onPress={() => setShowAdd(false)}>
-                  <Text style={styles.cancelFormText}>Cancel</Text>
+          <View style={styles.addForm}>
+            <Text style={styles.addFormTitle}>New Address</Text>
+            <View style={styles.typeRow}>
+              {ADDRESS_TYPES.map((t) => (
+                <SpringPress
+                  key={t.label}
+                  style={[styles.typeBtn, newIcon === t.icon && styles.typeBtnActive]}
+                  onPress={() => setNewIcon(t.icon)}
+                >
+                  <Ionicons name={t.icon} size={16} color={newIcon === t.icon ? "#fff" : colors.textDim} />
+                  <Text style={[styles.typeText, newIcon === t.icon && styles.typeTextActive]}>{t.label}</Text>
                 </SpringPress>
-                <SpringPress style={styles.saveFormBtn} onPress={handleAdd}>
-                  <Text style={styles.saveFormText}>Save</Text>
-                </SpringPress>
-              </View>
+              ))}
             </View>
-          </FadeIn>
+            <TextInput
+              style={styles.input}
+              value={newLabel}
+              onChangeText={setNewLabel}
+              placeholder="Label (e.g. Home)"
+              placeholderTextColor={colors.textDim}
+            />
+            <TextInput
+              style={styles.input}
+              value={newAddress}
+              onChangeText={setNewAddress}
+              placeholder="Full address"
+              placeholderTextColor={colors.textDim}
+            />
+            <View style={styles.addFormActions}>
+              <SpringPress style={styles.cancelFormBtn} onPress={() => setShowAdd(false)}>
+                <Text style={styles.cancelFormText}>Cancel</Text>
+              </SpringPress>
+              <SpringPress style={styles.saveFormBtn} onPress={handleAdd}>
+                <Text style={styles.saveFormText}>Save</Text>
+              </SpringPress>
+            </View>
+          </View>
         )}
 
         {!showAdd && (
@@ -161,14 +159,14 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  h1: { color: colors.text, fontSize: font.title, fontWeight: "800" },
+  h1: { color: colors.text, fontSize: font.title, fontWeight: "600" },
   card: {
     flexDirection: "row", alignItems: "center", gap: 14,
     marginHorizontal: 20, marginBottom: 10, padding: spacing.md, borderRadius: radius.lg,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
   cardIcon: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(30,107,255,0.12)",
+    width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(0,137,123,0.12)",
     alignItems: "center", justifyContent: "center",
   },
   cardLabel: { color: colors.text, fontSize: font.body, fontWeight: "700" },

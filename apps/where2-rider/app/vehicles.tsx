@@ -47,7 +47,7 @@ export default function Vehicles() {
 
   return (
     <View style={styles.root} testID="vehicles-screen">
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
         <SpringPress
           style={styles.iconBtn}
@@ -57,7 +57,6 @@ export default function Vehicles() {
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </SpringPress>
         <View style={{ flex: 1, alignItems: "center" }}>
-          <Text style={styles.topKicker}>3 stops · 46 km</Text>
           <Text style={styles.topTitle}>Choose a ride</Text>
         </View>
         <View style={{ width: 40 }} />
@@ -143,11 +142,7 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
   },
-  topKicker: {
-    color: colors.textMuted, fontSize: font.micro, fontWeight: "700",
-    letterSpacing: 1.4, textTransform: "uppercase",
-  },
-  topTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "700", marginTop: 2 },
+  topTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "600" },
   card: {
     flexDirection: "row", alignItems: "center", gap: 14,
     padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface,
@@ -175,7 +170,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingTop: 14, flexDirection: "row", alignItems: "center", gap: 12,
   },
   barLabel: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
-  barFare: { color: colors.text, fontSize: font.title, fontWeight: "800", marginTop: 2 },
+  barFare: { color: colors.text, fontSize: font.title, fontWeight: "700", marginTop: 2 },
   barBtn: {
     height: 52, paddingHorizontal: 20, borderRadius: radius.md, backgroundColor: colors.accent,
     flexDirection: "row", alignItems: "center", gap: 8,

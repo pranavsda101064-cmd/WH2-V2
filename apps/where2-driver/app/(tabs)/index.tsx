@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Switch,
@@ -21,7 +22,7 @@ import { DashboardSkeleton } from "@/src/components/loading";
 import { useLocationTracker } from "@/src/hooks/use-location-tracker";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
-import { loadNotificationSound, playNotificationSound } from "@/src/utils/notification-sound";
+import { playNotificationSound } from "@/src/utils/notification-sound";
 
 const POLL_INTERVAL = 10000;
 const REQUEST_TIMEOUT = 30;
@@ -41,10 +42,6 @@ export default function DriverDashboard() {
   const prevCountRef = useRef(0);
 
   useLocationTracker();
-
-  useEffect(() => {
-    loadNotificationSound();
-  }, []);
 
   const clearAllTimers = useCallback(() => {
     timersRef.current.forEach((t) => clearInterval(t));
@@ -157,15 +154,23 @@ export default function DriverDashboard() {
     }
     if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const ride = await api.acceptRequest(id).catch(() => null);
-    if (ride?.id) await storage.setItem("active_ride_id", ride.id);
-    setRequests((prev) => prev.filter((x) => x.id !== id));
-    setCountdowns((prev) => {
-      const next = new Map(prev);
-      next.delete(id);
-      return next;
-    });
-    setSelected(null);
-    router.push("/ride");
+    if (ride?.id) {
+      await storage.setItem("active_ride_id", ride.id);
+      setRequests((prev) => prev.filter((x) => x.id !== id));
+      setCountdowns((prev) => {
+        const next = new Map(prev);
+        next.delete(id);
+        return next;
+      });
+      setSelected(null);
+      router.push("/ride");
+    } else {
+      // Accept failed — keep request visible so driver can retry
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Failed to accept", "Could not accept this ride request. Please try again.");
+      // Restart the timer so they still have time to accept/decline
+      startTimer(id);
+    }
   };
 
   const decline = async (id: string) => {
@@ -175,7 +180,14 @@ export default function DriverDashboard() {
       countdownsRef.current.delete(id);
     }
     if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await api.declineRequest(id).catch(() => {});
+    const result = await api.declineRequest(id).catch(() => null);
+    if (!result) {
+      // Decline failed — keep request visible
+      if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Failed to decline", "Could not decline this ride request. Please try again.");
+      startTimer(id);
+      return;
+    }
     setRequests((prev) => prev.filter((x) => x.id !== id));
     setCountdowns((prev) => {
       const next = new Map(prev);

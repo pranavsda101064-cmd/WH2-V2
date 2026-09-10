@@ -6,12 +6,10 @@ import {
   Easing,
   Linking,
   Platform,
-  Pressable,
   ScrollView,
   Share,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -39,9 +37,6 @@ export default function Ride() {
     lng: number | null;
   }>({ lat: null, lng: null });
   const [loading, setLoading] = useState(true);
-  const [showPin, setShowPin] = useState(false);
-  const [pinInput, setPinInput] = useState("");
-  const [pinError, setPinError] = useState("");
   const [etaMinutes, setEtaMinutes] = useState(5);
   const [activeRideId, setActiveRideId] = useState<string | null>(null);
   const [driverInfo, setDriverInfo] = useState<{
@@ -53,7 +48,6 @@ export default function Ride() {
     vehicle_reg?: string;
   } | null>(null);
   const rideIdRef = useRef<string | null>(null);
-  const pinRef = useRef<TextInput>(null);
 
   // Smooth pulsing dot
   const pulseScale = useRef(new Animated.Value(1)).current;
@@ -149,18 +143,6 @@ export default function Ride() {
       if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   }, [ride?.status]);
-
-  const handleVerifyPin = async () => {
-    if (!rideIdRef.current || pinInput.length !== 4) return;
-    setPinError("");
-    try {
-      await api.verifyRidePin(rideIdRef.current, pinInput);
-      setShowPin(false);
-      setRide((prev) => (prev ? { ...prev, status: "onboard" } : prev));
-    } catch {
-      setPinError("Invalid PIN. Try again.");
-    }
-  };
 
   const handleShare = async () => {
     if (!ride) return;
@@ -320,74 +302,23 @@ export default function Ride() {
           </Text>
         )}
 
-        {/* Ride PIN display */}
-        {status === "arriving" && ride?.ride_pin && (
-          <SpringPress
-            style={styles.pinCard}
-            onPress={() => setShowPin(!showPin)}
-          >
-            <Ionicons name="key-outline" size={18} color={colors.accent} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.pinLabel}>Your ride PIN</Text>
-              <Text style={styles.pinValue}>{showPin ? ride.ride_pin : "••••"}</Text>
-            </View>
-            <Text style={styles.pinHint}>Tap to {showPin ? "hide" : "reveal"}</Text>
-          </SpringPress>
-        )}
-
-        {/* PIN input */}
-        {status === "arriving" && showPin && (
-          <View style={styles.pinInputGroup}>
-            <Text style={styles.pinInputLabel}>Enter rider's PIN to start ride:</Text>
-            <Pressable onPress={() => pinRef.current?.focus()}>
-              <View style={styles.pinInputRow}>
-                {[0, 1, 2, 3].map((i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.pinDigit,
-                      pinInput[i] && styles.pinDigitFilled,
-                    ]}
-                  >
-                    <Text style={styles.pinDigitText}>
-                      {pinInput[i] || "•"}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </Pressable>
-            <TextInput
-              ref={pinRef}
-              value={pinInput}
-              onChangeText={(t) => {
-                const digits = t.replace(/[^0-9]/g, "").slice(0, 4);
-                setPinInput(digits);
-                setPinError("");
-              }}
-              keyboardType="number-pad"
-              maxLength={4}
-              autoFocus
-              style={styles.pinHiddenInput}
-            />
-            {pinError ? <Text style={styles.pinError}>{pinError}</Text> : null}
-            <SpringPress
-              style={[styles.pinSubmitBtn, pinInput.length !== 4 && { opacity: 0.5 }]}
-              onPress={handleVerifyPin}
-            >
-              <Text style={styles.pinSubmitText}>Start Ride</Text>
-            </SpringPress>
-          </View>
-        )}
-
         {/* Driver card */}
         <View style={styles.driverCard}>
           <View style={styles.driverPhoto}>
             <Ionicons name={status === "pending" ? "search" : "person"} size={22} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.driverName}>
-              {status === "pending" ? "Searching..." : driverInfo?.name || "Driver"}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              <Text style={styles.driverName}>
+                {status === "pending" ? "Searching..." : driverInfo?.name || "Driver"}
+              </Text>
+              {ride?.ride_pin && (
+                <View style={styles.pinBadge}>
+                  <Ionicons name="key-outline" size={10} color={colors.accent} />
+                  <Text style={styles.pinBadgeText}>{ride.ride_pin}</Text>
+                </View>
+              )}
+            </View>
             <View style={styles.driverMeta}>
               <Ionicons name="car-sport" size={12} color="#fff" />
               <Text style={styles.driverPlate}>
@@ -406,7 +337,18 @@ export default function Ride() {
             )}
           </View>
           <View style={styles.actionRow}>
-            <SpringPress style={styles.actBtn} testID="ride-message">
+            <SpringPress
+              style={styles.actBtn}
+              testID="ride-message"
+              onPress={() => router.push({
+                pathname: "/chat" as any,
+                params: {
+                  rideId: activeRideId || "",
+                  driverName: driverInfo?.name || "Driver",
+                  driverPhone: driverInfo?.phone || "",
+                },
+              })}
+            >
               <Ionicons name="chatbubble-outline" size={18} color="#fff" />
             </SpringPress>
             <SpringPress
@@ -610,62 +552,10 @@ const styles = StyleSheet.create({
   headline: {
     color: colors.text,
     fontSize: font.title,
-    fontWeight: "800",
+    fontWeight: "600",
     letterSpacing: -0.5,
     marginTop: spacing.xs,
   },
-  pinCard: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  pinLabel: { color: colors.textMuted, fontSize: font.micro, fontWeight: "600" },
-  pinValue: { color: colors.text, fontSize: font.title, fontWeight: "800", letterSpacing: 6 },
-  pinHint: { color: colors.textDim, fontSize: font.micro },
-  pinInputGroup: {
-    marginTop: 12,
-    padding: 14,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pinInputLabel: { color: colors.textMuted, fontSize: font.caption, marginBottom: 10 },
-  pinInputRow: { flexDirection: "row", gap: 10, justifyContent: "center" },
-  pinDigit: {
-    width: 50,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pinDigitFilled: { borderColor: colors.accent },
-  pinDigitText: { color: colors.text, fontSize: font.h2, fontWeight: "800" },
-  pinHiddenInput: {
-    position: "absolute",
-    opacity: 0,
-    width: 1,
-    height: 1,
-  },
-  pinError: { color: colors.danger, fontSize: font.caption, marginTop: 8, textAlign: "center" },
-  pinSubmitBtn: {
-    marginTop: 14,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pinSubmitText: { color: "#fff", fontSize: font.label, fontWeight: "700" },
   driverCard: {
     marginTop: spacing.md,
     padding: 14,
@@ -700,6 +590,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,137,123,0.12)",
   },
   ratingText: { color: colors.text, fontSize: font.micro, fontWeight: "700" },
+  pinBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 10, backgroundColor: "rgba(0,137,123,0.12)",
+  },
+  pinBadgeText: {
+    color: colors.accent, fontSize: font.micro, fontWeight: "700", letterSpacing: 1,
+  },
   actionRow: { flexDirection: "row", gap: 8 },
   actBtn: {
     width: 42,
@@ -768,5 +666,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  doneText: { color: "#fff", fontSize: font.subtitle, fontWeight: "800" },
+  doneText: { color: "#fff", fontSize: font.subtitle, fontWeight: "700" },
 });

@@ -26,6 +26,7 @@ import { FadeIn } from "@/src/components/fade-in";
 
 GoogleSignin.configure({
   webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
   scopes: ["profile", "email"],
   offlineAccess: false,
 });

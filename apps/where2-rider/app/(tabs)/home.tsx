@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
-import { useRouter } from "expo-router";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter, useNavigation } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Location from "expo-location";
 import {
+  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -18,6 +20,7 @@ import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { pastTrips as mockTrips, savedRoutes } from "@/src/data/mock";
 import { api, Package, Ride, getUserName } from "@/src/api";
 import { storage } from "@/src/utils/storage";
+import { reverseGeocode } from "@/src/utils/location";
 import { HomeSkeleton } from "@/src/components/loading";
 import { FadeIn } from "@/src/components/fade-in";
 import { SpringPress } from "@/src/components/spring-press";
@@ -35,6 +38,8 @@ export default function Home() {
   const [trips, setTrips] = useState<Ride[]>([]);
   const [loading, setLoading] = useState(true);
   const [userName, setUserName] = useState("");
+  const [pickupLoc, setPickupLoc] = useState<{ lat: number; lng: number; label: string } | null>(null);
+  const [dropoffLoc, setDropoffLoc] = useState<{ lat: number; lng: number; label: string } | null>(null);
 
   useEffect(() => {
     Promise.all([api.listPackages(), api.listRides()])
@@ -43,6 +48,41 @@ export default function Home() {
       .finally(() => setLoading(false));
     getUserName().then((n) => { if (n) setUserName(n); });
   }, []);
+
+  // Auto-detect GPS pickup on first load
+  useEffect(() => {
+    (async () => {
+      const p = await storage.getItem<{ lat: number; lng: number; label: string } | null>("pickup_location", null);
+      if (p) {
+        setPickupLoc(p);
+      } else {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === "granted") {
+          try {
+            const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            const addr = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
+            const detected = { lat: loc.coords.latitude, lng: loc.coords.longitude, label: addr || "Current location" };
+            setPickupLoc(detected);
+            await storage.setItem("pickup_location", detected);
+          } catch {}
+        }
+      }
+    })();
+  }, []);
+
+  // Re-read locations when screen comes into focus (after picking from location-picker)
+  const navigation = useNavigation();
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      (async () => {
+        const p = await storage.getItem<{ lat: number; lng: number; label: string } | null>("pickup_location", null);
+        const d = await storage.getItem<{ lat: number; lng: number; label: string } | null>("dropoff_location", null);
+        if (p) setPickupLoc(p);
+        if (d) setDropoffLoc(d);
+      })();
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   if (loading) {
     return (
@@ -69,7 +109,7 @@ export default function Home() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.hello}>Explore Sakleshpur,</Text>
+            <Text style={styles.hello}>Where2!?</Text>
             <Text style={styles.name}>{(userName || "Explorer").split(" ")[0]}</Text>
           </View>
           <SpringPress style={styles.iconBtn} onPress={() => router.push("/notifications")} testID="notifications-button">
@@ -77,18 +117,44 @@ export default function Home() {
           </SpringPress>
         </View>
 
-        {/* Rounded Search Bar - Screen 2 Style */}
-        <SpringPress
-          style={[styles.searchBar, { marginHorizontal: 16, marginTop: 4 }]}
-          onPress={() => router.push("/location-picker?target=dropoff")}
-          testID="search-bar"
-        >
-          <Ionicons name="search-outline" size={20} color={colors.textMuted} />
-          <Text style={styles.searchText}>Search destination, homestay...</Text>
-          <View style={styles.searchIconRight}>
-            <Ionicons name="options-outline" size={16} color={colors.accent} />
-          </View>
-        </SpringPress>
+        {/* Pickup + Dropoff Search */}
+        <View style={styles.searchContainer}>
+          <SpringPress
+            style={styles.searchField}
+            onPress={() => router.push("/location-picker?target=pickup")}
+            testID="pickup-field"
+          >
+            <View style={styles.searchDot} />
+            <Text style={[styles.searchFieldText, !pickupLoc && { color: colors.textMuted }]} numberOfLines={1}>
+              {pickupLoc?.label || "Current location"}
+            </Text>
+          </SpringPress>
+
+          <View style={styles.searchDivider} />
+
+          <SpringPress
+            style={styles.searchField}
+            onPress={() => router.push("/location-picker?target=dropoff")}
+            testID="dropoff-field"
+          >
+            <View style={[styles.searchDot, { backgroundColor: colors.accent }]} />
+            <Text style={[styles.searchFieldText, !dropoffLoc && { color: colors.textMuted }]} numberOfLines={1}>
+              {dropoffLoc?.label || "Where to?"}
+            </Text>
+          </SpringPress>
+        </View>
+
+        {/* Find Rides Button - shown when both pickup and dropoff are set */}
+        {pickupLoc && dropoffLoc && (
+          <SpringPress
+            style={styles.findRidesBtn}
+            onPress={() => router.push("/vehicles")}
+            testID="find-rides-button"
+          >
+            <Text style={styles.findRidesText}>Find rides</Text>
+            <Ionicons name="arrow-forward" size={18} color="#fff" />
+          </SpringPress>
+        )}
 
         {/* Nearby Locations Horizontal Scroll */}
         <View style={styles.sectionHead}>
@@ -219,8 +285,12 @@ export default function Home() {
               <SpringPress
                 style={styles.spotCard}
                 onPress={async () => {
-                  await storage.setItem("dropoff_location", { lat: item.lat, lng: item.lng, label: item.name });
-                  router.push("/location-picker?target=dropoff");
+                  try {
+                    await storage.setItem("dropoff_location", { lat: item.lat, lng: item.lng, label: item.name });
+                    router.push("/location-picker?target=dropoff");
+                  } catch {
+                    Alert.alert("Error", "Could not set location. Please try again.");
+                  }
                 }}
               >
                 <View style={styles.spotTag}>
@@ -293,31 +363,55 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     ...shadows.sm,
   },
-  searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
+  searchContainer: {
+    marginHorizontal: 16,
+    marginTop: 4,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
-    height: 50,
-    paddingHorizontal: 16,
-    gap: 10,
+    borderRadius: radius.lg,
     ...shadows.sm,
   },
-  searchText: {
+  searchField: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  searchDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.borderStrong,
+  },
+  searchFieldText: {
     flex: 1,
-    color: colors.textMuted,
+    color: colors.text,
     fontSize: font.body,
     fontWeight: "500",
   },
-  searchIconRight: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.surfaceTint,
+  searchDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: 14,
+  },
+  findRidesBtn: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.accent,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 8,
+    ...shadows.accent,
+  },
+  findRidesText: {
+    color: "#fff",
+    fontSize: font.body,
+    fontWeight: "700",
   },
   sectionHead: {
     flexDirection: "row",

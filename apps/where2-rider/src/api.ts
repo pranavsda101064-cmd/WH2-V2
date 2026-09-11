@@ -235,6 +235,7 @@ export const api = {
     stops: RideStop[];
     payment_method: "card" | "upi" | "cash";
     tip?: number;
+    distance_km?: number;
   }) =>
     req<Ride>(
       "/rides",
@@ -278,6 +279,12 @@ export const api = {
     req<Ride>(`/rides/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
+    }),
+
+  boostRide: (id: string, boost: number) =>
+    req<Ride>(`/rides/${id}/boost`, {
+      method: "PATCH",
+      body: JSON.stringify({ boost }),
     }),
 
   getRide: (id: string) =>

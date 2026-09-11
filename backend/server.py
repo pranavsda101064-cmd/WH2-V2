@@ -185,6 +185,7 @@ class RideCreate(BaseModel):
     stops: List[RideStop] = Field(..., min_length=1, max_length=10)
     payment_method: Literal["card", "upi", "cash"]
     tip: Optional[int] = Field(0, ge=0, le=10000)
+    distance_km: Optional[float] = Field(None, ge=0)
 
 
 class RideOut(BaseModel):
@@ -216,6 +217,10 @@ class RideOutDriver(BaseModel):
 
 class RideStatusUpdate(BaseModel):
     status: Literal["pending", "arriving", "onboard", "arrived", "completed", "cancelled"]
+
+
+class RideBoost(BaseModel):
+    boost: int = Field(..., ge=0, le=500)
 
 
 class RatingCreate(BaseModel):
@@ -300,10 +305,12 @@ def ride_to_out_driver(ride: RideModel) -> RideOutDriver:
     )
 
 
-def calculate_fare(vehicle_fare: int, num_stops: int) -> int:
+def calculate_fare(vehicle_fare: int, num_stops: int, distance_km: float | None = None) -> int:
+    effective_distance = max(distance_km or 1.0, 1.0)
+    base = round(vehicle_fare * effective_distance)
     stops_fee = 200 if num_stops > 1 else 0
-    gst = round((vehicle_fare + stops_fee) * 0.05)
-    return vehicle_fare + stops_fee + gst
+    gst = round((base + stops_fee) * 0.05)
+    return base + stops_fee + gst
 
 
 async def require_ride_access(ride_id: str, current_user, db):
@@ -703,7 +710,7 @@ async def create_ride(
         if not vehicle:
             raise HTTPException(400, detail="Invalid vehicle")
 
-        fare = calculate_fare(vehicle.fare, len(payload.stops))
+        fare = calculate_fare(vehicle.fare, len(payload.stops), payload.distance_km)
 
         ride = RideModel(
             id=ride_id,
@@ -886,6 +893,31 @@ async def update_ride_status(
     except Exception as exc:
         logger.error("update_ride_status failed", extra={"error": str(exc), "ride_id": ride_id})
         raise HTTPException(500, detail="Failed to update ride status")
+
+
+@api_router.patch("/rides/{ride_id}/boost", response_model=RideOut)
+@limiter.limit("10/minute")
+async def boost_ride(
+    request: Request,
+    ride_id: str,
+    payload: RideBoost,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        ride, is_rider, _ = await require_ride_access(ride_id, current_user, db)
+        if not is_rider:
+            raise HTTPException(403, detail="Only the rider can boost the fare")
+        if ride.status != "pending":
+            raise HTTPException(400, detail="Can only boost while waiting for a driver")
+        ride.tip = payload.boost
+        await db.flush()
+        return ride_to_out(ride)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("boost_ride failed", extra={"error": str(exc), "ride_id": ride_id})
+        raise HTTPException(500, detail="Failed to boost ride fare")
 
 
 # ---------- Ratings ----------

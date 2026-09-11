@@ -23,6 +23,7 @@ export default function Vehicles() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selected, setSelected] = useState<string>("v1");
   const [loading, setLoading] = useState(true);
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
 
   useEffect(() => {
     api.listVehicles()
@@ -34,12 +35,37 @@ export default function Vehicles() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Fetch OSRM route distance
+  useEffect(() => {
+    (async () => {
+      const pickup = await storage.getItem<{ lat: number; lng: number } | null>("pickup_location", null);
+      const dropoff = await storage.getItem<{ lat: number; lng: number } | null>("dropoff_location", null);
+      if (pickup && dropoff) {
+        try {
+          const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}?overview=false`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.routes?.[0]?.distance) {
+            setDistanceKm(Math.round(data.routes[0].distance / 1000 * 10) / 10);
+          }
+        } catch {}
+      }
+    })();
+  }, []);
+
   const chosen = vehicles.find((v) => v.id === selected);
+
+  const getFare = (v: Vehicle) => {
+    if (distanceKm) return Math.round(v.fare * Math.max(distanceKm, 1));
+    return v.fare;
+  };
 
   const proceed = async () => {
     if (!chosen) return;
+    const fare = getFare(chosen);
     await storage.setItem("checkout_vehicle_id", chosen.id);
-    await storage.setItem("checkout_fare", chosen.fare);
+    await storage.setItem("checkout_fare", fare);
+    if (distanceKm) await storage.setItem("checkout_distance_km", distanceKm);
     router.push("/checkout");
   };
 
@@ -97,9 +123,9 @@ export default function Vehicles() {
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
                   <Text style={styles.vFare}>
-                    ₹{v.fare.toLocaleString("en-IN")}
+                    ₹{getFare(v).toLocaleString("en-IN")}
                   </Text>
-                  <Text style={styles.vFareSub}>est. fare</Text>
+                  <Text style={styles.vFareSub}>{distanceKm ? `${distanceKm} km` : "est. fare"}</Text>
                 </View>
               </SpringPress>
             </FadeIn>
@@ -111,10 +137,10 @@ export default function Vehicles() {
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         <View style={{ flex: 1 }}>
           <Text style={styles.barLabel}>
-            {chosen ? `${chosen.name} · Cash-free` : "Loading…"}
+            {chosen && distanceKm ? `${distanceKm} km · ${chosen.name}` : chosen ? chosen.name : "Loading…"}
           </Text>
           <Text style={styles.barFare}>
-            {chosen ? `₹${chosen.fare.toLocaleString("en-IN")}` : "—"}
+            {chosen ? `₹${getFare(chosen).toLocaleString("en-IN")}` : "—"}
           </Text>
         </View>
         <SpringPress

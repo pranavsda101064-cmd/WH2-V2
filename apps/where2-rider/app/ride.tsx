@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   Easing,
@@ -26,7 +27,8 @@ import { SpringPress } from "@/src/components/spring-press";
 import { MapView, Marker, PROVIDER_DEFAULT, DARK_MAP_STYLE } from "@/src/components/map-view";
 
 const POLL_INTERVAL = 5000;
-const MAP_HEIGHT = "52%";
+const MAP_HEIGHT = "43%";
+const BOOST_PRESETS = [0, 50, 100, 200];
 
 export default function Ride() {
   const router = useRouter();
@@ -47,6 +49,8 @@ export default function Ride() {
     vehicle_model?: string;
     vehicle_reg?: string;
   } | null>(null);
+  const [boostAmount, setBoostAmount] = useState(0);
+  const [boosting, setBoosting] = useState(false);
   const rideIdRef = useRef<string | null>(null);
 
   // Smooth pulsing dot
@@ -176,6 +180,18 @@ export default function Ride() {
         },
       ],
     );
+  };
+
+  const handleBoost = async (amount: number) => {
+    if (!rideIdRef.current || boosting) return;
+    setBoostAmount(amount);
+    setBoosting(true);
+    try {
+      await api.boostRide(rideIdRef.current, amount);
+    } catch {
+      // silent — UI already updated
+    }
+    setBoosting(false);
   };
 
   if (loading) return <LoadingScreen />;
@@ -399,6 +415,63 @@ export default function Ride() {
             <Text style={styles.doneText}>Rate your ride</Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
           </SpringPress>
+        ) : status === "pending" ? (
+          <>
+            {/* Boost section */}
+            <View style={styles.boostSection}>
+              <View style={styles.boostHeader}>
+                <Ionicons name="trending-up" size={16} color={colors.accent} />
+                <Text style={styles.boostTitle}>Boost your fare</Text>
+              </View>
+              <Text style={styles.boostSub}>Offer more to find a driver faster</Text>
+              <View style={styles.boostRow}>
+                {BOOST_PRESETS.map((amt) => {
+                  const active = boostAmount === amt;
+                  return (
+                    <SpringPress
+                      key={amt}
+                      style={[styles.boostBtn, active && styles.boostBtnActive]}
+                      onPress={() => handleBoost(amt)}
+                      disabled={boosting}
+                    >
+                      <Text style={[styles.boostBtnText, active && styles.boostBtnTextActive]}>
+                        {amt === 0 ? "Normal" : `+₹${amt}`}
+                      </Text>
+                    </SpringPress>
+                  );
+                })}
+              </View>
+              {boosting && (
+                <ActivityIndicator size="small" color={colors.accent} style={{ marginTop: 8 }} />
+              )}
+            </View>
+
+            {/* Cancel — prominent during pending */}
+            <SpringPress
+              style={styles.cancelFullBtn}
+              onPress={handleCancel}
+              testID="ride-cancel"
+            >
+              <Ionicons name="close-circle-outline" size={18} color="#fff" />
+              <Text style={styles.cancelFullText}>Cancel Ride</Text>
+            </SpringPress>
+
+            {/* Secondary row */}
+            <View style={styles.bottomActions}>
+              <SpringPress style={styles.secondaryBtn} onPress={handleSOS} testID="ride-safety">
+                <Ionicons name="shield-checkmark-outline" size={16} color="#fff" />
+                <Text style={styles.secondaryText}>SOS</Text>
+              </SpringPress>
+              <SpringPress
+                style={[styles.secondaryBtn, styles.shareBtn]}
+                onPress={handleShare}
+                testID="ride-share-btn"
+              >
+                <Ionicons name="share-outline" size={16} color="#fff" />
+                <Text style={styles.secondaryText}>Share Trip</Text>
+              </SpringPress>
+            </View>
+          </>
         ) : (
           <View style={styles.bottomActions}>
             <SpringPress style={styles.secondaryBtn} onPress={handleSOS} testID="ride-safety">
@@ -640,7 +713,46 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.xs,
   },
   progLineDone: { backgroundColor: colors.accent },
-  bottomActions: { flexDirection: "row", gap: 8, marginTop: 20 },
+  boostSection: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  boostHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  boostTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "700" },
+  boostSub: { color: colors.textMuted, fontSize: font.small, marginTop: 4 },
+  boostRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  boostBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  boostBtnActive: {
+    borderColor: colors.accent,
+    backgroundColor: "rgba(0,137,123,0.08)",
+  },
+  boostBtnText: { color: colors.textMuted, fontSize: font.small, fontWeight: "600" },
+  boostBtnTextActive: { color: colors.accent },
+  cancelFullBtn: {
+    marginTop: 12,
+    height: 52,
+    borderRadius: radius.md,
+    backgroundColor: colors.danger,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  cancelFullText: { color: "#fff", fontSize: font.body, fontWeight: "700" },
+  bottomActions: { flexDirection: "row", gap: 8, marginTop: 12 },
   secondaryBtn: {
     flex: 1,
     flexDirection: "row",

@@ -22,6 +22,7 @@ import {
   TOURIST_PLACES,
   parseGoogleMapsUrl,
   resolveGoogleMapsUrl,
+  reverseGeocode,
 } from "@/src/utils/location";
 
 const SAKLESHPURA = { latitude: 13.0358, longitude: 75.7827 };
@@ -56,6 +57,25 @@ export default function LocationPicker() {
       const raw = await storage.getItem<{ lat: number; lng: number; label: string } | null>(otherKey, null);
       if (raw) {
         setOtherLocation(raw);
+      }
+
+      // Load current target location if it already exists
+      const currentKey = target === "pickup" ? "pickup_location" : "dropoff_location";
+      const current = await storage.getItem<{ lat: number; lng: number; label: string } | null>(currentKey, null);
+      if (current) {
+        const savedRegion = {
+          latitude: current.lat,
+          longitude: current.lng,
+          latitudeDelta: 0.02,
+          longitudeDelta: 0.02,
+        };
+        setRegion(savedRegion);
+        setMarker({ latitude: current.lat, longitude: current.lng });
+        setLabel(current.label);
+        const within = isWithinServiceArea(current.lat, current.lng);
+        setOutsideArea(!within);
+        mapRef.current?.animateToRegion(savedRegion, 500);
+        return;
       }
 
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -114,19 +134,6 @@ export default function LocationPicker() {
         }
       }
     } catch {}
-  };
-
-  const reverseGeocode = async (lat: number, lng: number) => {
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-        { headers: { "User-Agent": "Where2App/1.0" } },
-      );
-      const data = await res.json();
-      return data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    } catch {
-      return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-    }
   };
 
   const handleSearchInput = useCallback((text: string) => {
@@ -353,10 +360,18 @@ export default function LocationPicker() {
               disabled={!marker || outsideArea}
               onPress={async () => {
                 if (marker) {
-                  const loc = { lat: marker.latitude, lng: marker.longitude, label: label || "Selected location" };
-                  const key = target === "pickup" ? "pickup_location" : "dropoff_location";
-                  await storage.setItem(key, loc);
-                  router.back();
+                  try {
+                    const loc = { lat: marker.latitude, lng: marker.longitude, label: label || "Selected location" };
+                    const key = target === "pickup" ? "pickup_location" : "dropoff_location";
+                    await storage.setItem(key, loc);
+                    if (target === "dropoff") {
+                      router.replace("/vehicles");
+                    } else {
+                      router.back();
+                    }
+                  } catch {
+                    Alert.alert("Error", "Could not save location. Please try again.");
+                  }
                 }
               }}
             >

@@ -174,31 +174,39 @@ export default function ProfileSetup() {
   }, []);
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setCustomAvatar(result.assets[0].uri);
-      setSelectedAvatar(null);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") return;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setCustomAvatar(result.assets[0].uri);
+        setSelectedAvatar(null);
+      }
+    } catch {
+      setError("Could not access photo library");
     }
   };
 
   const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") return;
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setCustomAvatar(result.assets[0].uri);
-      setSelectedAvatar(null);
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") return;
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setCustomAvatar(result.assets[0].uri);
+        setSelectedAvatar(null);
+      }
+    } catch {
+      setError("Could not access camera");
     }
   };
 

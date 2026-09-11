@@ -90,18 +90,21 @@ export default function Checkout() {
   const [pickup, setPickup] = useState<LocationData | null>(null);
   const [dropoff, setDropoff] = useState<LocationData | null>(null);
   const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
+  const [routeStops, setRouteStops] = useState<Array<{ label: string; lat: number; lng: number }>>([]);
 
   useEffect(() => {
     (async () => {
       try {
         const v = await storage.getItem<string>("checkout_vehicle_id", "v1");
-        const f = await storage.getItem<number>("checkout_fare", 2199);
+        const f = await storage.getItem<number>("checkout_fare", 0);
         const pRaw = await storage.getItem<{ lat: number; lng: number; label: string } | null>("pickup_location", null);
         const dRaw = await storage.getItem<{ lat: number; lng: number; label: string } | null>("dropoff_location", null);
+        const rStops = await storage.getItem<Array<{ label: string; lat: number; lng: number }>>("route_stops", []);
         if (v) setVehicleId(v);
         if (f) setBaseFare(f);
         if (pRaw) setPickup(pRaw);
         if (dRaw) setDropoff(dRaw);
+        if (rStops && rStops.length > 0) setRouteStops(rStops);
 
         // Fetch actual vehicle info
         try {
@@ -116,7 +119,24 @@ export default function Checkout() {
   }, []);
 
   useEffect(() => {
-    if (pickup && dropoff) {
+    if (routeStops.length >= 2) {
+      // Multi-stop route from plan.tsx
+      const coords = routeStops.map((s) => `${s.lng},${s.lat}`).join(";");
+      const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+      fetch(url)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.routes?.[0]?.geometry?.coordinates) {
+            setRouteCoords(
+              data.routes[0].geometry.coordinates.map((c: [number, number]) => ({
+                latitude: c[1],
+                longitude: c[0],
+              })),
+            );
+          }
+        })
+        .catch(() => {});
+    } else if (pickup && dropoff) {
       const url = `https://router.project-osrm.org/route/v1/driving/${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}?overview=full&geometries=geojson`;
       fetch(url)
         .then((r) => r.json())
@@ -132,12 +152,12 @@ export default function Checkout() {
         })
         .catch(() => {});
     }
-  }, [pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
+  }, [routeStops.length, pickup?.lat, pickup?.lng, dropoff?.lat, dropoff?.lng]);
 
   const pickupLabel = pickup?.label || DEFAULT_PICKUP;
   const dropoffLabel = dropoff?.label || DEFAULT_DROPOFF;
   const base = baseFare;
-  const stopsFee = 200;
+  const stopsFee = routeStops.length > 1 ? 200 : 0;
   const gst = Math.round((base + stopsFee) * 0.05);
   const total = base + stopsFee + gst;
 
@@ -145,18 +165,33 @@ export default function Checkout() {
     setPaying(true);
     setError("");
     try {
-      const stops = [
-        { label: pickupLabel, sub: "Pickup point", lat: pickup?.lat ?? undefined, lng: pickup?.lng ?? undefined },
-        { label: dropoffLabel, sub: "Drop-off", lat: dropoff?.lat ?? undefined, lng: dropoff?.lng ?? undefined },
-      ];
+      let stops;
+      if (routeStops.length > 0) {
+        stops = routeStops.map((s, i) => ({
+          label: s.label,
+          sub: i === 0 ? "Pickup point" : i === routeStops.length - 1 ? "Drop-off" : `Stop ${i}`,
+          lat: s.lat,
+          lng: s.lng,
+        }));
+      } else {
+        stops = [
+          { label: pickupLabel, sub: "Pickup point", lat: pickup?.lat ?? undefined, lng: pickup?.lng ?? undefined },
+          { label: dropoffLabel, sub: "Drop-off", lat: dropoff?.lat ?? undefined, lng: dropoff?.lng ?? undefined },
+        ];
+      }
+      const distanceKm = await storage.getItem<number | null>("checkout_distance_km", null);
       const ride = await api.createRide({
         vehicle_id: vehicleId,
         stops,
         payment_method: method,
+        tip: 0,
+        distance_km: distanceKm ?? undefined,
       });
       await storage.setItem("active_ride_id", ride.id);
       await storage.removeItem("pickup_location");
       await storage.removeItem("dropoff_location");
+      await storage.removeItem("route_stops");
+      await storage.removeItem("checkout_distance_km");
       if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setDone(true);
       setTimeout(() => router.replace("/ride"), 1400);
@@ -269,8 +304,8 @@ export default function Checkout() {
         {/* Fare breakdown */}
         <View style={styles.card}>
           <Text style={styles.cardHead}>FARE BREAKDOWN</Text>
-          <FareRow label="Base fare" value={base} />
-          <FareRow label="Multi-stop fee" value={stopsFee} />
+          <FareRow label="Distance fare" value={base} />
+          {stopsFee > 0 && <FareRow label="Multi-stop fee" value={stopsFee} />}
           <FareRow label="Taxes & GST" value={gst} />
           <View style={styles.divider} />
           <View style={styles.totalRow}>

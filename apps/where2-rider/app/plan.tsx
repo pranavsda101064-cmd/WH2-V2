@@ -1,240 +1,479 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "expo-router";
 import {
-  Image,
-  ScrollView,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Keyboard,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import { MapView, Marker, Polyline, PROVIDER_DEFAULT } from "@/src/components/map-view";
 
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { SpringPress } from "@/src/components/spring-press";
+import { storage } from "@/src/utils/storage";
+import { TOURIST_PLACES, type TouristPlace } from "@/src/utils/location";
 
-type StayItem = {
+const SAKLESHPURA = { latitude: 13.0358, longitude: 75.7827 };
+
+type Stop = {
   id: string;
-  stayNum: number;
-  title: string;
-  checkIn: string;
-  checkOut: string;
-  address: string;
-  pickupLocation: string;
-  image: string;
+  label: string;
+  lat: number;
+  lng: number;
 };
 
-const INITIAL_STAYS: StayItem[] = [
-  {
-    id: "stay-1",
-    stayNum: 1,
-    title: "Greenwood Homestay",
-    checkIn: "Sep 23",
-    checkOut: "Sep 25",
-    address: "156R Greenwood, 509 Kateesa",
-    pickupLocation: "Local Homestay Stop",
-    image: "https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=600&q=70",
-  },
-  {
-    id: "stay-2",
-    stayNum: 2,
-    title: "Hill View Stay",
-    checkIn: "Aug 12",
-    checkOut: "Aug 15",
-    address: "Timasmpure Trip Road, Sakleshpur",
-    pickupLocation: "Hill View Gate Pickup",
-    image: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=600&q=70",
-  },
-];
+let counter = 0;
+const nextId = () => `stop-${++counter}`;
 
 export default function Plan() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [stays] = useState<StayItem[]>(INITIAL_STAYS);
+  const mapRef = useRef<any>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [stops, setStops] = useState<Stop[]>([]);
+  const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[]>([]);
+
+  // Search
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  // Suggestions
+  const [suggestedTag, setSuggestedTag] = useState<string>("All");
+  const TAGS = ["All", ...Array.from(new Set(TOURIST_PLACES.map((p) => p.tag)))];
+  const filteredSuggestions =
+    suggestedTag === "All"
+      ? TOURIST_PLACES
+      : TOURIST_PLACES.filter((p) => p.tag === suggestedTag);
+
+  // Fetch route when stops change
+  useEffect(() => {
+    if (stops.length < 2) {
+      setRouteCoords([]);
+      return;
+    }
+    const coords = stops.map((s) => `${s.lng},${s.lat}`).join(";");
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`;
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.routes?.[0]?.geometry?.coordinates) {
+          const line = data.routes[0].geometry.coordinates.map(
+            (c: [number, number]) => ({ latitude: c[1], longitude: c[0] }),
+          );
+          setRouteCoords(line);
+          // Fit map to all stops
+          if (mapRef.current && stops.length > 1) {
+            const allCoords = stops.map((s) => ({ latitude: s.lat, longitude: s.lng }));
+            mapRef.current.fitToCoordinates(allCoords, {
+              edgePadding: { top: 60, right: 40, bottom: 40, left: 40 },
+              animated: true,
+            });
+          }
+        }
+      })
+      .catch(() => {});
+  }, [stops.length, stops.map((s) => `${s.lat},${s.lng}`).join(";")]);
+
+  const addStop = useCallback((label: string, lat: number, lng: number) => {
+    setStops((prev) => [...prev, { id: nextId(), label, lat, lng }]);
+    setQuery("");
+    setResults([]);
+    Keyboard.dismiss();
+  }, []);
+
+  const removeStop = useCallback((id: string) => {
+    setStops((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  const moveStop = useCallback((id: string, dir: -1 | 1) => {
+    setStops((prev) => {
+      const idx = prev.findIndex((s) => s.id === id);
+      if (idx < 0) return prev;
+      const target = idx + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      const copy = [...prev];
+      [copy[idx], copy[target]] = [copy[target], copy[idx]];
+      return copy;
+    });
+  }, []);
+
+  // Nominatim search
+  const handleSearchInput = useCallback((text: string) => {
+    setQuery(text);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (text.length >= 3) {
+      setSearching(true);
+      searchTimerRef.current = setTimeout(async () => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=5&countrycodes=in`,
+            { headers: { "User-Agent": "Where2App/1.0" } },
+          );
+          const data = await res.json();
+          setResults(data);
+        } catch {
+          setResults([]);
+        }
+        setSearching(false);
+      }, 300);
+    } else {
+      setResults([]);
+      setSearching(false);
+    }
+  }, []);
+
+  const handleSelectResult = (item: any) => {
+    addStop(item.display_name.split(",")[0], parseFloat(item.lat), parseFloat(item.lon));
+  };
+
+  const handleSelectSuggestion = (place: TouristPlace) => {
+    addStop(place.name, place.lat, place.lng);
+  };
+
+  const canContinue = stops.length >= 2;
+
+  const handleContinue = async () => {
+    if (!canContinue) return;
+    try {
+      await storage.setItem("route_stops", stops.map((s) => ({ label: s.label, lat: s.lat, lng: s.lng })));
+      router.push("/vehicles");
+    } catch {
+      Alert.alert("Error", "Could not save route. Please try again.");
+    }
+  };
+
+  // Load any existing stops from storage
+  useEffect(() => {
+    (async () => {
+      const existing = await storage.getItem<{ label: string; lat: number; lng: number }[] | null>("route_stops", null);
+      if (existing && existing.length > 0) {
+        setStops(existing.map((s) => ({ id: nextId(), ...s })));
+      }
+    })();
+  }, []);
 
   return (
     <View style={styles.root} testID="plan-screen">
       <StatusBar style="dark" />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
-      >
-        {/* Hero Image Header */}
-        <View style={styles.heroContainer}>
-          <Image
-            source={{
-              uri: "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1200&q=70",
-            }}
-            style={styles.heroImg}
+      {/* Map */}
+      <View style={styles.mapWrap}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          provider={PROVIDER_DEFAULT}
+          initialRegion={{
+            ...SAKLESHPURA,
+            latitudeDelta: 0.06,
+            longitudeDelta: 0.06,
+          }}
+          showsUserLocation={false}
+        >
+          {stops.map((stop, i) => (
+            <Marker
+              key={stop.id}
+              coordinate={{ latitude: stop.lat, longitude: stop.lng }}
+              title={stop.label}
+              pinColor={i === 0 ? "#4CAF50" : i === stops.length - 1 ? "#F44336" : colors.accent}
+            />
+          ))}
+          {routeCoords.length > 0 && (
+            <Polyline
+              coordinates={routeCoords}
+              strokeColor={colors.accent}
+              strokeWidth={4}
+            />
+          )}
+        </MapView>
+        <SpringPress style={[styles.backBtn, { top: insets.top + 10 }]} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
+        </SpringPress>
+      </View>
+
+      {/* Bottom sheet */}
+      <View style={styles.sheet}>
+        {/* Search bar */}
+        <View style={styles.searchRow}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search a place..."
+            placeholderTextColor={colors.textMuted}
+            value={query}
+            onChangeText={handleSearchInput}
+            returnKeyType="search"
           />
-          <View style={styles.heroOverlay} />
-          <View style={[styles.heroNav, { paddingTop: insets.top + 8 }]}>
-            <SpringPress style={styles.navBtn} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-            </SpringPress>
-            <Text style={styles.heroTitle}>where2</Text>
-            <SpringPress style={styles.navBtn} onPress={() => router.push("/notifications")}>
-              <Ionicons name="share-outline" size={20} color="#FFFFFF" />
-            </SpringPress>
-          </View>
+          {searching && <ActivityIndicator size="small" color={colors.accent} />}
         </View>
 
-        {/* Content Section */}
-        <View style={styles.contentSection}>
-          <Text style={styles.pageTitle}>Plan Your Trip</Text>
+        {/* Search results */}
+        {results.length > 0 && (
+          <View style={styles.resultsWrap}>
+            {results.map((r) => (
+              <SpringPress
+                key={r.place_id}
+                style={styles.resultItem}
+                onPress={() => handleSelectResult(r)}
+              >
+                <Ionicons name="location" size={14} color={colors.accent} />
+                <Text style={styles.resultText} numberOfLines={2}>
+                  {r.display_name}
+                </Text>
+              </SpringPress>
+            ))}
+          </View>
+        )}
 
-          {/* Stays List */}
-          {stays.map((stay) => (
-            <View key={stay.id} style={styles.stayCard}>
-              <View style={styles.stayHeader}>
-                <Text style={styles.stayTag}>Stay {stay.stayNum}:</Text>
-                <Text style={styles.stayName}>{stay.title}</Text>
-              </View>
-              <View style={styles.stayRow}>
-                <Image source={{ uri: stay.image }} style={styles.stayImg} />
-                <View style={styles.stayDetails}>
-                  <Text style={styles.stayDate}>
-                    Check in - {stay.checkIn}  |  Out: {stay.checkOut}
-                  </Text>
-                  <View style={styles.locationRow}>
-                    <Ionicons name="location-outline" size={14} color={colors.textMuted} />
-                    <Text style={styles.stayAddress} numberOfLines={2}>
-                      {stay.address}
-                    </Text>
-                  </View>
+        {/* Stops list */}
+        {stops.length > 0 && (
+          <View style={styles.stopsSection}>
+            <Text style={styles.sectionTitle}>Your Route ({stops.length} stops)</Text>
+            {stops.map((stop, i) => (
+              <View key={stop.id} style={styles.stopRow}>
+                <View style={styles.stopIndex}>
+                  <Text style={styles.stopIndexText}>{i + 1}</Text>
+                </View>
+                <Text style={styles.stopLabel} numberOfLines={1}>
+                  {stop.label}
+                </Text>
+                <View style={styles.stopActions}>
                   <SpringPress
-                    style={styles.pickupPill}
-                    onPress={() => router.push("/location-picker?target=pickup")}
+                    style={[styles.stopActionBtn, i === 0 && { opacity: 0.3 }]}
+                    onPress={() => moveStop(stop.id, -1)}
+                    disabled={i === 0}
                   >
-                    <Ionicons name="location" size={12} color={colors.accent} />
-                    <Text style={styles.pickupPillText}>
-                      Pickup: {stay.pickupLocation}
-                    </Text>
+                    <Ionicons name="chevron-up" size={16} color={colors.textMuted} />
+                  </SpringPress>
+                  <SpringPress
+                    style={[styles.stopActionBtn, i === stops.length - 1 && { opacity: 0.3 }]}
+                    onPress={() => moveStop(stop.id, 1)}
+                    disabled={i === stops.length - 1}
+                  >
+                    <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+                  </SpringPress>
+                  <SpringPress style={styles.stopActionBtn} onPress={() => removeStop(stop.id)}>
+                    <Ionicons name="close" size={16} color="#F44336" />
                   </SpringPress>
                 </View>
               </View>
-            </View>
-          ))}
+            ))}
+          </View>
+        )}
 
-          {/* Booking info */}
-          <View style={styles.confirmCard}>
-            <Text style={styles.confirmCardTitle}>Booking Details</Text>
-            <View style={styles.checkItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-              <Text style={styles.checkText}>
-                This itinerary covers all your stays and route stops.
-              </Text>
-            </View>
-            <View style={styles.checkItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-              <Text style={styles.checkText}>
-                Confirmation sent to your driver and homestay host.
-              </Text>
-            </View>
-            <View style={styles.checkItem}>
-              <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
-              <Text style={styles.checkText}>
-                Free cancellation up to 2 hours before pickup.
-              </Text>
-            </View>
+        {/* Suggested places */}
+        <View style={styles.suggestionsSection}>
+          <Text style={styles.sectionTitle}>Suggested Places</Text>
+
+          {/* Tag chips */}
+          <View style={styles.tagRow}>
+            {TAGS.map((tag) => (
+              <SpringPress
+                key={tag}
+                style={[styles.tagChip, suggestedTag === tag && styles.tagChipActive]}
+                onPress={() => setSuggestedTag(tag)}
+              >
+                <Text style={[styles.tagChipText, suggestedTag === tag && styles.tagChipTextActive]}>
+                  {tag}
+                </Text>
+              </SpringPress>
+            ))}
           </View>
 
-          {/* Trip Rules */}
-          <View style={styles.rulesCard}>
-            <Text style={styles.rulesTitle}>Trip Guidelines</Text>
-            <Text style={styles.ruleBullet}>
-              Plastic-free zone: Please do not litter in Western Ghats eco-sensitive areas.
-            </Text>
-            <Text style={styles.ruleBullet}>
-              Forest gates close at 6:00 PM for wildlife conservation.
-            </Text>
-            <Text style={styles.ruleBullet}>
-              Carry a valid Government ID for homestay check-in.
-            </Text>
-          </View>
+          {/* Place chips */}
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={filteredSuggestions}
+            keyExtractor={(item) => item.name}
+            contentContainerStyle={{ gap: 8 }}
+            renderItem={({ item }) => (
+              <SpringPress
+                style={styles.placeChip}
+                onPress={() => handleSelectSuggestion(item)}
+              >
+                <Text style={styles.placeChipName}>{item.name}</Text>
+                <Text style={styles.placeChipTag}>{item.tag}</Text>
+              </SpringPress>
+            )}
+          />
+        </View>
 
-          {/* Confirm button */}
+        {/* Continue */}
+        <View style={[styles.ctaWrap, { paddingBottom: insets.bottom + spacing.sm }]}>
           <SpringPress
-            style={styles.confirmBookingBtn}
-            onPress={() => router.push("/vehicles")}
-            testID="confirm-booking-btn"
+            style={[styles.cta, !canContinue && styles.ctaDisabled]}
+            onPress={handleContinue}
+            disabled={!canContinue}
           >
-            <Text style={styles.confirmBookingText}>Confirm Booking</Text>
+            <Text style={styles.ctaText}>
+              {canContinue ? `Continue with ${stops.length} stops` : "Add at least 2 stops"}
+            </Text>
+            {canContinue && <Ionicons name="arrow-forward" size={16} color="#fff" />}
           </SpringPress>
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  heroContainer: {
-    height: 220, width: "100%", position: "relative",
+  mapWrap: { height: 300, width: "100%" },
+  map: { flex: 1 },
+  backBtn: {
+    position: "absolute",
+    left: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadows.md,
   },
-  heroImg: { width: "100%", height: "100%" },
-  heroOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.45)",
+
+  // Sheet
+  sheet: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    marginTop: -20,
+    paddingTop: spacing.md,
+    gap: spacing.md,
   },
-  heroNav: {
-    position: "absolute", left: 16, right: 16,
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+
+  // Search
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.bg,
+    borderRadius: radius.pill,
+    marginHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
+    height: 44,
+    gap: spacing.sm,
   },
-  navBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center",
+  searchInput: { flex: 1, fontSize: font.body, color: colors.text },
+
+  // Results
+  resultsWrap: {
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: "hidden",
   },
-  heroTitle: {
-    color: "#FFFFFF", fontSize: 22, fontWeight: "700", letterSpacing: 1,
+  resultItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  contentSection: {
-    paddingHorizontal: 16, paddingTop: 16, gap: 16,
+  resultText: { flex: 1, fontSize: font.small, color: colors.text, lineHeight: 18 },
+
+  // Stops
+  stopsSection: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
   },
-  pageTitle: {
-    color: colors.text, fontSize: font.title, fontWeight: "600",
+  sectionTitle: {
+    fontSize: font.label,
+    fontWeight: "600",
+    color: colors.text,
+    marginBottom: 2,
   },
-  stayCard: {
-    backgroundColor: colors.surface, borderRadius: radius.lg, padding: 14,
-    borderWidth: 1, borderColor: colors.border, ...shadows.sm,
+  stopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.bg,
+    borderRadius: radius.md,
+    padding: spacing.md,
   },
-  stayHeader: {
-    flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10,
+  stopIndex: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  stayTag: { color: colors.accent, fontSize: font.label, fontWeight: "700" },
-  stayName: { color: colors.text, fontSize: font.label, fontWeight: "600" },
-  stayRow: { flexDirection: "row", gap: 12 },
-  stayImg: { width: 80, height: 80, borderRadius: radius.md },
-  stayDetails: { flex: 1, justifyContent: "space-between" },
-  stayDate: { color: colors.textMuted, fontSize: font.caption, fontWeight: "600" },
-  locationRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 },
-  stayAddress: { color: colors.text, fontSize: font.caption, fontWeight: "500" },
-  pickupPill: {
-    flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start",
-    backgroundColor: colors.surfaceTint, paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: radius.pill, marginTop: 6,
+  stopIndexText: { fontSize: 11, fontWeight: "700", color: "#fff" },
+  stopLabel: { flex: 1, fontSize: font.small, fontWeight: "500", color: colors.text },
+  stopActions: { flexDirection: "row", gap: 2 },
+  stopActionBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  pickupPillText: { color: colors.accent, fontSize: font.micro, fontWeight: "700" },
-  confirmCard: {
-    backgroundColor: colors.accent, borderRadius: radius.lg, padding: 16,
-    gap: 10, ...shadows.accent,
+
+  // Suggestions
+  suggestionsSection: {
+    gap: spacing.sm,
   },
-  confirmCardTitle: {
-    color: "#FFFFFF", fontSize: font.subtitle, fontWeight: "600", marginBottom: 2,
+  tagRow: {
+    flexDirection: "row",
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
   },
-  checkItem: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  checkText: { color: "#FFFFFF", fontSize: font.small, lineHeight: 18, flex: 1 },
-  rulesCard: {
-    backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16,
-    borderWidth: 1, borderColor: colors.border, gap: 8, ...shadows.sm,
+  tagChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    backgroundColor: colors.bg,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  rulesTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "600", marginBottom: 2 },
-  ruleBullet: { color: colors.textMuted, fontSize: font.small, lineHeight: 20 },
-  confirmBookingBtn: {
-    backgroundColor: colors.accent, height: 52, borderRadius: radius.pill,
-    alignItems: "center", justifyContent: "center", marginTop: 8, ...shadows.accent,
+  tagChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
-  confirmBookingText: { color: "#FFFFFF", fontSize: font.body, fontWeight: "700" },
+  tagChipText: {
+    fontSize: font.micro,
+    fontWeight: "600",
+    color: colors.textMuted,
+  },
+  tagChipTextActive: { color: "#fff" },
+  placeChip: {
+    width: 150,
+    backgroundColor: colors.bg,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 4,
+  },
+  placeChipName: { fontSize: font.small, fontWeight: "600", color: colors.text },
+  placeChipTag: { fontSize: font.micro, color: colors.textMuted },
+
+  // CTA
+  ctaWrap: { paddingHorizontal: spacing.lg },
+  cta: {
+    height: 52,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    ...shadows.accent,
+  },
+  ctaDisabled: { backgroundColor: colors.border, elevation: 0 },
+  ctaText: { fontSize: font.body, fontWeight: "700", color: "#fff" },
 });

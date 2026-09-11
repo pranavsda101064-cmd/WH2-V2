@@ -87,8 +87,12 @@ export default function Profile() {
           text: "Sign out",
           style: "destructive",
           onPress: async () => {
-            await api.logout();
-            router.replace("/");
+            try {
+              await api.logout();
+              router.replace("/");
+            } catch {
+              router.replace("/");
+            }
           },
         },
       ],

@@ -23,12 +23,6 @@ import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api, getProfileCompleted } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
 
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  scopes: ["profile", "email"],
-  offlineAccess: false,
-});
-
 /* ── Shake Error ── */
 function ShakeError({ message }: { message: string }) {
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -68,21 +62,27 @@ export default function Auth() {
   const emailBorder = useRef(new Animated.Value(0)).current;
   const passwordBorder = useRef(new Animated.Value(0)).current;
 
+  // Configure Google Sign-In after mount
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      scopes: ["profile", "email"],
+      offlineAccess: false,
+    });
+  }, []);
+
   const animateBorder = (anim: Animated.Value, to: number) => {
     Animated.timing(anim, { toValue: to, duration: 200, useNativeDriver: false }).start();
   };
 
-  const handleGoogleSuccess = (idToken: string) => {
-    api.googleAuth(idToken, "customer")
-      .then(async () => {
-        const completed = await getProfileCompleted();
-        router.replace(completed ? "/(tabs)/home" : "/profile-setup");
-      })
-      .catch(() => setError("Google sign-in failed"));
-  };
-
   const handleGoogleLogin = async () => {
     try {
+      const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+      if (!webClientId) {
+        setError("Google sign-in is not configured");
+        return;
+      }
+      setGoogleLoading(true);
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
       if (response.type !== "success") return;
@@ -91,8 +91,9 @@ export default function Auth() {
         setError("No ID token received from Google");
         return;
       }
-      setGoogleLoading(true);
-      handleGoogleSuccess(idToken);
+      await api.googleAuth(idToken, "customer");
+      const completed = await getProfileCompleted();
+      router.replace(completed ? "/(tabs)/home" : "/profile-setup");
     } catch (error: any) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) return;
       setError(error.message || "Google sign-in failed");
@@ -299,8 +300,16 @@ export default function Auth() {
             </View>
 
             {/* Create account */}
-            <SpringPress style={styles.outlineBtn} onPress={handleRegister}>
-              <Text style={styles.outlineBtnText}>Create account</Text>
+            <SpringPress
+              style={[styles.outlineBtn, loading && styles.disabled]}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.text} />
+              ) : (
+                <Text style={styles.outlineBtnText}>Create account</Text>
+              )}
             </SpringPress>
 
             {/* Google Sign In */}

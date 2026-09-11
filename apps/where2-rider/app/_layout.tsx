@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/react-native";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LogBox, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -10,7 +10,7 @@ import Constants from "expo-constants";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { colors } from "@/src/theme";
-import { api } from "@/src/api";
+import { api, getToken, getProfileCompleted } from "@/src/api";
 
 // Guard expo-notifications — removed from Expo Go in SDK 53+
 let Notifications: any = null;
@@ -67,12 +67,26 @@ async function registerForPushNotifications() {
 function RootLayout() {
   const [loaded, error] = useIconFonts();
   const notificationListener = useRef<any>(null);
+  const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     if (loaded || error) {
       SplashScreen.hideAsync();
     }
   }, [loaded, error]);
+
+  // Auth check: if token exists, skip landing page
+  useEffect(() => {
+    getToken().then((token) => {
+      if (token) {
+        getProfileCompleted().then((completed) => {
+          router.replace(completed ? "/(tabs)/home" : "/profile-setup");
+        });
+      }
+      setAuthChecked(true);
+    });
+  }, []);
 
   useEffect(() => {
     if (!Notifications) return;

@@ -1528,6 +1528,36 @@ async def list_driver_rides(
         raise HTTPException(500, detail="Failed to fetch driver rides")
 
 
+# ---------- Driver Online Status ----------
+class DriverOnlineUpdate(BaseModel):
+    online: bool
+
+
+@api_router.patch("/driver/online")
+async def update_driver_online(
+    request: Request,
+    payload: DriverOnlineUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    require_driver(current_user)
+    try:
+        result = await db.execute(
+            select(DriverProfileModel).where(DriverProfileModel.user_id == str(current_user.id))
+        )
+        profile = result.scalar_one_or_none()
+        if not profile:
+            raise HTTPException(404, detail="Driver profile not found")
+        profile.is_online = payload.online
+        await db.flush()
+        return {"status": "ok", "online": payload.online}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("update_driver_online failed", extra={"error": str(exc)})
+        raise HTTPException(500, detail="Failed to update online status")
+
+
 # ---------- Driver Location Tracking ----------
 class DriverLocationUpdate(BaseModel):
     ride_id: str = Field(..., max_length=36)

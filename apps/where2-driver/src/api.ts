@@ -394,6 +394,13 @@ export const api = {
   listVehiclesDriver: () =>
     req<DriverVehicle[]>("/driver/vehicles", undefined, []),
 
+  // Driver Online Status
+  updateOnlineStatus: (online: boolean) =>
+    req<{ status: string; online: boolean }>("/driver/online", {
+      method: "PATCH",
+      body: JSON.stringify({ online }),
+    }),
+
   // Driver Location Tracking
   updateDriverLocation: (rideId: string, lat: number, lng: number, heading?: number, speed?: number) =>
     req<{ status: string }>("/driver/location", {

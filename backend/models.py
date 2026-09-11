@@ -141,6 +141,7 @@ class DriverProfile(Base):
         nullable=False,
         default="pending",
     )
+    is_online = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
 

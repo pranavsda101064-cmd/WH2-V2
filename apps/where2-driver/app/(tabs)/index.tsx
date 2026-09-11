@@ -112,13 +112,16 @@ export default function DriverDashboard() {
     async (val: boolean) => {
       setOnline(val);
       await storage.setItem("driver_online", val);
+      api.updateOnlineStatus(val).catch(() => {});
     },
     [],
   );
 
   useEffect(() => {
     storage.getItem<boolean>("driver_online", true).then((saved) => {
-      if (saved !== null) setOnline(saved);
+      const isOnline = saved !== null ? saved : true;
+      setOnline(isOnline);
+      api.updateOnlineStatus(isOnline).catch(() => {});
     });
   }, []);
 

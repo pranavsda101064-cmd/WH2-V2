@@ -13,6 +13,7 @@ import { getCached, setCache } from "@/src/utils/cache";
 const BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
 const TOKEN_KEY = "auth_token";
 const USER_EMAIL_KEY = "auth_user_email";
+const USER_ID_KEY = "user_id";
 const PROFILE_COMPLETED_KEY = "profile_completed";
 const USER_NAME_KEY = "user_name";
 
@@ -39,6 +40,14 @@ export async function setUserEmail(email: string): Promise<void> {
 
 export async function clearUserEmail(): Promise<void> {
   await storage.removeItem(USER_EMAIL_KEY);
+}
+
+export async function getUserId(): Promise<string> {
+  return (await storage.getItem<string>(USER_ID_KEY, "")) || "";
+}
+
+export async function setUserId(id: string): Promise<void> {
+  await storage.setItem(USER_ID_KEY, id);
 }
 
 export async function getProfileCompleted(): Promise<boolean> {
@@ -165,26 +174,28 @@ export type CustomerProfile = {
 export const api = {
   // Auth
   register: async (email: string, password: string, role: "customer" | "driver" = "customer") => {
-    const data = await req<{ access_token: string; user: { email: string; role: string; profile_completed: boolean } }>(
+    const data = await req<{ access_token: string; user: { id: string; email: string; role: string; profile_completed: boolean } }>(
       "/auth/register",
       { method: "POST", body: JSON.stringify({ email, password, role }) },
     );
     if (data?.access_token) {
       await setToken(data.access_token);
       await setUserEmail(email);
+      if (data.user.id) await setUserId(data.user.id);
       await setProfileCompleted(data.user.profile_completed);
     }
     return data;
   },
 
   login: async (email: string, password: string) => {
-    const data = await req<{ access_token: string; user: { email: string; profile_completed: boolean } }>(
+    const data = await req<{ access_token: string; user: { id: string; email: string; profile_completed: boolean } }>(
       "/auth/login",
       { method: "POST", body: JSON.stringify({ email, password }) },
     );
     if (data?.access_token) {
       await setToken(data.access_token);
       await setUserEmail(email);
+      if (data.user.id) await setUserId(data.user.id);
       await setProfileCompleted(data.user.profile_completed);
     }
     return data;
@@ -195,16 +206,18 @@ export const api = {
     await clearUserEmail();
     await setProfileCompleted(false);
     await setUserName("");
+    await setUserId("");
   },
 
   googleAuth: async (token: string, role: "customer" | "driver" = "customer") => {
-    const data = await req<{ access_token: string; user: { email: string; role: string; profile_completed: boolean; name: string } }>(
+    const data = await req<{ access_token: string; user: { id: string; email: string; role: string; profile_completed: boolean; name: string } }>(
       "/auth/google",
       { method: "POST", body: JSON.stringify({ token, role }) },
     );
     if (data?.access_token) {
       await setToken(data.access_token);
       await setUserEmail(data.user.email);
+      if (data.user.id) await setUserId(data.user.id);
       await setProfileCompleted(data.user.profile_completed);
       if (data.user.name) await setUserName(data.user.name);
     }

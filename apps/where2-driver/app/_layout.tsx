@@ -11,6 +11,7 @@ import Constants from "expo-constants";
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import { colors } from "@/src/theme";
 import { api } from "@/src/api";
+import { storage } from "@/src/utils/storage";
 import { loadNotificationSound, playNotificationSound } from "@/src/utils/notification-sound";
 
 // Guard expo-notifications — removed from Expo Go in SDK 53+
@@ -126,18 +127,17 @@ function RootLayout() {
           const actionId = response.actionIdentifier;
           const data = response.notification.request.content.data;
 
-          if (actionId === "accept" && data.rideId) {
+          if (actionId === "accept" && data.ride_id) {
             try {
-              const ride = await api.acceptRequest(data.rideId);
+              const ride = await api.acceptRequest(data.ride_id);
               if (ride?.id) {
-                const { storage } = await import("@/src/utils/storage");
                 await storage.setItem("active_ride_id", ride.id);
                 router.push("/ride");
               }
             } catch {}
-          } else if (actionId === "decline" && data.rideId) {
-            api.declineRequest(data.rideId).catch(() => {});
-          } else if (data.type === "new_request" || data.rideId) {
+          } else if (actionId === "decline" && data.ride_id) {
+            api.declineRequest(data.ride_id).catch(() => {});
+          } else if (data.type === "new_request" || data.ride_id) {
             router.push("/(tabs)");
           }
         },

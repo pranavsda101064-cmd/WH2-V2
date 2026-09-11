@@ -15,8 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
 import { colors, radius, font, spacing } from "@/src/theme";
-import { api } from "@/src/api";
-import { storage } from "@/src/utils/storage";
+import { api, getUserId } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
 
 const QUICK_REPLIES = [
@@ -60,33 +59,36 @@ export default function DriverChat() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    storage.getItem<string>("user_id", "").then((id) => { if (id) setUserId(id); });
-
     if (!rideId) return;
-    api.listMessages(rideId).then((msgs) => {
-      if (msgs.length === 0) {
+    (async () => {
+      const id = await getUserId();
+      if (id) setUserId(id);
+      try {
+        const msgs = await api.listMessages(rideId);
+        if (msgs.length === 0) {
+          setMessages([{
+            id: "system-1",
+            text: `Chat with ${riderName || "your rider"}. Send a message or pick a quick reply below.`,
+            sent: false,
+            time: formatTime(),
+          }]);
+        } else {
+          setMessages(msgs.map((m) => ({
+            id: m.id,
+            text: m.text,
+            sent: m.sender_id === id,
+            time: new Date(m.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+          })));
+        }
+      } catch {
         setMessages([{
           id: "system-1",
           text: `Chat with ${riderName || "your rider"}. Send a message or pick a quick reply below.`,
           sent: false,
           time: formatTime(),
         }]);
-      } else {
-        setMessages(msgs.map((m) => ({
-          id: m.id,
-          text: m.text,
-          sent: m.sender_id === "me" || m.sender_id === userId,
-          time: new Date(m.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-        })));
       }
-    }).catch(() => {
-      setMessages([{
-        id: "system-1",
-        text: `Chat with ${riderName || "your rider"}. Send a message or pick a quick reply below.`,
-        sent: false,
-        time: formatTime(),
-      }]);
-    });
+    })();
 
     pollRef.current = setInterval(() => {
       if (rideId) api.listMessages(rideId).catch(() => {});

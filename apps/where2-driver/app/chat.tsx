@@ -52,7 +52,7 @@ export default function DriverChat() {
     riderPhone: string;
   }>();
 
-  const [userId, setUserId] = useState<string>("");
+  const userIdRef = useRef<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const flatListRef = useRef<FlatList>(null);
@@ -62,7 +62,7 @@ export default function DriverChat() {
     if (!rideId) return;
     (async () => {
       const id = await getUserId();
-      if (id) setUserId(id);
+      if (id) userIdRef.current = id;
       try {
         const msgs = await api.listMessages(rideId);
         if (msgs.length === 0) {
@@ -90,8 +90,25 @@ export default function DriverChat() {
       }
     })();
 
-    pollRef.current = setInterval(() => {
-      if (rideId) api.listMessages(rideId).catch(() => {});
+    pollRef.current = setInterval(async () => {
+      if (!rideId) return;
+      try {
+        const msgs = await api.listMessages(rideId);
+        setMessages((prev) => {
+          const server = msgs.map((m) => ({
+            id: m.id,
+            text: m.text,
+            sent: m.sender_id === userIdRef.current,
+            time: new Date(m.created_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+          }));
+          const serverIds = new Set(server.map((m) => m.id));
+          const local = prev.filter((m) => m.id.startsWith("msg-") && !serverIds.has(m.id));
+          const merged = [...server, ...local];
+          if (merged.length !== prev.length) return merged;
+          if (merged.some((m, i) => m.id !== prev[i]?.id)) return merged;
+          return prev;
+        });
+      } catch {}
     }, 5000);
 
     return () => { if (pollRef.current) clearInterval(pollRef.current); };

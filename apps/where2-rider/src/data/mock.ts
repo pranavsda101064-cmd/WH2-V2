@@ -9,7 +9,7 @@ export const packages = [
     duration: "8 hrs",
     stops: 4,
     image:
-      "https://images.unsplash.com/photo-e6vJ0pGrvuw?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1750967613671-297f1b63038d?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p2",
@@ -19,7 +19,7 @@ export const packages = [
     duration: "5 hrs",
     stops: 3,
     image:
-      "https://images.unsplash.com/photo-b-GcKW0Vqpc?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-dQ5spWYhQro?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p3",
@@ -39,7 +39,7 @@ export const packages = [
     duration: "24 hrs",
     stops: 5,
     image:
-      "https://images.unsplash.com/photo-eyNsCCb4RBc?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo--Zt97RnOWJ8?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p5",
@@ -49,7 +49,7 @@ export const packages = [
     duration: "5 hrs",
     stops: 2,
     image:
-      "https://images.unsplash.com/photo-5IEaMPc8Vdw?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-3i-84-23-x8?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p6",
@@ -59,7 +59,7 @@ export const packages = [
     duration: "6 hrs",
     stops: 3,
     image:
-      "https://images.unsplash.com/photo-nwXKR4isc_k?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-iIse25psfGs?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p7",
@@ -69,7 +69,7 @@ export const packages = [
     duration: "10 hrs",
     stops: 3,
     image:
-      "https://images.unsplash.com/photo-8uGw6FO55G8?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-2qYQylBLs_E?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p8",
@@ -79,7 +79,7 @@ export const packages = [
     duration: "6 hrs",
     stops: 2,
     image:
-      "https://images.unsplash.com/photo-dhY5m7qKUBY?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-KN_GIIJRe7Q?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p9",
@@ -89,7 +89,7 @@ export const packages = [
     duration: "3 hrs",
     stops: 1,
     image:
-      "https://images.unsplash.com/photo-hiou85my84w?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-_Ien7zEYA1E?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p10",
@@ -99,7 +99,7 @@ export const packages = [
     duration: "7 hrs",
     stops: 4,
     image:
-      "https://images.unsplash.com/photo-JnnENnjv0L0?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-obnfVkzB650?auto=format&fit=crop&w=1200&q=70",
   },
 ];
 
@@ -110,7 +110,7 @@ export const pastTrips = [
     date: "Apr 12, 2026",
     fare: 3200,
     image:
-      "https://images.unsplash.com/photo-OY6MOPmk3JE?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-YPdcs99p3MY?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t2",
@@ -118,7 +118,7 @@ export const pastTrips = [
     date: "Mar 03, 2026",
     fare: 2499,
     image:
-      "https://images.unsplash.com/photo-e6vJ0pGrvuw?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-1750967613671-297f1b63038d?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t3",
@@ -126,7 +126,7 @@ export const pastTrips = [
     date: "Feb 18, 2026",
     fare: 1899,
     image:
-      "https://images.unsplash.com/photo-b-GcKW0Vqpc?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-dQ5spWYhQro?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t4",
@@ -142,7 +142,7 @@ export const pastTrips = [
     date: "Dec 15, 2025",
     fare: 1299,
     image:
-      "https://images.unsplash.com/photo-RlUGxaGAzzg?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-IZKWHbGXeIg?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t6",
@@ -150,7 +150,7 @@ export const pastTrips = [
     date: "Nov 28, 2025",
     fare: 1799,
     image:
-      "https://images.unsplash.com/photo-3T6nEy7FgYo?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-3i-84-23-x8?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t7",
@@ -158,7 +158,7 @@ export const pastTrips = [
     date: "Oct 10, 2025",
     fare: 2899,
     image:
-      "https://images.unsplash.com/photo-8uGw6FO55G8?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-2qYQylBLs_E?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t8",
@@ -166,7 +166,7 @@ export const pastTrips = [
     date: "Sep 05, 2025",
     fare: 2599,
     image:
-      "https://images.unsplash.com/photo-nwXKR4isc_k?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-iIse25psfGs?auto=format&fit=crop&w=800&q=70",
   },
 ];
 
@@ -232,8 +232,8 @@ export const stopsSeed = [
 ];
 
 export const savedRoutes = [
-  { id: "sr1", from: "Hotel Entrance", to: "Sakleshpura Bus Stand", icon: "bus-outline" as const, tag: "2.3 km" },
-  { id: "sr2", from: "Homestay", to: "Manjarabad Fort", icon: "business-outline" as const, tag: "12 km" },
-  { id: "sr3", from: "Resort", to: "Bisle Ghat Viewpoint", icon: "leaf-outline" as const, tag: "34 km" },
-  { id: "sr4", from: "Town Center", to: "Coffee Estate Tour", icon: "leaf-outline" as const, tag: "8 km" },
+  { id: "sr1", from: "Hotel Entrance", to: "Sakleshpura Bus Stand", icon: "bus-outline" as const, tag: "2.3 km", lat: 13.0358, lng: 75.7827 },
+  { id: "sr2", from: "Homestay", to: "Manjarabad Fort", icon: "business-outline" as const, tag: "12 km", lat: 12.9930, lng: 75.8320 },
+  { id: "sr3", from: "Resort", to: "Bisle Ghat Viewpoint", icon: "leaf-outline" as const, tag: "34 km", lat: 13.0566, lng: 75.8738 },
+  { id: "sr4", from: "Town Center", to: "Coffee Estate Tour", icon: "leaf-outline" as const, tag: "8 km", lat: 13.0410, lng: 75.7960 },
 ];

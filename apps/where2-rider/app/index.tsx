@@ -21,7 +21,7 @@ try {
 } catch {}
 
 const PHOTO =
-  "https://images.unsplash.com/photo-1754164366303-d4e15c2e54b2?auto=format&fit=crop&w=800&q=80";
+  "https://images.unsplash.com/photo--Zt97RnOWJ8?auto=format&fit=crop&w=800&q=80";
 
 export default function Landing() {
   const router = useRouter();

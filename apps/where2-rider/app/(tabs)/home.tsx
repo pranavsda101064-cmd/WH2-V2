@@ -175,7 +175,14 @@ export default function Home() {
             <FadeIn delay={80}>
               <SpringPress
                 style={styles.nearbyCard}
-                onPress={() => router.push("/location-picker?target=dropoff")}
+                onPress={async () => {
+                  try {
+                    await storage.setItem("dropoff_location", { lat: item.lat ?? 13.0358, lng: item.lng ?? 75.7827, label: item.to });
+                    router.push("/location-picker?target=dropoff");
+                  } catch {
+                    Alert.alert("Error", "Could not set location. Please try again.");
+                  }
+                }}
               >
                 <View style={styles.nearbyIcon}>
                   <Ionicons name={item.icon} size={20} color={colors.accent} />

@@ -20,10 +20,10 @@ PACKAGES = [
 ]
 
 VEHICLES = [
-    {"id": "v1", "name": "Sedan", "desc": "Comfortable, AC", "seats": 4, "fare": 2199, "eta": "3 min", "icon": "car-outline"},
-    {"id": "v2", "name": "SUV", "desc": "Extra space, hill-ready", "seats": 6, "fare": 2899, "eta": "5 min", "icon": "car-sport-outline"},
-    {"id": "v3", "name": "Traveller", "desc": "Group minivan", "seats": 12, "fare": 4499, "eta": "8 min", "icon": "bus-outline"},
-    {"id": "v4", "name": "Premium", "desc": "Executive class", "seats": 4, "fare": 3499, "eta": "6 min", "icon": "car-outline"},
+    {"id": "v1", "name": "Sedan", "desc": "Comfortable, AC", "seats": 4, "fare": 12, "eta": "3 min", "icon": "car-outline"},
+    {"id": "v2", "name": "SUV", "desc": "Extra space, hill-ready", "seats": 6, "fare": 18, "eta": "5 min", "icon": "car-sport-outline"},
+    {"id": "v3", "name": "Traveller", "desc": "Group minivan", "seats": 12, "fare": 25, "eta": "8 min", "icon": "bus-outline"},
+    {"id": "v4", "name": "Premium", "desc": "Executive class", "seats": 4, "fare": 35, "eta": "6 min", "icon": "car-outline"},
 ]
 
 DRIVER_REQUESTS = [
@@ -44,18 +44,31 @@ async def seed_database(session: AsyncSession) -> None:
         await session.commit()
         logger.info("Seeded %d packages", len(PACKAGES))
 
-    # Seed vehicles
+    # Seed vehicles (insert if empty, update fares if they exist)
     result = await session.execute(select(func.count()).select_from(Vehicle))
-    if result.scalar() == 0:
+    count = result.scalar()
+    if count == 0:
         for v in VEHICLES:
             session.add(Vehicle(**v))
         await session.commit()
         logger.info("Seeded %d vehicles", len(VEHICLES))
+    else:
+        # Update existing vehicles with current per-km fares
+        for v in VEHICLES:
+            existing = await session.execute(select(Vehicle).where(Vehicle.id == v["id"]))
+            veh = existing.scalar_one_or_none()
+            if veh and veh.fare != v["fare"]:
+                veh.fare = v["fare"]
+                veh.name = v["name"]
+                veh.desc = v["desc"]
+                veh.eta = v["eta"]
+                veh.icon = v["icon"]
+        await session.commit()
 
-    # Seed driver requests
+    # Seed driver requests (legacy demo data — no ride_id, filtered out by driver requests endpoint)
     result = await session.execute(select(func.count()).select_from(DriverRequest))
     if result.scalar() == 0:
         for r in DRIVER_REQUESTS:
             session.add(DriverRequest(**r))
         await session.commit()
-        logger.info("Seeded %d driver requests", len(DRIVER_REQUESTS))
+        logger.info("Seeded %d driver requests (demo only)", len(DRIVER_REQUESTS))

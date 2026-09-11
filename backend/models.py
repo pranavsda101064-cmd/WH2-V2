@@ -34,6 +34,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role = Column(Enum("customer", "driver", name="user_role"), nullable=False, default="customer")
     profile_completed = Column(Boolean, nullable=False, default=False)
+    push_token = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
     rides = relationship("Ride", back_populates="user", foreign_keys="Ride.user_id")
@@ -72,15 +73,15 @@ class Ride(Base):
     vehicle_id = Column(String(10), nullable=False)
     stops = Column(JSON, nullable=False)
     fare = Column(Integer, nullable=False)
-    payment_method = Column(Enum("card", "upi", name="payment_method"), nullable=False)
+    payment_method = Column(Enum("card", "upi", "cash", name="payment_method"), nullable=False)
     tip = Column(Integer, nullable=False, default=0)
     status = Column(
         Enum(
-            "arriving", "onboard", "arrived", "completed", "cancelled",
+            "pending", "arriving", "onboard", "arrived", "completed", "cancelled",
             name="ride_status",
         ),
         nullable=False,
-        default="arriving",
+        default="pending",
         index=True,
     )
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
@@ -113,15 +114,16 @@ class Rating(Base):
 class DriverRequest(Base):
     __tablename__ = "driver_requests"
 
-    id = Column(String(10), primary_key=True)
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    ride_id = Column(String(36), ForeignKey("rides.id"), nullable=True, index=True)
     pickup = Column(String(255), nullable=False)
     drop = Column(String(255), nullable=False)
     distance = Column(String(50), nullable=False)
     duration = Column(String(50), nullable=False)
     fare = Column(Integer, nullable=False)
     rider = Column(String(100), nullable=False)
-    rating = Column(Float, nullable=False)
-    tag = Column(String(100), nullable=False)
+    rating = Column(Float, nullable=False, default=0.0)
+    tag = Column(String(100), nullable=False, default="")
 
 
 class DriverProfile(Base):
@@ -139,6 +141,7 @@ class DriverProfile(Base):
         nullable=False,
         default="pending",
     )
+    is_online = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
 

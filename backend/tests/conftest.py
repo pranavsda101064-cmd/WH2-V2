@@ -5,7 +5,7 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
 from database import get_db
-from models import Base
+from models import Base, Vehicle as VehicleModel
 from server import app, limiter
 
 TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
@@ -17,6 +17,13 @@ TestSession = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 async def setup_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    async with TestSession() as session:
+        for v in [
+            VehicleModel(id="v1", name="Sedan", desc="Comfortable sedan", seats=4, fare=800, eta="5 min", icon="sedan"),
+            VehicleModel(id="v2", name="SUV", desc="Spacious SUV", seats=6, fare=1200, eta="8 min", icon="suv"),
+        ]:
+            session.add(v)
+        await session.commit()
     yield
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

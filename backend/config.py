@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # App
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
-    GOOGLE_WEB_CLIENT_ID: str = ""
+    GOOGLE_WEB_CLIENT_ID: str = "524688489029-h02hs91ufjcsu1l6805dks6l724o4klp.apps.googleusercontent.com"
 
     model_config = {
         "env_file": ".env",

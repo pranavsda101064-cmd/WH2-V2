@@ -18,6 +18,12 @@ try {
   Notifications = require("expo-notifications");
 } catch {}
 
+// Guard expo-haptics
+let Haptics: any = null;
+try {
+  Haptics = require("expo-haptics");
+} catch {}
+
 // Guard Sentry — crashes in Expo Go on SDK 57 (v7.11.0 mobileReplayIntegration SIGABRT)
 const isExpoGo = Constants.appOwnership === "expo";
 if (!isExpoGo) {
@@ -95,7 +101,9 @@ function RootLayout() {
 
     notificationListener.current = Notifications.addNotificationReceivedListener(
       (notification: any) => {
-        // Foreground notification — could update UI, show toast, etc.
+        if (Haptics) {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
       },
     );
 

@@ -297,6 +297,21 @@ export const api = {
       { name: "Driver", phone: "", photo_url: null, vehicle_make: null, vehicle_model: null, vehicle_reg: null },
     ),
 
+  // Chat / Messages
+  listMessages: (rideId: string) =>
+    req<Array<{ id: string; ride_id: string; sender_id: string; text: string; created_at: string }>>(
+      `/rides/${rideId}/messages`,
+      undefined,
+      [],
+    ),
+
+  sendMessage: (rideId: string, text: string) =>
+    req<{ id: string; ride_id: string; sender_id: string; text: string; created_at: string }>(
+      `/rides/${rideId}/messages`,
+      { method: "POST", body: JSON.stringify({ text }) },
+      { id: `local-${Date.now()}`, ride_id: rideId, sender_id: "me", text, created_at: new Date().toISOString() },
+    ),
+
   registerPushToken: (token: string) =>
     req<{ status: string }>("/push-token", { method: "POST", body: JSON.stringify({ token }) }, { status: "ok" }),
 

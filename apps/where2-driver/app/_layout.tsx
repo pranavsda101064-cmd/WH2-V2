@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/react-native";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
@@ -67,9 +67,36 @@ async function registerForPushNotifications() {
   } catch {}
 }
 
+async function registerNotificationCategories() {
+  if (!Notifications) return;
+  try {
+    await Notifications.setNotificationCategoryAsync("ride-request", [
+      {
+        identifier: "accept",
+        buttonTitle: "Accept",
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: "decline",
+        buttonTitle: "Decline",
+        options: { isDestructive: true, opensAppToForeground: false },
+      },
+    ]);
+    await Notifications.setNotificationCategoryAsync("ride-update", [
+      {
+        identifier: "view",
+        buttonTitle: "View",
+        options: { opensAppToForeground: true },
+      },
+    ]);
+  } catch {}
+}
+
 function RootLayout() {
   const [loaded, error] = useIconFonts();
   const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (loaded || error) {
@@ -82,21 +109,49 @@ function RootLayout() {
 
     if (Notifications) {
       registerForPushNotifications();
+      registerNotificationCategories();
 
       notificationListener.current = Notifications.addNotificationReceivedListener(
         (notification: any) => {
-          // Foreground notification — play sound + haptic for new ride requests
           playNotificationSound();
           if (Haptics) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           }
         },
       );
+
+      // Handle notification response (action button taps)
+      responseListener.current = Notifications.addNotificationResponseReceivedListener(
+        async (response: any) => {
+          const actionId = response.actionIdentifier;
+          const data = response.notification.request.content.data;
+
+          if (actionId === "accept" && data.rideId) {
+            try {
+              const ride = await api.acceptRequest(data.rideId);
+              if (ride?.id) {
+                const { storage } = await import("@/src/utils/storage");
+                await storage.setItem("active_ride_id", ride.id);
+                router.push("/ride");
+              }
+            } catch {}
+          } else if (actionId === "decline" && data.rideId) {
+            api.declineRequest(data.rideId).catch(() => {});
+          } else if (data.type === "new_request" || data.rideId) {
+            router.push("/(tabs)");
+          }
+        },
+      );
     }
 
     return () => {
-      if (Notifications && notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+      if (Notifications) {
+        if (notificationListener.current) {
+          Notifications.removeNotificationSubscription(notificationListener.current);
+        }
+        if (responseListener.current) {
+          Notifications.removeNotificationSubscription(responseListener.current);
+        }
       }
     };
   }, []);
@@ -118,6 +173,7 @@ function RootLayout() {
             }}
           >
             <Stack.Screen name="ride" options={{ animation: "fade" }} />
+            <Stack.Screen name="chat" options={{ animation: "slide_from_right" }} />
           </Stack>
         </View>
       </SafeAreaProvider>

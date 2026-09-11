@@ -14,9 +14,15 @@ logger = logging.getLogger("notifications")
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 
 
-async def send_push(token: str, title: str, body: str, data: dict[str, Any] | None = None) -> bool:
+async def send_push(
+    token: str,
+    title: str,
+    body: str,
+    data: dict[str, Any] | None = None,
+    category_id: str | None = None,
+) -> bool:
     """Send a push notification via Expo Push API. Returns True on success."""
-    payload = {
+    payload: dict[str, Any] = {
         "to": token,
         "title": title,
         "body": body,
@@ -24,6 +30,8 @@ async def send_push(token: str, title: str, body: str, data: dict[str, Any] | No
         "sound": "default",
         "priority": "high",
     }
+    if category_id:
+        payload["categoryId"] = category_id
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.post(EXPO_PUSH_URL, json=payload)
@@ -38,7 +46,13 @@ async def send_push(token: str, title: str, body: str, data: dict[str, Any] | No
         return False
 
 
-async def notify_drivers(db: AsyncSession, title: str, body: str, data: dict[str, Any] | None = None) -> int:
+async def notify_drivers(
+    db: AsyncSession,
+    title: str,
+    body: str,
+    data: dict[str, Any] | None = None,
+    category_id: str | None = None,
+) -> int:
     """Send push notification to all drivers with a registered push token. Returns count sent."""
     result = await db.execute(
         select(User.id, User.push_token).where(
@@ -50,7 +64,7 @@ async def notify_drivers(db: AsyncSession, title: str, body: str, data: dict[str
     sent = 0
     for user_id, token in rows:
         if token:
-            ok = await send_push(token, title, body, data or {})
+            ok = await send_push(token, title, body, data or {}, category_id=category_id)
             if ok:
                 sent += 1
     if sent:
@@ -58,13 +72,20 @@ async def notify_drivers(db: AsyncSession, title: str, body: str, data: dict[str
     return sent
 
 
-async def notify_user(db: AsyncSession, user_id: str, title: str, body: str, data: dict[str, Any] | None = None) -> bool:
+async def notify_user(
+    db: AsyncSession,
+    user_id: str,
+    title: str,
+    body: str,
+    data: dict[str, Any] | None = None,
+    category_id: str | None = None,
+) -> bool:
     """Send push notification to a specific user. Returns True on success."""
     result = await db.execute(select(User.push_token).where(User.id == user_id))
     token = result.scalar_one_or_none()
     if not token:
         return False
-    ok = await send_push(token, title, body, data or {})
+    ok = await send_push(token, title, body, data or {}, category_id=category_id)
     if ok:
         logger.info("Notified user %s: %s", user_id, title)
     return ok

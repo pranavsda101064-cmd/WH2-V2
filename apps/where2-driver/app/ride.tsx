@@ -487,6 +487,23 @@ export default function Ride() {
                     <Text style={[styles.sosBtnText, { color: colors.accent }]}>Call Rider</Text>
                   </SpringPress>
                 ) : null}
+                {activeRideId ? (
+                  <SpringPress
+                    style={styles.sosBtn}
+                    onPress={() => router.push({
+                      pathname: "/chat",
+                      params: {
+                        rideId: activeRideId,
+                        riderName: riderInfo?.name || "Rider",
+                        riderPhone: riderInfo?.phone || "",
+                      },
+                    })}
+                    testID="ride-message-rider"
+                  >
+                    <Ionicons name="chatbubble-outline" size={16} color={colors.accent} />
+                    <Text style={[styles.sosBtnText, { color: colors.accent }]}>Message</Text>
+                  </SpringPress>
+                ) : null}
                 {pickup?.lat && pickup?.lng && (status === "arriving" || status === "pending") ? (
                   <SpringPress
                     style={styles.sosBtn}

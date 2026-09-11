@@ -19,12 +19,12 @@ import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { SpringPress } from "@/src/components/spring-press";
 
-const QUICK_QUESTIONS = [
-  "I'm at the pickup point",
-  "Where are you?",
-  "Please wait 2 min",
-  "I can't find you",
-  "Going towards you",
+const QUICK_REPLIES = [
+  "On my way to you",
+  "I've arrived at pickup",
+  "Please share your location",
+  "Traffic delay, 5 min out",
+  "Heading to drop-off now",
   "Call me",
 ];
 
@@ -44,13 +44,13 @@ function formatTime(): string {
   return `${h12}:${m} ${ampm}`;
 }
 
-export default function Chat() {
+export default function DriverChat() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { rideId, driverName, driverPhone } = useLocalSearchParams<{
+  const { rideId, riderName, riderPhone } = useLocalSearchParams<{
     rideId: string;
-    driverName: string;
-    driverPhone: string;
+    riderName: string;
+    riderPhone: string;
   }>();
 
   const [userId, setUserId] = useState<string>("");
@@ -59,7 +59,6 @@ export default function Chat() {
   const flatListRef = useRef<FlatList>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load user ID and fetch messages
   useEffect(() => {
     storage.getItem<string>("user_id", "").then((id) => { if (id) setUserId(id); });
 
@@ -68,7 +67,7 @@ export default function Chat() {
       if (msgs.length === 0) {
         setMessages([{
           id: "system-1",
-          text: `Chat with ${driverName || "your driver"}. Send a message or pick a quick question below.`,
+          text: `Chat with ${riderName || "your rider"}. Send a message or pick a quick reply below.`,
           sent: false,
           time: formatTime(),
         }]);
@@ -83,17 +82,14 @@ export default function Chat() {
     }).catch(() => {
       setMessages([{
         id: "system-1",
-        text: `Chat with ${driverName || "your driver"}. Send a message or pick a quick question below.`,
+        text: `Chat with ${riderName || "your rider"}. Send a message or pick a quick reply below.`,
         sent: false,
         time: formatTime(),
       }]);
     });
 
-    // Poll for new messages every 5s
     pollRef.current = setInterval(() => {
-      if (rideId) {
-        api.listMessages(rideId).catch(() => {});
-      }
+      if (rideId) api.listMessages(rideId).catch(() => {});
     }, 5000);
 
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -110,14 +106,11 @@ export default function Chat() {
     setMessages((prev) => [...prev, msg]);
     setInput("");
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-    // Send to backend (fire and forget)
     api.sendMessage(rideId, text.trim()).catch(() => {});
   };
 
   const handleCall = () => {
-    if (driverPhone) {
-      Linking.openURL(`tel:${driverPhone}`);
-    }
+    if (riderPhone) Linking.openURL(`tel:${riderPhone}`);
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
@@ -138,7 +131,7 @@ export default function Chat() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -146,22 +139,22 @@ export default function Chat() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <SpringPress style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={22} color={colors.text} />
+            <Ionicons name="chevron-back" size={22} color="#fff" />
           </SpringPress>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>{driverName || "Driver"}</Text>
-            <Text style={styles.headerSub}>Tap a question or type below</Text>
+            <Text style={styles.headerTitle}>{riderName || "Rider"}</Text>
+            <Text style={styles.headerSub}>Tap a reply or type below</Text>
           </View>
           <SpringPress style={styles.callBtn} onPress={handleCall}>
             <Ionicons name="call-outline" size={20} color="#fff" />
           </SpringPress>
         </View>
 
-        {/* Quick questions */}
+        {/* Quick replies */}
         <View style={styles.quickSection}>
-          <Text style={styles.quickLabel}>Quick questions</Text>
+          <Text style={styles.quickLabel}>Quick replies</Text>
           <View style={styles.quickGrid}>
-            {QUICK_QUESTIONS.map((q) => (
+            {QUICK_REPLIES.map((q) => (
               <SpringPress
                 key={q}
                 style={styles.quickChip}
@@ -226,17 +219,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
     gap: 12,
+    backgroundColor: colors.accentDark,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: "rgba(255,255,255,0.1)",
   },
   backBtn: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center",
+    width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center", justifyContent: "center",
   },
-  headerTitle: { color: colors.text, fontSize: font.subtitle, fontWeight: "600" },
-  headerSub: { color: colors.textMuted, fontSize: font.caption, marginTop: 2 },
+  headerTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "600" },
+  headerSub: { color: "rgba(255,255,255,0.7)", fontSize: font.caption, marginTop: 2 },
   callBtn: {
-    width: 42, height: 42, borderRadius: 21, backgroundColor: colors.accent,
+    width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center", justifyContent: "center",
   },
 

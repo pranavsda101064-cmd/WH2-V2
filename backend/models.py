@@ -191,6 +191,21 @@ class DriverVehicle(Base):
     driver = relationship("DriverProfile", back_populates="vehicles")
 
 
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    ride_id = Column(String(36), ForeignKey("rides.id"), nullable=False, index=True)
+    sender_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    receiver_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    text = Column(String(500), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, index=True)
+
+    ride = relationship("Ride", backref="messages")
+    sender = relationship("User", foreign_keys=[sender_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
+
+
 class CustomerProfile(Base):
     __tablename__ = "customer_profiles"
 

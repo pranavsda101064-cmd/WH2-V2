@@ -39,6 +39,7 @@ from models import DriverProfile as DriverProfileModel
 from models import DriverDocument as DriverDocumentModel
 from models import DriverVehicle as DriverVehicleModel
 from models import CustomerProfile as CustomerProfileModel
+from models import Message as MessageModel
 from models import Package as PackageModel
 from models import Rating as RatingModel
 from models import Ride as RideModel
@@ -770,7 +771,8 @@ async def create_ride(
                 db,
                 title="New ride request",
                 body=f"{pickup_label} → {drop_label}  •  ₹{fare}",
-                data={"ride_id": ride_id, "type": "new_request"},
+                data={"ride_id": ride_id, "type": "new_request", "pickup": pickup_label, "drop": drop_label, "fare": fare, "riderName": rider_name},
+                category_id="ride-request",
             )
         except Exception:
             pass  # Don't fail ride creation if notification fails
@@ -1420,7 +1422,8 @@ async def accept_request(
                 user_id=ride.user_id,
                 title="Your ride has been accepted!",
                 body=f"{driver_name} is on the way to pick you up",
-                data={"ride_id": ride.id, "type": "driver_accepted"},
+                data={"ride_id": ride.id, "type": "driver_accepted", "driverName": driver_name},
+                category_id="ride-update",
             )
         except Exception:
             pass  # Don't fail acceptance if notification fails
@@ -1658,6 +1661,88 @@ async def share_ride(
         "stops": ride.stops,
         "fare": ride.fare,
     }
+
+
+# ---------- Chat / Messages ----------
+class MessageCreate(BaseModel):
+    text: str = Field(..., max_length=500)
+
+
+class MessageOut(BaseModel):
+    id: str
+    ride_id: str
+    sender_id: str
+    text: str
+    created_at: str
+
+
+@api_router.get("/rides/{ride_id}/messages", response_model=List[MessageOut])
+async def list_messages(
+    ride_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        ride, _, _ = await require_ride_access(ride_id, current_user, db)
+        result = await db.execute(
+            select(MessageModel)
+            .where(MessageModel.ride_id == ride_id)
+            .order_by(MessageModel.created_at.asc())
+            .limit(200)
+        )
+        messages = result.scalars().all()
+        return [
+            MessageOut(
+                id=m.id,
+                ride_id=m.ride_id,
+                sender_id=m.sender_id,
+                text=m.text,
+                created_at=m.created_at.isoformat() if m.created_at else "",
+            )
+            for m in messages
+        ]
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("list_messages failed", extra={"ride_id": ride_id, "error": str(exc)})
+        raise HTTPException(500, detail="Failed to fetch messages")
+
+
+@api_router.post("/rides/{ride_id}/messages", response_model=MessageOut)
+async def send_message(
+    ride_id: str,
+    payload: MessageCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        ride, is_rider, is_driver = await require_ride_access(ride_id, current_user, db)
+
+        receiver_id = ride.driver_id if is_rider else ride.user_id
+        if not receiver_id:
+            raise HTTPException(400, detail="No recipient available for this ride")
+
+        msg = MessageModel(
+            ride_id=ride_id,
+            sender_id=str(current_user.id),
+            receiver_id=receiver_id,
+            text=payload.text.strip(),
+        )
+        db.add(msg)
+        await db.flush()
+
+        return MessageOut(
+            id=msg.id,
+            ride_id=msg.ride_id,
+            sender_id=msg.sender_id,
+            text=msg.text,
+            created_at=msg.created_at.isoformat() if msg.created_at else "",
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("send_message failed", extra={"ride_id": ride_id, "error": str(exc)})
+        raise HTTPException(500, detail="Failed to send message")
 
 
 # ---------- Authenticated file serving ----------

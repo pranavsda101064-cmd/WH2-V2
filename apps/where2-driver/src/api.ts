@@ -314,6 +314,13 @@ export const api = {
       { name: "Driver", phone: "", photo_url: null, vehicle_make: null, vehicle_model: null, vehicle_reg: null },
     ),
 
+  getRideRider: (rideId: string) =>
+    req<{ name: string; phone?: string }>(
+      `/rides/${rideId}/rider`,
+      undefined,
+      { name: "Rider", phone: "" },
+    ),
+
   registerPushToken: (token: string) =>
     req<{ status: string }>("/push-token", { method: "POST", body: JSON.stringify({ token }) }, { status: "ok" }),
 

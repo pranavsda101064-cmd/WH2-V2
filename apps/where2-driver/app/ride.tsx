@@ -42,6 +42,7 @@ export default function Ride() {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
   const [showPinInput, setShowPinInput] = useState(false);
+  const [riderInfo, setRiderInfo] = useState<{ name: string; phone?: string } | null>(null);
   const pulse = useRef(new Animated.Value(0)).current;
   const pinRef = useRef<TextInput>(null);
 
@@ -113,6 +114,16 @@ export default function Ride() {
 
     return () => clearInterval(poll);
   }, [activeRideId]);
+
+  // Fetch rider info when ride is loaded
+  useEffect(() => {
+    if (!ride?.id) return;
+    let cancelled = false;
+    api.getRideRider(ride.id)
+      .then((r) => { if (!cancelled) setRiderInfo(r); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [ride?.id]);
 
   useEffect(() => {
     if (status === "completed" || status === "cancelled") return;
@@ -466,6 +477,28 @@ export default function Ride() {
           {status !== "completed" && (
             <FadeIn delay={400}>
               <View style={styles.bottomActions}>
+                {riderInfo?.phone ? (
+                  <SpringPress
+                    style={styles.sosBtn}
+                    onPress={() => Linking.openURL(`tel:${riderInfo.phone}`)}
+                    testID="ride-call-rider"
+                  >
+                    <Ionicons name="call-outline" size={16} color={colors.accent} />
+                    <Text style={[styles.sosBtnText, { color: colors.accent }]}>Call Rider</Text>
+                  </SpringPress>
+                ) : null}
+                {pickup?.lat && pickup?.lng && (status === "arriving" || status === "pending") ? (
+                  <SpringPress
+                    style={styles.sosBtn}
+                    onPress={() => Linking.openURL(
+                      `https://www.google.com/maps/dir/?api=1&destination=${pickup.lat},${pickup.lng}`
+                    )}
+                    testID="ride-navigate"
+                  >
+                    <Ionicons name="navigate-outline" size={16} color={colors.accent} />
+                    <Text style={[styles.sosBtnText, { color: colors.accent }]}>Navigate</Text>
+                  </SpringPress>
+                ) : null}
                 <SpringPress style={styles.sosBtn} onPress={handleSOS} testID="ride-sos-bottom">
                   <Ionicons name="shield-checkmark-outline" size={16} color={colors.danger} />
                   <Text style={styles.sosBtnText}>SOS</Text>

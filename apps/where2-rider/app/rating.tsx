@@ -216,6 +216,7 @@ export default function Rating() {
           tip,
         })
         .catch(() => {});
+      await storage.removeItem("active_ride_id");
     }
     setTimeout(() => router.replace("/(tabs)/home"), 2800);
   };

@@ -263,6 +263,11 @@ class DriverInfoOut(BaseModel):
     vehicle_reg: Optional[str] = None
 
 
+class RiderInfoOut(BaseModel):
+    name: str
+    phone: Optional[str] = None
+
+
 class DriverStats(BaseModel):
     earnings: int
     trips: int
@@ -865,6 +870,34 @@ async def get_ride_driver(
     except Exception as exc:
         logger.error("get_ride_driver failed", extra={"error": str(exc), "ride_id": ride_id})
         raise HTTPException(500, detail="Failed to fetch driver info")
+
+
+@api_router.get("/rides/{ride_id}/rider", response_model=RiderInfoOut)
+async def get_ride_rider(
+    ride_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        ride, _, is_driver = await require_ride_access(ride_id, current_user, db)
+        if not is_driver:
+            raise HTTPException(403, detail="Only drivers can access rider info")
+
+        from models import CustomerProfile as CustomerProfileModel
+        result = await db.execute(
+            select(CustomerProfileModel).where(CustomerProfileModel.user_id == ride.user_id)
+        )
+        profile = result.scalar_one_or_none()
+
+        return RiderInfoOut(
+            name=profile.full_name if profile else "Rider",
+            phone=profile.phone if profile else None,
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("get_ride_rider failed", extra={"error": str(exc), "ride_id": ride_id})
+        raise HTTPException(500, detail="Failed to fetch rider info")
 
 
 @api_router.patch("/rides/{ride_id}/status", response_model=RideOut)

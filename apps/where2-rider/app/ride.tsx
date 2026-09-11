@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  BackHandler,
   Easing,
   Linking,
   Platform,
@@ -146,6 +147,38 @@ export default function Ride() {
     } else if (ride.status === "arrived") {
       if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
+  }, [ride?.status]);
+
+  // Ride timeout — auto-cancel after 120s if no driver accepts
+  useEffect(() => {
+    if (ride?.status !== "pending") return;
+    const timeout = setTimeout(async () => {
+      if (rideIdRef.current) {
+        await api.updateRideStatus(rideIdRef.current, "cancelled").catch(() => {});
+      }
+      await storage.removeItem("active_ride_id");
+      Alert.alert("No driver found", "We couldn't find a driver. Please try again later.", [
+        { text: "OK", onPress: () => router.replace("/(tabs)/home") },
+      ]);
+    }, 120000);
+    return () => clearTimeout(timeout);
+  }, [ride?.status]);
+
+  // Back button confirmation during active ride
+  useEffect(() => {
+    if (ride?.status === "completed" || ride?.status === "cancelled") return;
+    const handler = BackHandler.addEventListener("hardwareBackPress", () => {
+      Alert.alert(
+        "Leave ride?",
+        "You can track your ride from the Trips tab.",
+        [
+          { text: "Stay", style: "cancel" },
+          { text: "Leave", style: "destructive", onPress: () => router.replace("/(tabs)/home") },
+        ],
+      );
+      return true;
+    });
+    return () => handler.remove();
   }, [ride?.status]);
 
   const handleShare = async () => {
@@ -367,6 +400,15 @@ export default function Ride() {
             >
               <Ionicons name="chatbubble-outline" size={18} color="#fff" />
             </SpringPress>
+            {driverInfo?.phone ? (
+              <SpringPress
+                style={styles.actBtn}
+                onPress={() => Linking.openURL(`tel:${driverInfo.phone}`)}
+                testID="ride-call"
+              >
+                <Ionicons name="call-outline" size={18} color="#fff" />
+              </SpringPress>
+            ) : null}
             <SpringPress
               style={[styles.actBtn, styles.actBtnAccent]}
               onPress={handleSOS}

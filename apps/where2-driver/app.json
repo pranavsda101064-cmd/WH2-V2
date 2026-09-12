@@ -50,6 +50,7 @@
       ],
       "expo-notifications",
       "expo-location",
+      "expo-image-picker",
       "@sentry/react-native",
       "@maplibre/maplibre-react-native",
       [

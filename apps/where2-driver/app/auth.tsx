@@ -24,13 +24,6 @@ import { api, getProfileCompleted } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
 
-GoogleSignin.configure({
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-  scopes: ["profile", "email"],
-  offlineAccess: false,
-});
-
 const BG =
   "https://images.unsplash.com/photo-DY4ZEkiPPPA?auto=format&fit=crop&w=1400&q=80";
 
@@ -65,6 +58,15 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+      scopes: ["profile", "email"],
+      offlineAccess: false,
+    });
+  }, []);
 
   const handleGoogleLogin = async () => {
     try {

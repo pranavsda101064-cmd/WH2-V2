@@ -2,8 +2,8 @@ import { useRef, forwardRef, useImperativeHandle } from "react";
 import { Platform, View, Text, StyleSheet } from "react-native";
 import { colors, radius, font } from "@/src/theme";
 
-const DARK_STYLE_URL = "https://openfreemap.org/style/dark";
-const LIGHT_STYLE_URL = "https://openfreemap.org/style/liberty";
+const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
+const LIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
 let MaplibreMap: any = null;
 let MaplibreCamera: any = null;

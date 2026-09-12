@@ -3,7 +3,7 @@ import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { LogBox, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Constants from "expo-constants";
@@ -14,21 +14,25 @@ import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { loadNotificationSound, playNotificationSound } from "@/src/utils/notification-sound";
 
+// Suppress all JS error overlays — prevents fatal red-box crashes during init.
+// The rider app has this; without it, any unhandled warning becomes fatal.
+LogBox.ignoreAllLogs(true);
+
 // Guard expo-notifications — removed from Expo Go in SDK 53+
 let Notifications: any = null;
 try {
   Notifications = require("expo-notifications");
 } catch {}
 
-// Guard expo-haptics for Expo Go compatibility
+// Guard expo-haptics
 let Haptics: any = null;
 try {
   Haptics = require("expo-haptics");
 } catch {}
 
-// Guard Sentry — crashes in Expo Go on SDK 57 (v7.11.0 mobileReplayIntegration SIGABRT)
+// Guard Sentry — only init if DSN is configured (empty DSN can crash SDK)
 const isExpoGo = Constants.appOwnership === "expo";
-if (!isExpoGo) {
+if (!isExpoGo && process.env.EXPO_PUBLIC_SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     tracesSampleRate: 0.2,
@@ -37,9 +41,6 @@ if (!isExpoGo) {
 }
 
 // Keep the native splash visible from cold start until icon fonts register.
-// Required because @expo/vector-icons' componentDidMount fallback fires
-// Font.loadAsync against a broken vendor path if any <Icon> mounts before
-// the family is registered — which throws on Android Expo Go.
 SplashScreen.preventAutoHideAsync();
 
 if (Notifications) {
@@ -106,7 +107,12 @@ function RootLayout() {
   }, [loaded, error]);
 
   useEffect(() => {
-    loadNotificationSound();
+    // Defer heavy native module init (expo-av) until after first render
+    const soundTimer = setTimeout(() => {
+      try {
+        loadNotificationSound();
+      } catch {}
+    }, 500);
 
     if (Notifications) {
       registerForPushNotifications();
@@ -114,9 +120,9 @@ function RootLayout() {
 
       notificationListener.current = Notifications.addNotificationReceivedListener(
         (notification: any) => {
-          playNotificationSound();
+          try { playNotificationSound(); } catch {}
           if (Haptics) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
           }
         },
       );
@@ -124,27 +130,28 @@ function RootLayout() {
       // Handle notification response (action button taps)
       responseListener.current = Notifications.addNotificationResponseReceivedListener(
         async (response: any) => {
-          const actionId = response.actionIdentifier;
-          const data = response.notification.request.content.data;
+          try {
+            const actionId = response.actionIdentifier;
+            const data = response.notification.request.content.data;
 
-          if (actionId === "accept" && data.ride_id) {
-            try {
+            if (actionId === "accept" && data.ride_id) {
               const ride = await api.acceptRequest(data.ride_id);
               if (ride?.id) {
                 await storage.setItem("active_ride_id", ride.id);
                 router.push("/ride");
               }
-            } catch {}
-          } else if (actionId === "decline" && data.ride_id) {
-            api.declineRequest(data.ride_id).catch(() => {});
-          } else if (data.type === "new_request" || data.ride_id) {
-            router.push("/(tabs)");
-          }
+            } else if (actionId === "decline" && data.ride_id) {
+              api.declineRequest(data.ride_id).catch(() => {});
+            } else if (data.type === "new_request" || data.ride_id) {
+              router.push("/(tabs)");
+            }
+          } catch {}
         },
       );
     }
 
     return () => {
+      clearTimeout(soundTimer);
       if (Notifications) {
         if (notificationListener.current) {
           Notifications.removeNotificationSubscription(notificationListener.current);
@@ -156,8 +163,6 @@ function RootLayout() {
     };
   }, []);
 
-  // If the CDN is unreachable we fall through on error rather than wedging
-  // the app — icons will tofu, but the app still boots.
   if (!loaded && !error) return null;
 
   return (

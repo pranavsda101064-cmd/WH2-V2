@@ -24,9 +24,9 @@ try {
   Haptics = require("expo-haptics");
 } catch {}
 
-// Guard Sentry — crashes in Expo Go on SDK 57 (v7.11.0 mobileReplayIntegration SIGABRT)
+// Guard Sentry — only init if DSN is configured (empty DSN can crash SDK)
 const isExpoGo = Constants.appOwnership === "expo";
-if (!isExpoGo) {
+if (!isExpoGo && process.env.EXPO_PUBLIC_SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     tracesSampleRate: 0.2,

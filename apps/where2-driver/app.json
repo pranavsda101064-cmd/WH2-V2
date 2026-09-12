@@ -49,7 +49,9 @@
         }
       ],
       "expo-notifications",
+      "expo-location",
       "@sentry/react-native",
+      "@maplibre/maplibre-react-native",
       [
         "@react-native-google-signin/google-signin",
         {

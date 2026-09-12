@@ -125,7 +125,7 @@ export default function DriverProfileScreen() {
           <View style={styles.profileCard}>
             <Image
               source={{
-                uri: profile.photo_url || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=70",
+                uri: profile.photo_url || "https://api.dicebear.com/10.x/adventurer-neutral/png?seed=driver&size=128&backgroundColor=transparent",
               }}
               style={styles.avatar}
             />
@@ -133,8 +133,8 @@ export default function DriverProfileScreen() {
               <Text style={styles.name}>{profile.full_name}</Text>
               <View style={styles.ratingRow}>
                 <Ionicons name="star" size={12} color={colors.accent} />
-                <Text style={styles.rating}>—</Text>
-                <Text style={styles.tripCount}>· {profile.status}</Text>
+                <Text style={styles.rating}>{profile.avg_rating != null ? profile.avg_rating.toFixed(1) : "—"}</Text>
+                <Text style={styles.tripCount}>· {profile.total_trips} trips · {profile.status}</Text>
               </View>
             </View>
             <TouchableOpacity style={styles.uploadBtn} testID="upload-photo-button" onPress={async () => {

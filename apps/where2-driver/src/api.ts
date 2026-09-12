@@ -134,6 +134,8 @@ export type DriverProfile = {
   address: string | null;
   photo_url: string | null;
   status: string;
+  avg_rating: number | null;
+  total_trips: number;
   created_at: string;
 };
 
@@ -324,7 +326,7 @@ export const api = {
     req<{ name: string; phone?: string; photo_url?: string; vehicle_make?: string; vehicle_model?: string; vehicle_reg?: string }>(
       `/rides/${rideId}/driver`,
       undefined,
-      { name: "Driver", phone: "", photo_url: null, vehicle_make: null, vehicle_model: null, vehicle_reg: null },
+      { name: "Driver", phone: "", photo_url: undefined, vehicle_make: undefined, vehicle_model: undefined, vehicle_reg: undefined },
     ),
 
   getRideRider: (rideId: string) =>

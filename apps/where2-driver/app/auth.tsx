@@ -25,7 +25,7 @@ import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
 
 const BG =
-  "https://images.unsplash.com/photo-DY4ZEkiPPPA?auto=format&fit=crop&w=1400&q=80";
+  "https://images.unsplash.com/photo-1750967613671-297f1b63038d?auto=format&fit=crop&w=1400&q=80";
 
 function ShakeError({ text }: { text: string }) {
   const shakeAnim = useRef(new Animated.Value(0)).current;

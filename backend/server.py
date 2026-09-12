@@ -1033,6 +1033,8 @@ class DriverProfileOut(BaseModel):
     address: Optional[str] = None
     photo_url: Optional[str] = None
     status: str
+    avg_rating: Optional[float] = None
+    total_trips: int = 0
     created_at: str
 
 
@@ -1104,6 +1106,8 @@ async def create_driver_profile(
             address=profile.address,
             photo_url=profile.photo_url,
             status=profile.status,
+            avg_rating=None,
+            total_trips=0,
             created_at=profile.created_at.isoformat(),
         )
     except HTTPException:
@@ -1127,6 +1131,19 @@ async def get_driver_profile(
         if not profile:
             raise HTTPException(404, detail="Driver profile not found")
 
+        rating_result = await db.execute(
+            select(
+                func.avg(RatingModel.stars).label("avg_rating"),
+                func.count(RatingModel.id).label("total"),
+            ).join(RideModel, RideModel.id == RatingModel.ride_id).where(
+                RideModel.driver_id == str(current_user.id),
+                RideModel.status == "completed",
+            )
+        )
+        rating_row = rating_result.one()
+        avg_rating = round(float(rating_row.avg_rating), 1) if rating_row.avg_rating else None
+        total_trips = int(rating_row.total) if rating_row.total else 0
+
         return DriverProfileOut(
             id=profile.id,
             user_id=profile.user_id,
@@ -1136,6 +1153,8 @@ async def get_driver_profile(
             address=profile.address,
             photo_url=profile.photo_url,
             status=profile.status,
+            avg_rating=avg_rating,
+            total_trips=total_trips,
             created_at=profile.created_at.isoformat(),
         )
     except HTTPException:

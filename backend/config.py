@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     GOOGLE_WEB_CLIENT_ID: str = "524688489029-h02hs91ufjcsu1l6805dks6l724o4klp.apps.googleusercontent.com"
 
+    # Admin credentials (seeded on first startup)
+    ADMIN_EMAIL: str = "admin@where2.in"
+    ADMIN_PASSWORD: str = "admin123"
+
     model_config = {
         "env_file": ".env",
         "env_file_encoding": "utf-8",

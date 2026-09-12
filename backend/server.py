@@ -13,6 +13,7 @@ import sentry_sdk
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 from pythonjsonlogger import json as jsonlogger
 from slowapi import Limiter
@@ -47,6 +48,7 @@ from models import User
 from models import Vehicle as VehicleModel
 from notifications import notify_drivers, notify_user
 from seed import seed_database
+from admin import router as admin_router
 
 settings = get_settings()
 
@@ -1774,3 +1776,23 @@ async def serve_upload(
 
 # ---------- Include router ----------
 app.include_router(api_router)
+app.include_router(admin_router)
+
+# ---------- Serve admin panel static files ----------
+ADMIN_DIST = os.path.join(os.path.dirname(__file__), "..", "apps", "admin-panel", "dist")
+if os.path.isdir(ADMIN_DIST):
+    app.mount("/admin/assets", StaticFiles(directory=os.path.join(ADMIN_DIST, "assets")), name="admin-assets")
+
+    @app.get("/admin/{full_path:path}")
+    async def serve_admin(full_path: str):
+        # Serve static files if they exist, otherwise serve index.html (SPA fallback)
+        file_path = os.path.join(ADMIN_DIST, full_path)
+        if full_path and os.path.isfile(file_path):
+            import mimetypes
+            content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+            return FileResponse(file_path, media_type=content_type)
+        return FileResponse(os.path.join(ADMIN_DIST, "index.html"))
+
+    @app.get("/admin")
+    async def serve_admin_root():
+        return FileResponse(os.path.join(ADMIN_DIST, "index.html"))

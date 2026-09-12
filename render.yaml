@@ -35,5 +35,9 @@ services:
         sync: false
       - key: GOOGLE_WEB_CLIENT_ID
         value: "524688489029-h02hs91ufjcsu1l6805dks6l724o4klp.apps.googleusercontent.com"
+      - key: ADMIN_EMAIL
+        value: "admin@where2.in"
+      - key: ADMIN_PASSWORD
+        generateValue: true
       - key: PYTHON_VERSION
         value: "3.11"

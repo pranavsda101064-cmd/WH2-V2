@@ -2,7 +2,9 @@ import logging
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models import Package, Vehicle, DriverRequest
+from models import Package, Vehicle, DriverRequest, Admin
+from auth import hash_password
+from config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -72,3 +74,15 @@ async def seed_database(session: AsyncSession) -> None:
             session.add(DriverRequest(**r))
         await session.commit()
         logger.info("Seeded %d driver requests (demo only)", len(DRIVER_REQUESTS))
+
+    # Seed admin user from env vars
+    settings = get_settings()
+    result = await session.execute(select(func.count()).select_from(Admin))
+    if result.scalar() == 0:
+        admin = Admin(
+            email=settings.ADMIN_EMAIL,
+            hashed_password=hash_password(settings.ADMIN_PASSWORD),
+        )
+        session.add(admin)
+        await session.commit()
+        logger.info("Seeded admin user: %s", settings.ADMIN_EMAIL)

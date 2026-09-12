@@ -35,6 +35,7 @@ class User(Base):
     role = Column(Enum("customer", "driver", name="user_role"), nullable=False, default="customer")
     profile_completed = Column(Boolean, nullable=False, default=False)
     push_token = Column(String(500), nullable=True)
+    is_banned = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
     rides = relationship("Ride", back_populates="user", foreign_keys="Ride.user_id")
@@ -219,3 +220,12 @@ class CustomerProfile(Base):
     updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
 
     user = relationship("User", foreign_keys=[user_id])
+
+
+class Admin(Base):
+    __tablename__ = "admins"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)

@@ -33,26 +33,29 @@ export default function Users() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-text">Users</h1>
+      <div className="flex items-center gap-3">
+        <h1 className="font-pixel text-sm text-primary glow-cyan">USERS</h1>
+        <div className="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent" />
+      </div>
 
       <div className="flex gap-3 items-center">
         <form onSubmit={handleSearch} className="flex gap-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-text-muted" />
+            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-primary/60" />
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search by email..."
-              className="pl-8 pr-3 py-2 border border-border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 w-64"
+              className="pl-8 pr-3 py-2 bg-surface border border-border rounded text-sm text-text placeholder:text-text-muted/50 w-64"
             />
           </div>
-          <button type="submit" className="px-3 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary-dark">Search</button>
+          <button type="submit" className="px-3 py-2 bg-primary/10 border border-primary text-primary text-sm rounded hover:bg-primary/20 glow-cyan-box tracking-wider uppercase text-xs">Search</button>
         </form>
 
         <select
           value={role}
           onChange={(e) => { setRole(e.target.value); setPage(1); }}
-          className="px-3 py-2 border border-border rounded-md text-sm bg-white"
+          className="px-3 py-2 bg-surface border border-border rounded text-sm text-text"
         >
           <option value="">All roles</option>
           <option value="customer">Riders</option>
@@ -61,45 +64,46 @@ export default function Users() {
       </div>
 
       {isLoading ? (
-        <div className="text-text-muted text-sm py-8 text-center">Loading...</div>
+        <div className="text-primary text-sm py-8 text-center tracking-widest animate-pulse">// LOADING...</div>
       ) : (
-        <div className="bg-white rounded-lg border border-border overflow-hidden">
+        <div className="bg-surface border border-border rounded overflow-hidden glow-cyan-box relative">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
           <table className="w-full text-sm">
-            <thead className="bg-canvas">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Email</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Role</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Status</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Joined</th>
-                <th className="text-right px-4 py-3 font-medium text-text-muted">Actions</th>
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">EMAIL</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">ROLE</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">STATUS</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">JOINED</th>
+                <th className="text-right px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {data?.items?.map((u: any) => (
-                <tr key={u.id} className="border-t border-border hover:bg-canvas/50">
-                  <td className="px-4 py-3">{u.email}</td>
+                <tr key={u.id} className="border-t border-border/50 hover:bg-primary/5 transition-colors">
+                  <td className="px-4 py-3 text-text">{u.email}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      u.role === 'driver' ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700'
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium tracking-wider uppercase ${
+                      u.role === 'driver' ? 'bg-accent/10 text-accent border border-accent/30' : 'bg-primary/10 text-primary border border-primary/30'
                     }`}>
                       {u.role}
                     </span>
                   </td>
                   <td className="px-4 py-3">
                     {u.is_banned ? (
-                      <span className="text-danger text-xs font-medium">Banned</span>
+                      <span className="text-danger text-xs font-medium tracking-wider uppercase">Banned</span>
                     ) : (
-                      <span className="text-success text-xs font-medium">Active</span>
+                      <span className="text-success text-xs font-medium tracking-wider uppercase">Active</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-text-muted">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => banMutation.mutate(u.id)}
-                      className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded ${
+                      className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded tracking-wider uppercase ${
                         u.is_banned
-                          ? 'bg-success/10 text-success hover:bg-success/20'
-                          : 'bg-danger/10 text-danger hover:bg-danger/20'
+                          ? 'bg-success/10 text-success border border-success/30 hover:bg-success/20'
+                          : 'bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20'
                       }`}
                     >
                       {u.is_banned ? <CheckCircle className="w-3 h-3" /> : <Ban className="w-3 h-3" />}
@@ -109,7 +113,7 @@ export default function Users() {
                 </tr>
               ))}
               {data?.items?.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-text-muted">No users found</td></tr>
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-text-muted">// NO USERS FOUND</td></tr>
               )}
             </tbody>
           </table>
@@ -118,10 +122,10 @@ export default function Users() {
 
       {data?.pages > 1 && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-text-muted">Page {data.page} of {data.pages} ({data.total} users)</span>
+          <span className="text-sm text-text-muted tracking-wider">PAGE {data.page} / {data.pages} ({data.total} USERS)</span>
           <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1 border border-border rounded text-sm disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-            <button disabled={page >= data.pages} onClick={() => setPage(page + 1)} className="px-3 py-1 border border-border rounded text-sm disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
+            <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1 border border-border rounded text-sm disabled:opacity-40 hover:border-primary/50 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+            <button disabled={page >= data.pages} onClick={() => setPage(page + 1)} className="px-3 py-1 border border-border rounded text-sm disabled:opacity-40 hover:border-primary/50 transition-colors"><ChevronRight className="w-4 h-4" /></button>
           </div>
         </div>
       )}

@@ -45,48 +45,52 @@ export default function Places() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-text">Places</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="font-pixel text-sm text-primary glow-cyan">PLACES</h1>
+          <div className="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent" />
+        </div>
         <button
           onClick={() => { setEditing({ ...EMPTY_PLACE }); setIsNew(true); }}
-          className="flex items-center gap-1 px-3 py-2 bg-primary text-white text-sm rounded-md hover:bg-primary-dark"
+          className="flex items-center gap-1 px-3 py-2 bg-primary/10 border border-primary text-primary text-xs rounded hover:bg-primary/20 glow-cyan-box tracking-wider uppercase"
         >
           <Plus className="w-4 h-4" /> Add Place
         </button>
       </div>
 
       {isLoading ? (
-        <div className="text-text-muted text-sm py-8 text-center">Loading...</div>
+        <div className="text-primary text-sm py-8 text-center tracking-widest animate-pulse">// LOADING...</div>
       ) : (
-        <div className="bg-white rounded-lg border border-border overflow-hidden">
+        <div className="bg-surface border border-border rounded overflow-hidden glow-cyan-box relative">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
           <table className="w-full text-sm">
-            <thead className="bg-canvas">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Image</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Title</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Subtitle</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Price</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Duration</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Stops</th>
-                <th className="text-right px-4 py-3 font-medium text-text-muted">Actions</th>
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">IMAGE</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">TITLE</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">SUBTITLE</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">PRICE</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">DURATION</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">STOPS</th>
+                <th className="text-right px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {places?.map((p: Place) => (
-                <tr key={p.id} className="border-t border-border hover:bg-canvas/50">
+                <tr key={p.id} className="border-t border-border/50 hover:bg-primary/5 transition-colors">
                   <td className="px-4 py-2">
-                    <img src={p.image} alt="" className="w-12 h-8 object-cover rounded" />
+                    <img src={p.image} alt="" className="w-12 h-8 object-cover rounded border border-border/50" />
                   </td>
-                  <td className="px-4 py-3 font-medium">{p.title}</td>
+                  <td className="px-4 py-3 font-medium text-text">{p.title}</td>
                   <td className="px-4 py-3 text-text-muted">{p.subtitle}</td>
-                  <td className="px-4 py-3">₹{p.price.toLocaleString('en-IN')}</td>
-                  <td className="px-4 py-3">{p.duration}</td>
-                  <td className="px-4 py-3">{p.stops}</td>
+                  <td className="px-4 py-3 text-accent">₹{p.price.toLocaleString('en-IN')}</td>
+                  <td className="px-4 py-3 text-text">{p.duration}</td>
+                  <td className="px-4 py-3 text-text">{p.stops}</td>
                   <td className="px-4 py-3 text-right">
-                    <button onClick={() => { setEditing(p); setIsNew(false); }} className="p-1 hover:bg-canvas rounded mr-1">
-                      <Pencil className="w-4 h-4 text-text-muted" />
+                    <button onClick={() => { setEditing(p); setIsNew(false); }} className="p-1 hover:bg-primary/10 rounded mr-1 border border-transparent hover:border-primary/30 transition-all">
+                      <Pencil className="w-4 h-4 text-primary/60" />
                     </button>
-                    <button onClick={() => { if (confirm('Delete this place?')) deleteMutation.mutate(p.id); }} className="p-1 hover:bg-danger/10 rounded">
-                      <Trash2 className="w-4 h-4 text-danger" />
+                    <button onClick={() => { if (confirm('Delete this place?')) deleteMutation.mutate(p.id); }} className="p-1 hover:bg-danger/10 rounded border border-transparent hover:border-danger/30 transition-all">
+                      <Trash2 className="w-4 h-4 text-danger/60" />
                     </button>
                   </td>
                 </tr>
@@ -98,51 +102,52 @@ export default function Places() {
 
       {/* Edit dialog */}
       {editing && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => { setEditing(null); setIsNew(false); }}>
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm" onClick={() => { setEditing(null); setIsNew(false); }}>
+          <div className="bg-surface border border-border rounded max-w-md w-full glow-cyan-box relative" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
             <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="font-bold text-text">{isNew ? 'Add Place' : 'Edit Place'}</h3>
-              <button onClick={() => { setEditing(null); setIsNew(false); }} className="text-text-muted hover:text-text">✕</button>
+              <h3 className="font-pixel text-xs text-primary glow-cyan">{isNew ? 'NEW PLACE' : 'EDIT PLACE'}</h3>
+              <button onClick={() => { setEditing(null); setIsNew(false); }} className="text-text-muted hover:text-danger transition-colors font-pixel text-xs">[X]</button>
             </div>
             <div className="p-4 space-y-3">
               {!isNew && (
                 <div>
-                  <label className="block text-xs font-medium text-text-muted mb-1">ID</label>
-                  <input value={editing.id} disabled className="w-full px-3 py-2 border border-border rounded-md text-sm bg-canvas" />
+                  <label className="block text-xs text-text-muted mb-1 tracking-widest uppercase">ID</label>
+                  <input value={editing.id} disabled className="w-full px-3 py-2 bg-canvas border border-border/50 rounded text-sm text-text-muted" />
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-text-muted mb-1">Title</label>
-                <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} className="w-full px-3 py-2 border border-border rounded-md text-sm" />
+                <label className="block text-xs text-text-muted mb-1 tracking-widest uppercase">Title</label>
+                <input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} className="w-full px-3 py-2 bg-canvas border border-border rounded text-sm text-text" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-text-muted mb-1">Subtitle</label>
-                <input value={editing.subtitle} onChange={(e) => setEditing({ ...editing, subtitle: e.target.value })} className="w-full px-3 py-2 border border-border rounded-md text-sm" />
+                <label className="block text-xs text-text-muted mb-1 tracking-widest uppercase">Subtitle</label>
+                <input value={editing.subtitle} onChange={(e) => setEditing({ ...editing, subtitle: e.target.value })} className="w-full px-3 py-2 bg-canvas border border-border rounded text-sm text-text" />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-text-muted mb-1">Price (₹)</label>
-                  <input type="number" value={editing.price} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} className="w-full px-3 py-2 border border-border rounded-md text-sm" />
+                  <label className="block text-xs text-text-muted mb-1 tracking-widest uppercase">Price (₹)</label>
+                  <input type="number" value={editing.price} onChange={(e) => setEditing({ ...editing, price: Number(e.target.value) })} className="w-full px-3 py-2 bg-canvas border border-border rounded text-sm text-text" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-text-muted mb-1">Duration</label>
-                  <input value={editing.duration} onChange={(e) => setEditing({ ...editing, duration: e.target.value })} className="w-full px-3 py-2 border border-border rounded-md text-sm" />
+                  <label className="block text-xs text-text-muted mb-1 tracking-widest uppercase">Duration</label>
+                  <input value={editing.duration} onChange={(e) => setEditing({ ...editing, duration: e.target.value })} className="w-full px-3 py-2 bg-canvas border border-border rounded text-sm text-text" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-text-muted mb-1">Stops</label>
-                  <input type="number" value={editing.stops} onChange={(e) => setEditing({ ...editing, stops: Number(e.target.value) })} className="w-full px-3 py-2 border border-border rounded-md text-sm" />
+                  <label className="block text-xs text-text-muted mb-1 tracking-widest uppercase">Stops</label>
+                  <input type="number" value={editing.stops} onChange={(e) => setEditing({ ...editing, stops: Number(e.target.value) })} className="w-full px-3 py-2 bg-canvas border border-border rounded text-sm text-text" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-text-muted mb-1">Image URL</label>
-                <input value={editing.image} onChange={(e) => setEditing({ ...editing, image: e.target.value })} className="w-full px-3 py-2 border border-border rounded-md text-sm" />
+                <label className="block text-xs text-text-muted mb-1 tracking-widest uppercase">Image URL</label>
+                <input value={editing.image} onChange={(e) => setEditing({ ...editing, image: e.target.value })} className="w-full px-3 py-2 bg-canvas border border-border rounded text-sm text-text" />
               </div>
               <button
                 onClick={() => saveMutation.mutate(editing)}
                 disabled={saveMutation.isPending}
-                className="w-full bg-primary text-white py-2 rounded-md text-sm font-medium hover:bg-primary-dark disabled:opacity-50"
+                className="w-full bg-primary/10 border border-primary text-primary py-2 rounded text-sm font-medium hover:bg-primary/20 disabled:opacity-50 tracking-wider uppercase glow-cyan-box"
               >
-                {saveMutation.isPending ? 'Saving...' : 'Save'}
+                {saveMutation.isPending ? '> SAVING...' : '> SAVE'}
               </button>
             </div>
           </div>

@@ -15,28 +15,36 @@ import './index.css';
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute() {
   const { admin, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen text-text-muted">Loading...</div>;
+  if (loading) return <div className="flex items-center justify-center h-screen text-text-muted tracking-widest font-pixel text-xs">// INITIALIZING...</div>;
   if (!admin) return <Navigate to="/login" replace />;
-  return <Layout>{children}</Layout>;
+  return <Layout />;
+}
+
+function PublicRoute() {
+  const { admin } = useAuth();
+  if (admin) return <Navigate to="/" replace />;
+  return <Login />;
 }
 
 function AppRoutes() {
-  const { admin, loading } = useAuth();
+  const { loading } = useAuth();
   if (loading) return null;
 
   return (
     <Routes>
-      <Route path="/login" element={admin ? <Navigate to="/" replace /> : <Login />} />
-      <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-      <Route path="/rides" element={<ProtectedRoute><Rides /></ProtectedRoute>} />
-      <Route path="/drivers" element={<ProtectedRoute><Drivers /></ProtectedRoute>} />
-      <Route path="/places" element={<ProtectedRoute><Places /></ProtectedRoute>} />
-      <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
-      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/login" element={<PublicRoute />} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/users" element={<Users />} />
+        <Route path="/rides" element={<Rides />} />
+        <Route path="/drivers" element={<Drivers />} />
+        <Route path="/places" element={<Places />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/notifications" element={<Notifications />} />
+        <Route path="/settings" element={<Settings />} />
+      </Route>
     </Routes>
   );
 }

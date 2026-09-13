@@ -23,57 +23,61 @@ export default function Pricing() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold text-text">Pricing</h1>
-      <p className="text-sm text-text-muted">Per-km fare rates for each vehicle type.</p>
+      <div className="flex items-center gap-3">
+        <h1 className="font-pixel text-sm text-primary glow-cyan">PRICING</h1>
+        <div className="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent" />
+      </div>
+      <p className="text-sm text-text-muted tracking-wider">// PER-KM FARE RATES</p>
 
       {isLoading ? (
-        <div className="text-text-muted text-sm py-8 text-center">Loading...</div>
+        <div className="text-primary text-sm py-8 text-center tracking-widest animate-pulse">// LOADING...</div>
       ) : (
-        <div className="bg-white rounded-lg border border-border overflow-hidden">
+        <div className="bg-surface border border-border rounded overflow-hidden glow-cyan-box relative">
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
           <table className="w-full text-sm">
-            <thead className="bg-canvas">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Vehicle</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Description</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Seats</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">ETA</th>
-                <th className="text-left px-4 py-3 font-medium text-text-muted">Fare (₹/km)</th>
-                <th className="text-right px-4 py-3 font-medium text-text-muted">Actions</th>
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">VEHICLE</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">DESCRIPTION</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">SEATS</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">ETA</th>
+                <th className="text-left px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">FARE (₹/KM)</th>
+                <th className="text-right px-4 py-3 font-pixel text-[9px] text-primary tracking-wider">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {vehicles?.map((v: any) => (
-                <tr key={v.id} className="border-t border-border hover:bg-canvas/50">
-                  <td className="px-4 py-3 font-medium">{v.name}</td>
+                <tr key={v.id} className="border-t border-border/50 hover:bg-primary/5 transition-colors">
+                  <td className="px-4 py-3 font-medium text-text">{v.name}</td>
                   <td className="px-4 py-3 text-text-muted">{v.desc}</td>
-                  <td className="px-4 py-3">{v.seats}</td>
-                  <td className="px-4 py-3">{v.eta}</td>
+                  <td className="px-4 py-3 text-text">{v.seats}</td>
+                  <td className="px-4 py-3 text-text">{v.eta}</td>
                   <td className="px-4 py-3">
                     {editingId === v.id ? (
                       <input
                         type="number"
                         value={fareValue}
                         onChange={(e) => setFareValue(Number(e.target.value))}
-                        className="w-24 px-2 py-1 border border-primary rounded text-sm"
+                        className="w-24 px-2 py-1 bg-canvas border border-primary rounded text-sm text-text"
                         autoFocus
                       />
                     ) : (
-                      <span className="font-medium">₹{v.fare}</span>
+                      <span className="font-medium text-accent">₹{v.fare}</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {editingId === v.id ? (
                       <div className="flex gap-1 justify-end">
-                        <button onClick={() => updateMutation.mutate({ id: v.id, fare: fareValue })} className="p-1 bg-success/10 rounded hover:bg-success/20">
+                        <button onClick={() => updateMutation.mutate({ id: v.id, fare: fareValue })} className="p-1 bg-success/10 border border-success/30 rounded hover:bg-success/20">
                           <Check className="w-4 h-4 text-success" />
                         </button>
-                        <button onClick={() => setEditingId(null)} className="p-1 bg-danger/10 rounded hover:bg-danger/20">
+                        <button onClick={() => setEditingId(null)} className="p-1 bg-danger/10 border border-danger/30 rounded hover:bg-danger/20">
                           <X className="w-4 h-4 text-danger" />
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => { setEditingId(v.id); setFareValue(v.fare); }} className="p-1 hover:bg-canvas rounded">
-                        <Pencil className="w-4 h-4 text-text-muted" />
+                      <button onClick={() => { setEditingId(v.id); setFareValue(v.fare); }} className="p-1 hover:bg-primary/10 rounded border border-transparent hover:border-primary/30 transition-all">
+                        <Pencil className="w-4 h-4 text-primary/60" />
                       </button>
                     )}
                   </td>

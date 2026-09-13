@@ -1,26 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 @import "tailwindcss";
 
 @theme inline {
-  --color-primary: #00897B;
-  --color-primary-light: #4DB6AC;
-  --color-primary-dark: #00695C;
-  --color-surface: #FFFFFF;
-  --color-canvas: #F5F5F5;
-  --color-text: #1A1A1A;
-  --color-text-muted: #757575;
-  --color-border: #E0E0E0;
-  --color-danger: #D32F2F;
-  --color-success: #2E7D32;
-  --color-warning: #F57C00;
+  --color-primary: #00f0ff;
+  --color-primary-light: #66f7ff;
+  --color-primary-dark: #0099aa;
+  --color-accent: #ff00ff;
+  --color-accent-light: #ff66ff;
+  --color-surface: rgba(15, 15, 35, 0.9);
+  --color-surface-alt: rgba(20, 20, 50, 0.8);
+  --color-canvas: #0a0a1a;
+  --color-text: #e0e0ff;
+  --color-text-muted: #6b6b8a;
+  --color-border: rgba(0, 240, 255, 0.15);
+  --color-border-active: rgba(0, 240, 255, 0.5);
+  --color-danger: #ff0040;
+  --color-success: #00ff88;
+  --color-warning: #ffaa00;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'VT323', monospace;
   background: var(--color-canvas);
   color: var(--color-text);
   margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.5px;
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Pixel font for headings */
+.font-pixel {
+  font-family: 'Press Start 2P', monospace;
+  letter-spacing: 0;
+}
+
+/* Neon glow effects */
+.glow-cyan {
+  text-shadow: 0 0 7px #00f0ff, 0 0 20px #00f0ff, 0 0 40px #0099aa;
+}
+
+.glow-magenta {
+  text-shadow: 0 0 7px #ff00ff, 0 0 20px #ff00ff;
+}
+
+.glow-cyan-box {
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.3), inset 0 0 8px rgba(0, 240, 255, 0.1);
+}
+
+.glow-magenta-box {
+  box-shadow: 0 0 8px rgba(255, 0, 255, 0.3), inset 0 0 8px rgba(255, 0, 255, 0.1);
+}
+
+.glow-danger-box {
+  box-shadow: 0 0 8px rgba(255, 0, 64, 0.3), inset 0 0 8px rgba(255, 0, 64, 0.1);
+}
+
+.glow-success-box {
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.3), inset 0 0 8px rgba(0, 255, 136, 0.1);
+}
+
+/* Scanline overlay */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 240, 255, 0.03) 2px,
+    rgba(0, 240, 255, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Grid background */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 240, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Pulse animation */
+@keyframes neon-pulse {
+  0%, 100% { box-shadow: 0 0 5px rgba(0, 240, 255, 0.4), 0 0 15px rgba(0, 240, 255, 0.2); }
+  50% { box-shadow: 0 0 10px rgba(0, 240, 255, 0.6), 0 0 30px rgba(0, 240, 255, 0.4); }
+}
+
+.pulse-glow {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* Flicker animation for brand */
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+  20%, 24%, 55% { opacity: 0.6; }
+}
+
+.flicker {
+  animation: flicker 3s linear infinite;
+}
+
+/* Neon input focus */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: #00f0ff !important;
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.4), inset 0 0 4px rgba(0, 240, 255, 0.1) !important;
+}
+
+/* Neon table row hover */
+tr:hover {
+  background: rgba(0, 240, 255, 0.05) !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a1a;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 240, 255, 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 240, 255, 0.5);
 }

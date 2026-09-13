@@ -107,12 +107,9 @@ function RootLayout() {
   }, [loaded, error]);
 
   useEffect(() => {
-    // Defer heavy native module init (expo-av) until after first render
-    const soundTimer = setTimeout(() => {
-      try {
-        loadNotificationSound();
-      } catch {}
-    }, 500);
+    try {
+      loadNotificationSound();
+    } catch {}
 
     if (Notifications) {
       registerForPushNotifications();
@@ -151,7 +148,6 @@ function RootLayout() {
     }
 
     return () => {
-      clearTimeout(soundTimer);
       if (Notifications) {
         if (notificationListener.current) {
           Notifications.removeNotificationSubscription(notificationListener.current);

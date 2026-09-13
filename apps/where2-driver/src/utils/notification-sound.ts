@@ -1,14 +1,20 @@
-import { Audio } from "expo-av";
 import { Platform } from "react-native";
 
-let sound: Audio.Sound | null = null;
+let sound: any = null;
 let loaded = false;
+let Audio: any = null;
+
+function getAudio() {
+  if (!Audio) Audio = require("expo-av").Audio;
+  return Audio;
+}
 
 export async function loadNotificationSound() {
   if (loaded) return;
   try {
-    await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-    const { sound: s } = await Audio.Sound.createAsync(
+    const audio = getAudio();
+    await audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    const { sound: s } = await audio.Sound.createAsync(
       require("../../assets/sounds/notification.wav"),
     );
     sound = s;

@@ -5,7 +5,6 @@ import {
   Alert,
   Animated,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -16,6 +15,7 @@ import {
   Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
 import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
 
@@ -156,9 +156,10 @@ export default function Auth() {
     <Pressable style={{ flex: 1 }} onPress={() => Keyboard.dismiss()}>
       <View style={styles.root} testID="auth-screen">
         <StatusBar style="dark" />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.content}
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           {/* Back button */}
           <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
@@ -343,7 +344,7 @@ export default function Auth() {
             </Text>
             .
           </Text>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
       </View>
     </Pressable>
   );

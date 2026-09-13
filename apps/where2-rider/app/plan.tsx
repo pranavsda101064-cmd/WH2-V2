@@ -5,6 +5,7 @@ import {
   Alert,
   FlatList,
   Keyboard,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { MapView, Marker, Polyline, PROVIDER_DEFAULT } from "@/src/components/map-view";
 
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
@@ -166,7 +168,7 @@ export default function Plan() {
       <StatusBar style="dark" />
 
       {/* Map */}
-      <View style={styles.mapWrap}>
+      <Pressable style={styles.mapWrap} onPress={() => Keyboard.dismiss()}>
         <MapView
           ref={mapRef}
           style={styles.map}
@@ -197,10 +199,14 @@ export default function Plan() {
         <SpringPress style={[styles.backBtn, { top: insets.top + 10 }]} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={colors.text} />
         </SpringPress>
-      </View>
+      </Pressable>
 
       {/* Bottom sheet */}
-      <View style={styles.sheet}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.sheet}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Search bar */}
         <View style={styles.searchRow}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
@@ -320,7 +326,7 @@ export default function Plan() {
             {canContinue && <Ionicons name="arrow-forward" size={16} color="#fff" />}
           </SpringPress>
         </View>
-      </View>
+      </KeyboardAwareScrollView>
     </View>
   );
 }

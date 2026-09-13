@@ -35,9 +35,8 @@ if (!isExpoGo && process.env.EXPO_PUBLIC_SENTRY_DSN) {
   });
 }
 
-// Disable logbox errors etc so that users can see the app
-// and agent works as expected.
-LogBox.ignoreAllLogs(true);
+// Suppress known harmless warnings; surface real errors.
+LogBox.ignoreLogs(["Require cycle:", "Constants.installationId"]);
 
 // Keep the native splash visible from cold start until icon fonts register.
 // Required because @expo/vector-icons' componentDidMount fallback fires

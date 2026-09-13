@@ -5,7 +5,8 @@ import {
   Animated,
   Easing,
   Image,
-  ScrollView,
+  Keyboard,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -16,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import { colors, radius } from "@/src/theme";
 import { api } from "@/src/api";
@@ -216,9 +218,10 @@ export default function DriverOnboarding() {
         ))}
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100, paddingHorizontal: 16 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <Animated.View style={{ transform: [{ translateY: slideAnim }], opacity: fadeAnim }}>
         {/* Step 1: Personal Info */}
@@ -385,7 +388,7 @@ export default function DriverOnboarding() {
           </View>
         )}
         </Animated.View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Bottom bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>

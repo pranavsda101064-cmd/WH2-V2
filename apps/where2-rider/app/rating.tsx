@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import {
+  Alert,
   Animated,
   Dimensions,
   Easing,
@@ -215,7 +216,9 @@ export default function Rating() {
           note: note || undefined,
           tip,
         })
-        .catch(() => {});
+        .catch(() => {
+          Alert.alert("Error", "Could not submit rating. Please try again.");
+        });
       await storage.removeItem("active_ride_id");
     }
     setTimeout(() => router.replace("/(tabs)/home"), 2800);

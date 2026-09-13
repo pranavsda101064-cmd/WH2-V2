@@ -7,7 +7,6 @@ import {
   Image,
   Keyboard,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { api, getProfileCompleted, setProfileCompleted, setUserName } from "@/src/api";
@@ -343,9 +343,10 @@ export default function ProfileSetup() {
         transform: [{ translateX: slideAnim }],
         opacity: fadeAnim,
       }}>
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Step 1: Personal Info */}
           {step === 1 && (
@@ -495,7 +496,7 @@ export default function ProfileSetup() {
               </SpringPress>
             </View>
           )}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </Animated.View>
     </Pressable>
   );

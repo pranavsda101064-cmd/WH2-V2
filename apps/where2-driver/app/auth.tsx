@@ -7,8 +7,9 @@ import {
   Alert,
   Animated,
   ImageBackground,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -18,6 +19,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import { colors, radius } from "@/src/theme";
 import { api, getProfileCompleted } from "@/src/api";
@@ -113,7 +115,7 @@ export default function Auth() {
   };
 
   return (
-    <View style={styles.root} testID="auth-screen">
+    <Pressable style={styles.root} testID="auth-screen" onPress={() => Keyboard.dismiss()}>
       <StatusBar style="light" />
       <ImageBackground source={{ uri: BG }} style={StyleSheet.absoluteFill}>
         <LinearGradient
@@ -231,7 +233,7 @@ export default function Auth() {
           </FadeIn>
         </BlurView>
       </KeyboardAvoidingView>
-    </View>
+    </Pressable>
   );
 }
 

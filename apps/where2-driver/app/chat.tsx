@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Linking,
@@ -125,7 +126,9 @@ export default function DriverChat() {
     setMessages((prev) => [...prev, msg]);
     setInput("");
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-    api.sendMessage(rideId, text.trim()).catch(() => {});
+    api.sendMessage(rideId, text.trim()).catch(() => {
+      Alert.alert("Send failed", "Could not send message. Please try again.");
+    });
   };
 
   const handleCall = () => {
@@ -152,8 +155,9 @@ export default function DriverChat() {
     <View style={styles.root}>
       <StatusBar style="light" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={0}
       >
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>

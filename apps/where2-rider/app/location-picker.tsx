@@ -3,7 +3,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -11,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { MapView, Marker, Polyline, PROVIDER_DEFAULT, MapPlaceholder } from "@/src/components/map-view";
 import * as Location from "expo-location";
 
@@ -199,6 +202,7 @@ export default function LocationPicker() {
   };
 
   const handleMapPress = async (e: any) => {
+    Keyboard.dismiss();
     const { latitude, longitude } = e.nativeEvent.coordinate;
     await applyLocation(latitude, longitude);
   };

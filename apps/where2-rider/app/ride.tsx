@@ -185,7 +185,7 @@ export default function Ride() {
     if (!ride) return;
     try {
       await Share.share({
-        message: `Track my Where2 ride: https://where2-wdu6.onrender.com/api/rides/${ride.id}/share`,
+        message: `Track my Where2 ride: ${process.env.EXPO_PUBLIC_BACKEND_URL || "https://where2-wdu6.onrender.com"}/api/rides/${ride.id}/share`,
       });
     } catch {}
   };

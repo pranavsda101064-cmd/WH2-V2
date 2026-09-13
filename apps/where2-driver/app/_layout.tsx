@@ -15,9 +15,8 @@ import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { loadNotificationSound, playNotificationSound } from "@/src/utils/notification-sound";
 
-// Suppress all JS error overlays — prevents fatal red-box crashes during init.
-// The rider app has this; without it, any unhandled warning becomes fatal.
-LogBox.ignoreAllLogs(true);
+// Suppress known harmless warnings; surface real errors.
+LogBox.ignoreLogs(["Require cycle:", "Constants.installationId"]);
 
 // Guard expo-notifications — removed from Expo Go in SDK 53+
 let Notifications: any = null;

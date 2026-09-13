@@ -993,7 +993,7 @@ async def create_rating(
 
         # Mark ride completed
         ride.status = "completed"
-        ride.tip = payload.tip or 0
+        ride.tip = (ride.tip or 0) + (payload.tip or 0)
         await db.flush()
 
         return RatingOut(
@@ -1481,6 +1481,12 @@ async def decline_request(
         req = result.scalar_one_or_none()
         if not req:
             raise HTTPException(404, detail="Request not found")
+        # Don't decline if another driver already accepted
+        if req.ride_id:
+            ride_result = await db.execute(select(RideModel).where(RideModel.id == req.ride_id))
+            ride = ride_result.scalar_one_or_none()
+            if ride and ride.driver_id is not None:
+                raise HTTPException(409, detail="Ride already accepted by another driver")
         await db.delete(req)
         await db.flush()
         return {"status": "declined"}

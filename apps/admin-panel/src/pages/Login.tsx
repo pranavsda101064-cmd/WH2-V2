@@ -15,9 +15,9 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await api.post('/admin/login', { email, password });
-      localStorage.setItem('admin_token', res.data.token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+      const res = await api.post('/login', { email, password });
+      localStorage.setItem('admin_token', res.data.access_token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${res.data.access_token}`;
       nav('/');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'ACCESS DENIED');

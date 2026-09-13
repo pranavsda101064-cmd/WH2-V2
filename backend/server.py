@@ -1818,7 +1818,9 @@ async def serve_public_upload(filename: str):
     return FileResponse(file_path, media_type=content_type)
 
 # ---------- Serve admin panel static files ----------
-ADMIN_DIST = os.path.join(os.path.dirname(__file__), "..", "apps", "admin-panel", "dist")
+from pathlib import Path as _Path
+ADMIN_DIST = str(_Path(__file__).resolve().parent.parent / "apps" / "admin-panel" / "dist")
+logging.getLogger(__name__).info("ADMIN_DIST=%s exists=%s", ADMIN_DIST, os.path.isdir(ADMIN_DIST))
 if os.path.isdir(ADMIN_DIST):
     app.mount("/admin/assets", StaticFiles(directory=os.path.join(ADMIN_DIST, "assets")), name="admin-assets")
 

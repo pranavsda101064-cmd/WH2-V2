@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
     gap: 12,
-    backgroundColor: colors.accentDark,
+    backgroundColor: colors.accentDim,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(255,255,255,0.1)",
   },
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center", justifyContent: "center",
   },
-  headerTitle: { color: "#fff", fontSize: font.subtitle, fontWeight: "600" },
+  headerTitle: { color: "#fff", fontSize: font.title, fontWeight: "600" },
   headerSub: { color: "rgba(255,255,255,0.7)", fontSize: font.caption, marginTop: 2 },
   callBtn: {
     width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.2)",

@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Constants from "expo-constants";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
+import AppSplash from "@/src/AppSplash";
 import { colors } from "@/src/theme";
 import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
@@ -159,7 +160,7 @@ function RootLayout() {
     };
   }, []);
 
-  if (!loaded && !error) return null;
+  if (!loaded && !error) return <AppSplash />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>

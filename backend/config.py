@@ -20,11 +20,11 @@ class Settings(BaseSettings):
     # App
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
-    GOOGLE_WEB_CLIENT_ID: str = "524688489029-h02hs91ufjcsu1l6805dks6l724o4klp.apps.googleusercontent.com"
+    GOOGLE_WEB_CLIENT_ID: str = ""
 
-    # Admin credentials (seeded on first startup)
-    ADMIN_EMAIL: str = "admin@where2.in"
-    ADMIN_PASSWORD: str = "admin123"
+    # Admin credentials (seeded on first startup — set via env vars)
+    ADMIN_EMAIL: str = ""
+    ADMIN_PASSWORD: str = ""
 
     model_config = {
         "env_file": ".env",

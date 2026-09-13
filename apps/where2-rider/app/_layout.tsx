@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Constants from "expo-constants";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
+import AppSplash from "@/src/AppSplash";
 import { colors } from "@/src/theme";
 import { api, getToken, getProfileCompleted } from "@/src/api";
 
@@ -116,7 +117,7 @@ function RootLayout() {
 
   // If the CDN is unreachable we fall through on error rather than wedging
   // the app — icons will tofu, but the app still boots.
-  if (!loaded && !error) return null;
+  if (!loaded && !error) return <AppSplash />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>

@@ -16,9 +16,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr, Field
 from pythonjsonlogger import json as jsonlogger
-from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,7 +54,7 @@ UPLOADS_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 # ---------- Rate limiting ----------
-limiter = Limiter(key_func=get_remote_address)
+from rate_limit import limiter
 
 # ---------- Request ID context ----------
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
@@ -386,6 +384,9 @@ async def login(request: Request, payload: UserLogin, db: AsyncSession = Depends
         if not user or not verify_password(payload.password, user.hashed_password):
             raise HTTPException(401, detail="Invalid email or password")
 
+        if user.is_banned:
+            raise HTTPException(403, detail="Account has been suspended")
+
         token = create_access_token(str(user.id), user.email, user.role)
         return TokenResponse(
             access_token=token,
@@ -561,11 +562,11 @@ async def upload_avatar(
             raise HTTPException(400, detail="Create profile first")
 
         MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB
-        ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
+        ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 
         ext = os.path.splitext(file.filename or "avatar.jpg")[1].lower() or ".jpg"
         if ext not in ALLOWED_EXTENSIONS:
-            raise HTTPException(400, detail="File type not allowed. Use: jpg, jpeg, png, pdf")
+            raise HTTPException(400, detail="File type not allowed. Use: jpg, jpeg, png")
 
         content = await file.read()
         if len(content) > MAX_UPLOAD_SIZE:

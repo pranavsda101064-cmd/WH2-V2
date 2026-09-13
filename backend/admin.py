@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select, case, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth import create_access_token, decode_token, hash_password, verify_password, pwd_context
 from config import get_settings
 from database import get_db
+from rate_limit import limiter
 from models import (
     Admin, User, Ride, Rating, DriverProfile, DriverDocument, DriverVehicle,
     CustomerProfile, Package, Vehicle, utcnow,
@@ -106,7 +107,8 @@ async def get_admin_user(
 
 # ---------- Auth Routes ----------
 @router.post("/login")
-async def admin_login(body: AdminLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def admin_login(request: Request, body: AdminLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Admin).where(Admin.email == body.email))
     admin = result.scalar_one_or_none()
     if not admin or not verify_password(body.password, admin.hashed_password):

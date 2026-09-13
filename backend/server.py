@@ -562,7 +562,7 @@ async def upload_avatar(
             raise HTTPException(400, detail="Create profile first")
 
         MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB
-        ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+        ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
         ext = os.path.splitext(file.filename or "avatar.jpg")[1].lower() or ".jpg"
         if ext not in ALLOWED_EXTENSIONS:
@@ -1803,6 +1803,19 @@ async def serve_upload(
 # ---------- Include router ----------
 app.include_router(api_router)
 app.include_router(admin_router)
+
+# ---------- Public avatar serving (no auth — images only) ----------
+import mimetypes as _mimetypes
+
+@app.get("/uploads/{filename}")
+async def serve_public_upload(filename: str):
+    if not re.match(r"^[\w\-\.]+$", filename):
+        raise HTTPException(400, detail="Invalid filename")
+    file_path = os.path.join(UPLOADS_DIR, filename)
+    if not os.path.isfile(file_path):
+        raise HTTPException(404, detail="File not found")
+    content_type = _mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    return FileResponse(file_path, media_type=content_type)
 
 # ---------- Serve admin panel static files ----------
 ADMIN_DIST = os.path.join(os.path.dirname(__file__), "..", "apps", "admin-panel", "dist")

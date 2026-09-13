@@ -138,6 +138,11 @@ export default function DriverProfileScreen() {
               </View>
             </View>
             <TouchableOpacity style={styles.uploadBtn} testID="upload-photo-button" onPress={async () => {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== "granted") {
+                Alert.alert("Permission needed", "Please grant photo library access to upload a profile picture.");
+                return;
+              }
               const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ["images"],
                 allowsEditing: true,

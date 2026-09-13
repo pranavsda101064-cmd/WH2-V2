@@ -244,8 +244,17 @@ export default function ProfileSetup() {
       setSaving(true);
       try {
         let avatarUrl: string | undefined;
-        if (customAvatar) avatarUrl = customAvatar;
-        else if (selectedAvatar) avatarUrl = `/avatars/${selectedAvatar}.png`;
+        if (customAvatar && customAvatar.startsWith("file://")) {
+          const ext = customAvatar.split(".").pop()?.toLowerCase() || "jpg";
+          const uploadResult = await api.uploadAvatar({
+            uri: customAvatar,
+            type: "image/jpeg",
+            name: `avatar.${ext}`,
+          });
+          avatarUrl = uploadResult.avatar_url;
+        } else if (selectedAvatar) {
+          avatarUrl = `/avatars/${selectedAvatar}.png`;
+        }
         await api.updateProfile({
           full_name: trimmedName,
           phone: `+91${phone.trim()}`,

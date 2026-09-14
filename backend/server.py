@@ -78,12 +78,9 @@ async def lifespan(app: FastAPI):
         sentry_sdk.init(dsn=settings.SENTRY_DSN, environment=settings.ENVIRONMENT)
         logger.info("Sentry initialized.")
     logger.info("Starting Sakleshpura Rides API...")
-    if settings.ENVIRONMENT == "development":
-        async with async_session_factory() as session:
-            await seed_database(session)
-        logger.info("Database seeded (if empty). Ready.")
-    else:
-        logger.info("Production mode — skipping seed. Ready.")
+    async with async_session_factory() as session:
+        await seed_database(session)
+    logger.info("Database seeded (if empty). Ready.")
     yield
     logger.info("Shutting down.")
 

@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Lock, Mail } from 'lucide-react';
-import api from '../lib/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
-  const nav = useNavigate();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,10 +14,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await api.post('/login', { email, password });
-      localStorage.setItem('admin_token', res.data.access_token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${res.data.access_token}`;
-      nav('/');
+      await login(email, password);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'ACCESS DENIED');
     } finally {
@@ -28,22 +24,18 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-canvas grid-bg scanlines flex items-center justify-center relative">
-      {/* Decorative corners */}
       <div className="absolute top-8 left-8 w-16 h-16 border-t-2 border-l-2 border-primary/40" />
       <div className="absolute top-8 right-8 w-16 h-16 border-t-2 border-r-2 border-primary/40" />
       <div className="absolute bottom-8 left-8 w-16 h-16 border-b-2 border-l-2 border-primary/40" />
       <div className="absolute bottom-8 right-8 w-16 h-16 border-b-2 border-r-2 border-primary/40" />
 
       <div className="w-full max-w-sm px-6 relative z-10">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="font-pixel text-xl text-primary glow-cyan flicker mb-2">WHERE2</h1>
           <p className="text-text-muted text-sm tracking-[0.3em] uppercase">// system access</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={submit} className="bg-surface border border-border rounded p-6 space-y-4 glow-cyan-box relative">
-          {/* Top accent line */}
           <div className="absolute top-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
 
           <div>
@@ -91,7 +83,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Footer */}
         <p className="text-center text-text-muted/40 text-xs mt-6 tracking-widest">
           SAKLESHPURA COMMAND CENTER
         </p>

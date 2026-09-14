@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Ban, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Ban, CheckCircle } from 'lucide-react';
+import { keepPreviousData } from '@tanstack/react-query';
 import api from '../lib/api';
+import Badge from '../components/Badge';
+import Pagination from '../components/Pagination';
+import { SkeletonTable } from '../components/Skeleton';
 
 export default function Users() {
   const queryClient = useQueryClient();
@@ -18,11 +22,26 @@ export default function Users() {
       if (search) params.set('search', search);
       return api.get(`/users?${params}`).then((r) => r.data);
     },
+    placeholderData: keepPreviousData,
   });
 
   const banMutation = useMutation({
     mutationFn: (userId: string) => api.patch(`/users/${userId}/ban`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: ['admin-users', page, role, search] });
+      const previous = queryClient.getQueryData(['admin-users', page, role, search]);
+      queryClient.setQueryData(['admin-users', page, role, search], (old: any) => ({
+        ...old,
+        items: old.items.map((u: any) => u.id === userId ? { ...u, is_banned: !u.is_banned } : u),
+      }));
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(['admin-users', page, role, search], context.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
   });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -64,7 +83,7 @@ export default function Users() {
       </div>
 
       {isLoading ? (
-        <div className="text-primary text-sm py-8 text-center tracking-widest animate-pulse">// LOADING...</div>
+        <SkeletonTable rows={8} cols={5} />
       ) : (
         <div className="bg-surface border border-border rounded overflow-hidden glow-cyan-box relative">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
@@ -83,11 +102,7 @@ export default function Users() {
                 <tr key={u.id} className="border-t border-border/50 hover:bg-primary/5 transition-colors">
                   <td className="px-4 py-3 text-text">{u.email}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium tracking-wider uppercase ${
-                      u.role === 'driver' ? 'bg-accent/10 text-accent border border-accent/30' : 'bg-primary/10 text-primary border border-primary/30'
-                    }`}>
-                      {u.role}
-                    </span>
+                    <Badge variant={u.role === 'driver' ? 'accent' : 'primary'}>{u.role}</Badge>
                   </td>
                   <td className="px-4 py-3">
                     {u.is_banned ? (
@@ -121,13 +136,7 @@ export default function Users() {
       )}
 
       {data?.pages > 1 && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-text-muted tracking-wider">PAGE {data.page} / {data.pages} ({data.total} USERS)</span>
-          <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1 border border-border rounded text-sm disabled:opacity-40 hover:border-primary/50 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-            <button disabled={page >= data.pages} onClick={() => setPage(page + 1)} className="px-3 py-1 border border-border rounded text-sm disabled:opacity-40 hover:border-primary/50 transition-colors"><ChevronRight className="w-4 h-4" /></button>
-          </div>
-        </div>
+        <Pagination page={data.page} pages={data.pages} total={data.total} totalLabel="users" onPageChange={setPage} />
       )}
     </div>
   );

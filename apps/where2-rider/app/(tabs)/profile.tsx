@@ -114,7 +114,8 @@ export default function Profile() {
         </View>
 
         {/* Profile Card */}
-        <View style={styles.card}>
+        <FadeIn delay={50}>
+          <View style={styles.card}>
           {avatarUrl ? (
             <Image source={getAvatarSource()} style={styles.avatar} />
           ) : (
@@ -145,9 +146,11 @@ export default function Profile() {
             <Text style={styles.editText}>Edit</Text>
           </SpringPress>
         </View>
+        </FadeIn>
 
         {/* Stats */}
-        <View style={styles.statsRow}>
+        <FadeIn delay={150}>
+          <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={styles.statValue}>{tripCount}</Text>
             <Text style={styles.statLabel}>Trips</Text>
@@ -163,26 +166,28 @@ export default function Profile() {
             <Text style={styles.statLabel}>Saved</Text>
           </View>
         </View>
+        </FadeIn>
 
         {/* Settings List */}
         <View style={styles.list}>
           {rows.map((row, i) => (
-            <SpringPress
-              key={row.label}
-              style={[styles.row, i < rows.length - 1 && styles.rowDivider]}
-              onPress={async () => {
-                if (row.label === "Sign out") {
-                  handleSignOut();
-                } else if (row.route) {
-                  router.push(row.route as any);
-                }
-              }}
-            >
-              <Ionicons name={row.icon} size={20} color={colors.textMuted} />
-              <Text style={styles.rowLabel}>{row.label}</Text>
-              {row.hint ? <Text style={styles.rowHint}>{row.hint}</Text> : null}
-              <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
-            </SpringPress>
+            <FadeIn key={row.label} delay={300 + i * 50}>
+              <SpringPress
+                style={[styles.row, i < rows.length - 1 && styles.rowDivider]}
+                onPress={async () => {
+                  if (row.label === "Sign out") {
+                    handleSignOut();
+                  } else if (row.route) {
+                    router.push(row.route as any);
+                  }
+                }}
+              >
+                <Ionicons name={row.icon} size={20} color={colors.textMuted} />
+                <Text style={styles.rowLabel}>{row.label}</Text>
+                {row.hint ? <Text style={styles.rowHint}>{row.hint}</Text> : null}
+                <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
+              </SpringPress>
+            </FadeIn>
           ))}
         </View>
       </ScrollView>

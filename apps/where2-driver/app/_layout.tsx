@@ -3,10 +3,11 @@ import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { LogBox, View } from "react-native";
+import { LogBox, View, Dimensions } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Constants from "expo-constants";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import AppSplash from "@/src/AppSplash";
@@ -15,22 +16,18 @@ import { api } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { loadNotificationSound, playNotificationSound } from "@/src/utils/notification-sound";
 
-// Suppress known harmless warnings; surface real errors.
 LogBox.ignoreLogs(["Require cycle:", "Constants.installationId"]);
 
-// Guard expo-notifications — removed from Expo Go in SDK 53+
 let Notifications: any = null;
 try {
   Notifications = require("expo-notifications");
 } catch {}
 
-// Guard expo-haptics
 let Haptics: any = null;
 try {
   Haptics = require("expo-haptics");
 } catch {}
 
-// Guard Sentry — only init if DSN is configured (empty DSN can crash SDK)
 const isExpoGo = Constants.appOwnership === "expo";
 if (!isExpoGo && process.env.EXPO_PUBLIC_SENTRY_DSN) {
   Sentry.init({
@@ -40,7 +37,6 @@ if (!isExpoGo && process.env.EXPO_PUBLIC_SENTRY_DSN) {
   });
 }
 
-// Keep the native splash visible from cold start until icon fonts register.
 SplashScreen.preventAutoHideAsync();
 
 if (Notifications) {
@@ -94,6 +90,8 @@ async function registerNotificationCategories() {
   } catch {}
 }
 
+const SCREEN_H = Dimensions.get("window").height;
+
 function RootLayout() {
   const [loaded, error] = useIconFonts();
   const notificationListener = useRef<any>(null);
@@ -124,7 +122,6 @@ function RootLayout() {
         },
       );
 
-      // Handle notification response (action button taps)
       responseListener.current = Notifications.addNotificationResponseReceivedListener(
         async (response: any) => {
           try {
@@ -162,21 +159,27 @@ function RootLayout() {
   if (!loaded && !error) return <AppSplash />;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: colors.bg }}>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.bg },
-              animation: "slide_from_right",
-            }}
-          >
-            <Stack.Screen name="ride" options={{ animation: "fade" }} />
-            <Stack.Screen name="chat" options={{ animation: "slide_from_right" }} />
-          </Stack>
-        </View>
+        <LinearGradient
+          colors={["rgba(0,137,123,0.07)", "rgba(0,137,123,0.02)", colors.bg]}
+          locations={[0, 0.35, 0.55]}
+          style={{ flex: 1 }}
+        >
+          <View style={{ flex: 1 }}>
+            <StatusBar style="light" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: "transparent" },
+                animation: "slide_from_right",
+              }}
+            >
+              <Stack.Screen name="ride" options={{ animation: "fade" }} />
+              <Stack.Screen name="chat" options={{ animation: "slide_from_right" }} />
+            </Stack>
+          </View>
+        </LinearGradient>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -3,29 +3,27 @@ import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef, useState } from "react";
-import { LogBox, View } from "react-native";
+import { LogBox, View, Dimensions } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Constants from "expo-constants";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import AppSplash from "@/src/AppSplash";
 import { colors } from "@/src/theme";
 import { api, getToken, getProfileCompleted } from "@/src/api";
 
-// Guard expo-notifications — removed from Expo Go in SDK 53+
 let Notifications: any = null;
 try {
   Notifications = require("expo-notifications");
 } catch {}
 
-// Guard expo-haptics
 let Haptics: any = null;
 try {
   Haptics = require("expo-haptics");
 } catch {}
 
-// Guard Sentry — only init if DSN is configured (empty DSN can crash SDK)
 const isExpoGo = Constants.appOwnership === "expo";
 if (!isExpoGo && process.env.EXPO_PUBLIC_SENTRY_DSN) {
   Sentry.init({
@@ -35,13 +33,8 @@ if (!isExpoGo && process.env.EXPO_PUBLIC_SENTRY_DSN) {
   });
 }
 
-// Suppress known harmless warnings; surface real errors.
 LogBox.ignoreLogs(["Require cycle:", "Constants.installationId"]);
 
-// Keep the native splash visible from cold start until icon fonts register.
-// Required because @expo/vector-icons' componentDidMount fallback fires
-// Font.loadAsync against a broken vendor path if any <Icon> mounts before
-// the family is registered — which throws on Android Expo Go.
 SplashScreen.preventAutoHideAsync();
 
 if (Notifications) {
@@ -70,6 +63,8 @@ async function registerForPushNotifications() {
   } catch {}
 }
 
+const SCREEN_H = Dimensions.get("window").height;
+
 function RootLayout() {
   const [loaded, error] = useIconFonts();
   const notificationListener = useRef<any>(null);
@@ -82,7 +77,6 @@ function RootLayout() {
     }
   }, [loaded, error]);
 
-  // Auth check: if token exists, skip landing page
   useEffect(() => {
     getToken().then((token) => {
       if (token) {
@@ -114,30 +108,34 @@ function RootLayout() {
     };
   }, []);
 
-  // If the CDN is unreachable we fall through on error rather than wedging
-  // the app — icons will tofu, but the app still boots.
   if (!loaded && !error) return <AppSplash />;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: colors.bg }}>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.bg },
-              animation: "slide_from_right",
-              animationDuration: 350,
-            }}
-          >
-            <Stack.Screen name="index" options={{ animation: "fade", animationDuration: 400 }} />
-            <Stack.Screen name="checkout" options={{ animation: "slide_from_bottom" }} />
-            <Stack.Screen name="rating" options={{ animation: "fade" }} />
-            <Stack.Screen name="ride" options={{ animation: "fade" }} />
-            <Stack.Screen name="vehicles" options={{ animation: "slide_from_bottom" }} />
-          </Stack>
-        </View>
+        <LinearGradient
+          colors={["rgba(0,137,123,0.07)", "rgba(0,137,123,0.02)", colors.bg]}
+          locations={[0, 0.35, 0.55]}
+          style={{ flex: 1 }}
+        >
+          <View style={{ flex: 1 }}>
+            <StatusBar style="dark" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: "transparent" },
+                animation: "slide_from_right",
+                animationDuration: 350,
+              }}
+            >
+              <Stack.Screen name="index" options={{ animation: "fade", animationDuration: 400 }} />
+              <Stack.Screen name="checkout" options={{ animation: "slide_from_bottom" }} />
+              <Stack.Screen name="rating" options={{ animation: "fade" }} />
+              <Stack.Screen name="ride" options={{ animation: "fade" }} />
+              <Stack.Screen name="vehicles" options={{ animation: "slide_from_bottom" }} />
+            </Stack>
+          </View>
+        </LinearGradient>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

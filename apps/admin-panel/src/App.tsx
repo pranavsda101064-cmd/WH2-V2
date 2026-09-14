@@ -13,7 +13,16 @@ import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import './index.css';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function ProtectedRoute() {
   const { admin, loading } = useAuth();

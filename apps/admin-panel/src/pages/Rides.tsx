@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { keepPreviousData } from '@tanstack/react-query';
 import api from '../lib/api';
+import Badge from '../components/Badge';
+import Pagination from '../components/Pagination';
+import { SkeletonTable } from '../components/Skeleton';
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-warning/10 text-warning border border-warning/30',
-  arriving: 'bg-primary/10 text-primary border border-primary/30',
-  onboard: 'bg-accent/10 text-accent border border-accent/30',
-  arrived: 'bg-accent-light/10 text-accent-light border border-accent-light/30',
-  completed: 'bg-success/10 text-success border border-success/30',
-  cancelled: 'bg-danger/10 text-danger border border-danger/30',
+const STATUS_VARIANT: Record<string, string> = {
+  pending: 'warning',
+  arriving: 'primary',
+  onboard: 'accent',
+  arrived: 'accent',
+  completed: 'success',
+  cancelled: 'danger',
 };
 
 export default function Rides() {
@@ -23,6 +26,7 @@ export default function Rides() {
       if (status) params.set('status', status);
       return api.get(`/rides?${params}`).then((r) => r.data);
     },
+    placeholderData: keepPreviousData,
   });
 
   return (
@@ -49,7 +53,7 @@ export default function Rides() {
       </div>
 
       {isLoading ? (
-        <div className="text-primary text-sm py-8 text-center tracking-widest animate-pulse">// LOADING...</div>
+        <SkeletonTable rows={8} cols={7} />
       ) : (
         <div className="bg-surface border border-border rounded overflow-hidden glow-cyan-box relative">
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
@@ -74,9 +78,7 @@ export default function Rides() {
                   <td className="px-4 py-3 text-text">{r.vehicle_id}</td>
                   <td className="px-4 py-3 font-medium text-accent">₹{(r.fare || 0).toLocaleString('en-IN')}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium tracking-wider uppercase ${STATUS_COLORS[r.status] || 'bg-white/5 text-text-muted border border-white/10'}`}>
-                      {r.status}
-                    </span>
+                    <Badge variant={STATUS_VARIANT[r.status] || 'muted'}>{r.status}</Badge>
                   </td>
                   <td className="px-4 py-3 text-text-muted">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '-'}</td>
                 </tr>
@@ -90,13 +92,7 @@ export default function Rides() {
       )}
 
       {data?.pages > 1 && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-text-muted tracking-wider">PAGE {data.page} / {data.pages} ({data.total} RIDES)</span>
-          <div className="flex gap-2">
-            <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1 border border-border rounded text-sm disabled:opacity-40 hover:border-primary/50 transition-colors"><ChevronLeft className="w-4 h-4" /></button>
-            <button disabled={page >= data.pages} onClick={() => setPage(page + 1)} className="px-3 py-1 border border-border rounded text-sm disabled:opacity-40 hover:border-primary/50 transition-colors"><ChevronRight className="w-4 h-4" /></button>
-          </div>
-        </div>
+        <Pagination page={data.page} pages={data.pages} total={data.total} totalLabel="rides" onPageChange={setPage} />
       )}
     </div>
   );

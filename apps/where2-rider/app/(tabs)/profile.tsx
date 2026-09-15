@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
+import { LinearGradient } from "expo-linear-gradient";
+
 import { colors, radius, font, spacing } from "@/src/theme";
 import { api, getUserEmail, getUserName } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
@@ -101,6 +103,11 @@ export default function Profile() {
 
   return (
     <View style={styles.root} testID="profile-screen">
+      <LinearGradient
+        colors={["rgba(0,137,123,0.07)", "rgba(0,137,123,0.02)", colors.bg]}
+        locations={[0, 0.35, 0.55]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
       <StatusBar style="dark" />
       <ScrollView
         contentContainerStyle={{

@@ -3,11 +3,10 @@ import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
-import { LogBox, View, Dimensions } from "react-native";
+import { LogBox, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Constants from "expo-constants";
-import { LinearGradient } from "expo-linear-gradient";
 
 import { useIconFonts } from "@/src/hooks/use-icon-fonts";
 import AppSplash from "@/src/AppSplash";
@@ -90,8 +89,6 @@ async function registerNotificationCategories() {
   } catch {}
 }
 
-const SCREEN_H = Dimensions.get("window").height;
-
 function RootLayout() {
   const [loaded, error] = useIconFonts();
   const notificationListener = useRef<any>(null);
@@ -159,27 +156,21 @@ function RootLayout() {
   if (!loaded && !error) return <AppSplash />;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaProvider>
-        <LinearGradient
-          colors={["rgba(0,137,123,0.07)", "rgba(0,137,123,0.02)", colors.bg]}
-          locations={[0, 0.35, 0.55]}
-          style={{ flex: 1 }}
-        >
-          <View style={{ flex: 1 }}>
-            <StatusBar style="light" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: "transparent" },
-                animation: "slide_from_right",
-              }}
-            >
-              <Stack.Screen name="ride" options={{ animation: "fade" }} />
-              <Stack.Screen name="chat" options={{ animation: "slide_from_right" }} />
-            </Stack>
-          </View>
-        </LinearGradient>
+        <View style={{ flex: 1, backgroundColor: colors.bg }}>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.bg },
+              animation: "slide_from_right",
+            }}
+          >
+            <Stack.Screen name="ride" options={{ animation: "fade" }} />
+            <Stack.Screen name="chat" options={{ animation: "slide_from_right" }} />
+          </Stack>
+        </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

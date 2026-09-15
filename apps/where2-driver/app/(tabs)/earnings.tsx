@@ -10,6 +10,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 
+import { LinearGradient } from "expo-linear-gradient";
+
 import { colors, radius } from "@/src/theme";
 import { api, Ride, DriverStats } from "@/src/api";
 import { EarningsSkeleton } from "@/src/components/loading";
@@ -49,6 +51,11 @@ export default function Earnings() {
 
   return (
     <View style={styles.root} testID="earnings-screen">
+      <LinearGradient
+        colors={["rgba(0,137,123,0.07)", "rgba(0,137,123,0.02)", colors.bg]}
+        locations={[0, 0.35, 0.55]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
       <StatusBar style="light" />
 
       <FlatList

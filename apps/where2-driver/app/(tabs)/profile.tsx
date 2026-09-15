@@ -15,6 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 
+import { LinearGradient } from "expo-linear-gradient";
+
 import { colors, radius } from "@/src/theme";
 import { api, DriverProfile, DriverDocument, DriverVehicle } from "@/src/api";
 import { LoadingScreen } from "@/src/components/loading";
@@ -106,6 +108,11 @@ export default function DriverProfileScreen() {
 
   return (
     <View style={styles.root} testID="driver-screen">
+      <LinearGradient
+        colors={["rgba(0,137,123,0.07)", "rgba(0,137,123,0.02)", colors.bg]}
+        locations={[0, 0.35, 0.55]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
       <StatusBar style="light" />
       <ScrollView
         contentContainerStyle={{

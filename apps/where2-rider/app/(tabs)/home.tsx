@@ -100,6 +100,11 @@ export default function Home() {
 
   return (
     <View style={styles.root} testID="home-screen">
+      <LinearGradient
+        colors={["rgba(0,137,123,0.07)", "rgba(0,137,123,0.02)", colors.bg]}
+        locations={[0, 0.35, 0.55]}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
       <StatusBar style="dark" />
 
       <ScrollView

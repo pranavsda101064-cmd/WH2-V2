@@ -132,4 +132,4 @@ function RootLayout() {
   );
 }
 
-export default isExpoGo ? RootLayout : Sentry.wrap(RootLayout);
+export default (isExpoGo || !process.env.EXPO_PUBLIC_SENTRY_DSN) ? RootLayout : Sentry.wrap(RootLayout);

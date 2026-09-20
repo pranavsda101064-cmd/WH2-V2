@@ -18,7 +18,7 @@ import { getToken } from "@/src/api";
 
 // Green mountain ranges, Chikmagalur — Karnataka, Western Ghats.
 const BG =
-  "https://images.unsplash.com/photo--Zt97RnOWJ8?auto=format&fit=crop&w=1400&q=80";
+  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1400&q=80";
 
 export default function Landing() {
   const router = useRouter();

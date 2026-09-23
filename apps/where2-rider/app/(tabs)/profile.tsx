@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { colors, radius, font, spacing } from "@/src/theme";
 import { api, getUserEmail, getUserName } from "@/src/api";
 import { SpringPress } from "@/src/components/spring-press";
+import { FadeIn } from "@/src/components/fade-in";
 import { SkeletonCircle } from "@/src/components/loading";
 
 const DICEBEAR_FALLBACK = "https://api.dicebear.com/10.x/adventurer-neutral/png?seed=explorer&size=128&backgroundColor=transparent";

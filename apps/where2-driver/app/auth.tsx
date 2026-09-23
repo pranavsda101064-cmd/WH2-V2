@@ -137,9 +137,10 @@ export default function Auth() {
         </FadeIn>
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <KeyboardAwareScrollView
         style={styles.sheetWrap}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         <BlurView intensity={40} tint="dark" style={styles.sheet}>
           <View style={styles.grabber} />
@@ -232,7 +233,7 @@ export default function Auth() {
             </Text>
           </FadeIn>
         </BlurView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </Pressable>
   );
 }

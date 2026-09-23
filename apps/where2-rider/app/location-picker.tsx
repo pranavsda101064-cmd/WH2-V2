@@ -26,6 +26,7 @@ import {
   parseGoogleMapsUrl,
   resolveGoogleMapsUrl,
   reverseGeocode,
+  clampToServiceArea,
 } from "@/src/utils/location";
 
 const SAKLESHPURA = { latitude: 13.0358, longitude: 75.7827 };
@@ -207,6 +208,11 @@ export default function LocationPicker() {
     await applyLocation(latitude, longitude);
   };
 
+  const handleRegionChangeComplete = (r: typeof region) => {
+    const c = clampToServiceArea(r.latitude, r.longitude);
+    setRegion({ ...r, latitude: c.lat, longitude: c.lng });
+  };
+
   const handleSearchSelect = (item: any) => {
     const lat = parseFloat(item.lat);
     const lng = parseFloat(item.lon);
@@ -288,7 +294,7 @@ export default function LocationPicker() {
           ref={mapRef}
           style={styles.map}
           region={region}
-          onRegionChangeComplete={setRegion}
+          onRegionChangeComplete={handleRegionChangeComplete}
           onPress={handleMapPress}
           showsUserLocation
           showsMyLocationButton={false}

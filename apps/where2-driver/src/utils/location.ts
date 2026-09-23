@@ -1,11 +1,26 @@
 // Sakleshpura service area boundary (roughly 20km radius)
 // Bounding box: lat 12.93–13.14, lng 75.68–75.88
-const BOUNDS = {
+export const BOUNDS = {
   minLat: 12.93,
   maxLat: 13.14,
   minLng: 75.68,
   maxLng: 75.88,
 };
+
+// MapLibre maxBounds format: [west, south, east, north]
+export const MAP_BOUNDS: [number, number, number, number] = [
+  BOUNDS.minLng,
+  BOUNDS.minLat,
+  BOUNDS.maxLng,
+  BOUNDS.maxLat,
+];
+
+export function clampToServiceArea(lat: number, lng: number): { lat: number; lng: number } {
+  return {
+    lat: Math.min(BOUNDS.maxLat, Math.max(BOUNDS.minLat, lat)),
+    lng: Math.min(BOUNDS.maxLng, Math.max(BOUNDS.minLng, lng)),
+  };
+}
 
 export function isWithinServiceArea(lat: number, lng: number): boolean {
   return lat >= BOUNDS.minLat && lat <= BOUNDS.maxLat && lng >= BOUNDS.minLng && lng <= BOUNDS.maxLng;

@@ -1,6 +1,7 @@
 import { useRef, forwardRef, useImperativeHandle } from "react";
 import { Platform, View, Text, StyleSheet } from "react-native";
 import { colors, radius, font } from "@/src/theme";
+import { MAP_BOUNDS } from "@/src/utils/location";
 
 const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
 const LIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
@@ -224,6 +225,9 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(
           zoomLevel={zoom}
           animationMode="easeTo"
           animationDuration={0}
+          maxBounds={MAP_BOUNDS}
+          minZoom={10}
+          maxZoom={17}
         />
         {showsUserLocation && UserLocationComponent && <UserLocationComponent animated visible />}
         {children}

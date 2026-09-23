@@ -36,16 +36,20 @@ if (!isExpoGo && process.env.EXPO_PUBLIC_SENTRY_DSN) {
   });
 }
 
-SplashScreen.preventAutoHideAsync();
+try {
+  SplashScreen.preventAutoHideAsync().catch(() => {});
+} catch {}
 
 if (Notifications) {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch {}
 }
 
 async function registerForPushNotifications() {
@@ -59,7 +63,12 @@ async function registerForPushNotifications() {
     }
     if (finalStatus !== "granted") return;
 
-    const token = await Notifications.getExpoPushTokenAsync();
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId;
+    const token = projectId
+      ? await Notifications.getExpoPushTokenAsync({ projectId })
+      : await Notifications.getExpoPushTokenAsync();
     await api.registerPushToken(token.data);
   } catch {}
 }
@@ -97,7 +106,9 @@ function RootLayout() {
 
   useEffect(() => {
     if (loaded || error) {
-      SplashScreen.hideAsync();
+      try {
+        SplashScreen.hideAsync().catch(() => {});
+      } catch {}
     }
   }, [loaded, error]);
 

@@ -44,7 +44,28 @@ type MarkerProps = {
   onPress?: () => void;
 };
 
+function clampZoom(z: number, min = 8, max = 18, fallback = 13): number {
+  if (typeof z !== "number" || !Number.isFinite(z)) return fallback;
+  return Math.min(max, Math.max(min, z));
+}
+
+function zoomForDeltas(latDelta: number, lngDelta: number): number {
+  const d = Math.max(latDelta, lngDelta);
+  if (typeof d !== "number" || !Number.isFinite(d) || d <= 0) return 13;
+  return clampZoom(14 - Math.log2(d * 100));
+}
+
 function MapMarker({ coordinate, pinColor, children, onPress }: MarkerProps) {
+  if (!MaplibreMarker) return null;
+  if (
+    !coordinate ||
+    typeof coordinate.latitude !== "number" ||
+    typeof coordinate.longitude !== "number" ||
+    !Number.isFinite(coordinate.latitude) ||
+    !Number.isFinite(coordinate.longitude)
+  ) {
+    return null;
+  }
   const lngLat = [coordinate.longitude, coordinate.latitude] as [number, number];
   return (
     <MaplibreMarker lngLat={lngLat} onPress={onPress}>
@@ -145,7 +166,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(
         const lngDelta = (maxLng - minLng) * 0.5 + 0.01;
         const centerLat = (minLat + maxLat) / 2;
         const centerLng = (minLng + maxLng) / 2;
-        const zoom = Math.min(16, Math.max(10, 14 - Math.log2(Math.max(latDelta, lngDelta) * 100)));
+        const zoom = clampZoom(zoomForDeltas(latDelta, lngDelta), 10, 16);
         cameraRef.current?.setCamera({
           centerCoordinate: [centerLng, centerLat],
           zoomLevel: zoom,
@@ -155,14 +176,14 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(
       animateToRegion: (reg, duration) => {
         cameraRef.current?.setCamera({
           centerCoordinate: [reg.longitude, reg.latitude],
-          zoomLevel: 14 - Math.log2(Math.max(reg.latitudeDelta, reg.longitudeDelta) * 100),
+          zoomLevel: zoomForDeltas(reg.latitudeDelta, reg.longitudeDelta),
           animationDuration: duration || 300,
         });
       },
       animateToRegionAnimated: (reg) => {
         cameraRef.current?.setCamera({
           centerCoordinate: [reg.longitude, reg.latitude],
-          zoomLevel: 14 - Math.log2(Math.max(reg.latitudeDelta, reg.longitudeDelta) * 100),
+          zoomLevel: zoomForDeltas(reg.latitudeDelta, reg.longitudeDelta),
           animationDuration: 300,
         });
       },
@@ -180,9 +201,9 @@ const MapView = forwardRef<MapViewRef, MapViewProps>(
       : [75.7827, 13.0358];
 
     const zoom = region
-      ? Math.min(18, Math.max(8, 14 - Math.log2(Math.max(region.latitudeDelta, region.longitudeDelta) * 100)))
+      ? zoomForDeltas(region.latitudeDelta, region.longitudeDelta)
       : initialRegion
-      ? Math.min(18, Math.max(8, 14 - Math.log2(Math.max(initialRegion.latitudeDelta, initialRegion.longitudeDelta) * 100)))
+      ? zoomForDeltas(initialRegion.latitudeDelta, initialRegion.longitudeDelta)
       : 13;
 
     return (

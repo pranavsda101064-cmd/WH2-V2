@@ -19,7 +19,7 @@ export const packages = [
     duration: "5 hrs",
     stops: 3,
     image:
-      "https://images.unsplash.com/photo-dQ5spWYhQro?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p3",
@@ -29,7 +29,7 @@ export const packages = [
     duration: "4 hrs",
     stops: 2,
     image:
-      "https://images.unsplash.com/photo-vbE-OMJa3zI?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p4",
@@ -39,7 +39,7 @@ export const packages = [
     duration: "24 hrs",
     stops: 5,
     image:
-      "https://images.unsplash.com/photo--Zt97RnOWJ8?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p5",
@@ -49,7 +49,7 @@ export const packages = [
     duration: "5 hrs",
     stops: 2,
     image:
-      "https://images.unsplash.com/photo-3i-84-23-x8?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1433086966358-54859d0ed716?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p6",
@@ -59,7 +59,7 @@ export const packages = [
     duration: "6 hrs",
     stops: 3,
     image:
-      "https://images.unsplash.com/photo-iIse25psfGs?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p7",
@@ -69,7 +69,7 @@ export const packages = [
     duration: "10 hrs",
     stops: 3,
     image:
-      "https://images.unsplash.com/photo-2qYQylBLs_E?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p8",
@@ -79,7 +79,7 @@ export const packages = [
     duration: "6 hrs",
     stops: 2,
     image:
-      "https://images.unsplash.com/photo-KN_GIIJRe7Q?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p9",
@@ -89,7 +89,7 @@ export const packages = [
     duration: "3 hrs",
     stops: 1,
     image:
-      "https://images.unsplash.com/photo-_Ien7zEYA1E?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=70",
   },
   {
     id: "p10",
@@ -99,7 +99,7 @@ export const packages = [
     duration: "7 hrs",
     stops: 4,
     image:
-      "https://images.unsplash.com/photo-obnfVkzB650?auto=format&fit=crop&w=1200&q=70",
+      "https://images.unsplash.com/photo-1474487548417-781cb71495f3?auto=format&fit=crop&w=1200&q=70",
   },
 ];
 
@@ -110,7 +110,7 @@ export const pastTrips = [
     date: "Apr 12, 2026",
     fare: 3200,
     image:
-      "https://images.unsplash.com/photo-YPdcs99p3MY?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t2",
@@ -126,7 +126,7 @@ export const pastTrips = [
     date: "Feb 18, 2026",
     fare: 1899,
     image:
-      "https://images.unsplash.com/photo-dQ5spWYhQro?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t4",
@@ -134,7 +134,7 @@ export const pastTrips = [
     date: "Jan 22, 2026",
     fare: 1499,
     image:
-      "https://images.unsplash.com/photo-vbE-OMJa3zI?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t5",
@@ -142,7 +142,7 @@ export const pastTrips = [
     date: "Dec 15, 2025",
     fare: 1299,
     image:
-      "https://images.unsplash.com/photo-IZKWHbGXeIg?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t6",
@@ -150,7 +150,7 @@ export const pastTrips = [
     date: "Nov 28, 2025",
     fare: 1799,
     image:
-      "https://images.unsplash.com/photo-3i-84-23-x8?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-1433086966358-54859d0ed716?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t7",
@@ -158,7 +158,7 @@ export const pastTrips = [
     date: "Oct 10, 2025",
     fare: 2899,
     image:
-      "https://images.unsplash.com/photo-2qYQylBLs_E?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=70",
   },
   {
     id: "t8",
@@ -166,7 +166,7 @@ export const pastTrips = [
     date: "Sep 05, 2025",
     fare: 2599,
     image:
-      "https://images.unsplash.com/photo-iIse25psfGs?auto=format&fit=crop&w=800&q=70",
+      "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?auto=format&fit=crop&w=800&q=70",
   },
 ];
 

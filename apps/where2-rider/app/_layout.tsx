@@ -34,16 +34,20 @@ if (!isExpoGo && process.env.EXPO_PUBLIC_SENTRY_DSN) {
 
 LogBox.ignoreLogs(["Require cycle:", "Constants.installationId"]);
 
-SplashScreen.preventAutoHideAsync();
+try {
+  SplashScreen.preventAutoHideAsync().catch(() => {});
+} catch {}
 
 if (Notifications) {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
-  });
+  try {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+  } catch {}
 }
 
 async function registerForPushNotifications() {
@@ -57,7 +61,12 @@ async function registerForPushNotifications() {
     }
     if (finalStatus !== "granted") return;
 
-    const token = await Notifications.getExpoPushTokenAsync();
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId;
+    const token = projectId
+      ? await Notifications.getExpoPushTokenAsync({ projectId })
+      : await Notifications.getExpoPushTokenAsync();
     await api.registerPushToken(token.data);
   } catch {}
 }
@@ -70,19 +79,35 @@ function RootLayout() {
 
   useEffect(() => {
     if (loaded || error) {
-      SplashScreen.hideAsync();
+      try {
+        SplashScreen.hideAsync().catch(() => {});
+      } catch {}
     }
   }, [loaded, error]);
 
   useEffect(() => {
-    getToken().then((token) => {
-      if (token) {
-        getProfileCompleted().then((completed) => {
-          router.replace(completed ? "/(tabs)/home" : "/profile-setup");
-        });
-      }
-      setAuthChecked(true);
-    });
+    let cancelled = false;
+    getToken()
+      .then((token) => {
+        if (cancelled) return;
+        if (token) {
+          return getProfileCompleted()
+            .then((completed) => {
+              if (cancelled) return;
+              try {
+                router.replace(completed ? "/(tabs)/home" : "/profile-setup");
+              } catch {}
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setAuthChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

@@ -67,9 +67,11 @@ export async function setUserName(name: string): Promise<void> {
   await storage.setItem(USER_NAME_KEY, name);
 }
 
-// ---- Internal request helper ----
+// ---- Internal request helper (12s timeout so UI can never hang) ----
 async function req<T>(path: string, init?: RequestInit, fallback?: T): Promise<T> {
   if (!BASE) return fallback as T;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
   try {
     const token = await getToken();
     const headers: Record<string, string> = {
@@ -82,12 +84,15 @@ async function req<T>(path: string, init?: RequestInit, fallback?: T): Promise<T
     const res = await fetch(`${BASE}/api${path}`, {
       ...init,
       headers,
+      signal: ctrl.signal,
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()) as T;
   } catch (e) {
     if (fallback !== undefined) return fallback;
     throw e;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

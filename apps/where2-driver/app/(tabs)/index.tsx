@@ -160,9 +160,13 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     fetchRequests().finally(() => setLoading(false));
+    // Safety net: never trap the driver on the skeleton, even if the
+    // network hangs outside the API timeout (cold backend, captive portal…)
+    const safety = setTimeout(() => setLoading(false), 15000);
     getUserName().then((n) => {
       if (n) setDriverName(n.split(" ")[0]);
     });
+    return () => clearTimeout(safety);
   }, [fetchRequests]);
 
   useEffect(() => {

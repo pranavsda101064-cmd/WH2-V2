@@ -76,6 +76,18 @@ export default function Auth() {
     } catch {}
   }, []);
 
+  // A rider (customer) account can technically sign in here, but every
+  // driver endpoint returns 403 for it — empty dashboard, no profile.
+  // Catch it at the gate with clear guidance instead.
+  const ensureDriverAccount = async (data: any) => {
+    if (data?.user?.role && data.user.role !== "driver") {
+      await api.logout();
+      setError("This email is registered as a rider. Sign up with a new email to create a driver account.");
+      return false;
+    }
+    return true;
+  };
+
   const handleGoogleLogin = async () => {
     if (isExpoGo) {
       setError("Google sign-in needs the release build (Expo Go has no native module)");
@@ -91,7 +103,8 @@ export default function Auth() {
         return;
       }
       setGoogleLoading(true);
-      await api.googleAuth(idToken, "driver");
+      const data = await api.googleAuth(idToken, "driver");
+      if (!(await ensureDriverAccount(data))) return;
       const completed = await getProfileCompleted();
       router.replace(completed ? "/(tabs)" : "/driver-onboarding");
     } catch (err: any) {
@@ -110,7 +123,8 @@ export default function Auth() {
     setError("");
     setLoading(true);
     try {
-      await api.login(email.trim(), password);
+      const data = await api.login(email.trim(), password);
+      if (!(await ensureDriverAccount(data))) return;
       router.replace("/(tabs)");
     } catch {
       try {

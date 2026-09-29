@@ -194,7 +194,7 @@ export const api = {
   },
 
   login: async (email: string, password: string) => {
-    const data = await req<{ access_token: string; user: { id: string; email: string; profile_completed: boolean } }>(
+    const data = await req<{ access_token: string; user: { id: string; email: string; role: string; profile_completed: boolean } }>(
       "/auth/login",
       { method: "POST", body: JSON.stringify({ email, password }) },
     );

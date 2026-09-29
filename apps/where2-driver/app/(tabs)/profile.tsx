@@ -160,19 +160,31 @@ export default function DriverProfileScreen() {
         {/* Profile card */}
         <FadeIn delay={100}>
           <View style={styles.profileCard}>
-            <Image
-              source={{
-                uri: profile.photo_url || "https://api.dicebear.com/10.x/adventurer-neutral/png?seed=driver&size=128&backgroundColor=transparent",
-              }}
-              style={styles.avatar}
-            />
+            <View>
+              <Image
+                source={{
+                  uri: profile.photo_url || "https://api.dicebear.com/10.x/adventurer-neutral/png?seed=driver&size=128&backgroundColor=transparent",
+                }}
+                style={styles.avatar}
+              />
+              <View style={styles.avatarBadge}>
+                <Ionicons name="checkmark" size={12} color="#fff" />
+              </View>
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{profile.full_name}</Text>
               <View style={styles.ratingRow}>
-                <Ionicons name="star" size={12} color={colors.accent} />
-                <Text style={styles.rating}>{profile.avg_rating != null ? profile.avg_rating.toFixed(1) : "—"}</Text>
-                <Text style={styles.tripCount}>· {profile.total_trips} trips · {profile.status}</Text>
+                <View style={styles.ratingPill}>
+                  <Ionicons name="star" size={12} color={colors.pending} />
+                  <Text style={styles.rating}>
+                    {profile.avg_rating != null ? profile.avg_rating.toFixed(1) : "New"}
+                  </Text>
+                </View>
+                <View style={styles.tripPill}>
+                  <Text style={styles.tripCount}>{profile.total_trips} trips</Text>
+                </View>
               </View>
+              <Text style={styles.statusLine}>{profile.status}</Text>
             </View>
             <TouchableOpacity style={styles.uploadBtn} testID="upload-photo-button" onPress={async () => {
               const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -252,12 +264,17 @@ export default function DriverProfileScreen() {
           <Section title="Documents">
             {DOC_TYPES.map((doc, i) => {
               const found = documents.find((d) => d.doc_type === doc.key);
+              const status = !found
+                ? ("missing" as const)
+                : found.verification_status === "verified"
+                  ? ("verified" as const)
+                  : ("review" as const);
               return (
                 <Field
                   key={doc.key}
                   label={doc.label}
-                  value={found ? (found.verification_status === "verified" ? "Verified" : "Under Review") : "Not uploaded"}
-                  verified={found?.verification_status === "verified"}
+                  value={found ? (status === "verified" ? "Verified" : "Under Review") : "Not uploaded"}
+                  status={status}
                   last={i === DOC_TYPES.length - 1}
                 />
               );
@@ -291,7 +308,14 @@ export default function DriverProfileScreen() {
         </FadeIn>
 
         <FadeIn delay={550}>
-          <Section title="Legal">
+          <Section title="Help & Legal">
+            <TouchableOpacity style={[styles.field, styles.fieldDivider]} onPress={() => router.push("/support")}>
+              <Ionicons name="headset-outline" size={18} color={colors.accent} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Support Center</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textDim} />
+            </TouchableOpacity>
             <TouchableOpacity style={[styles.field, styles.fieldDivider]} onPress={() => router.push("/privacy")}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fieldLabel}>Privacy Policy</Text>
@@ -340,23 +364,38 @@ function Field({
   label,
   value,
   verified,
+  status,
   last,
 }: {
   label: string;
   value: string;
   verified?: boolean;
+  status?: "verified" | "review" | "missing";
   last?: boolean;
 }) {
+  const chip = status ?? (verified ? "verified" : undefined);
   return (
     <View style={[styles.field, !last && styles.fieldDivider]}>
       <View style={{ flex: 1 }}>
         <Text style={styles.fieldLabel}>{label}</Text>
         <Text style={styles.fieldValue}>{value}</Text>
       </View>
-      {verified && (
-        <View style={styles.verifiedPill}>
+      {chip === "verified" && (
+        <View style={[styles.statusChip, { backgroundColor: "rgba(34,197,94,0.10)" }]}>
           <Ionicons name="shield-checkmark" size={11} color={colors.success} />
-          <Text style={styles.verifiedText}>Verified</Text>
+          <Text style={[styles.statusChipText, { color: colors.success }]}>Verified</Text>
+        </View>
+      )}
+      {chip === "review" && (
+        <View style={[styles.statusChip, { backgroundColor: "rgba(245,158,11,0.12)" }]}>
+          <Ionicons name="time-outline" size={11} color={colors.pending} />
+          <Text style={[styles.statusChipText, { color: colors.pending }]}>Review</Text>
+        </View>
+      )}
+      {chip === "missing" && (
+        <View style={[styles.statusChip, { backgroundColor: colors.surfaceAlt }]}>
+          <Ionicons name="cloud-upload-outline" size={11} color={colors.textDim} />
+          <Text style={[styles.statusChipText, { color: colors.textMuted }]}>Upload</Text>
         </View>
       )}
     </View>
@@ -399,20 +438,59 @@ const styles = StyleSheet.create({
   h1: { color: colors.text, fontSize: 30, fontWeight: "800", letterSpacing: -0.8 },
   profileCard: {
     marginHorizontal: 16,
-    padding: 16,
+    padding: 18,
     borderRadius: radius.lg,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.accent,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
   },
-  avatar: { width: 56, height: 56, borderRadius: 28 },
-  name: { color: colors.text, fontSize: 17, fontWeight: "700" },
-  ratingRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
-  rating: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
-  tripCount: { color: colors.textMuted, fontSize: 12 },
+  avatar: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.6)",
+  },
+  avatarBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  name: { color: "#fff", fontSize: 19, fontWeight: "800" },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
+  ratingPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  rating: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  tripPill: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  tripCount: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  statusLine: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 6,
+    textTransform: "capitalize",
+  },
   uploadBtn: {
     width: 36,
     height: 36,
@@ -467,16 +545,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.accent,
   },
-  verifiedPill: {
+  statusChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: "rgba(34,197,94,0.10)",
   },
-  verifiedText: { color: colors.success, fontSize: 11, fontWeight: "700" },
+  statusChipText: { fontSize: 11, fontWeight: "700" },
   saveBtn: {
     marginHorizontal: 16,
     marginTop: 12,

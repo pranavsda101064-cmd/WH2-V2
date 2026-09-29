@@ -386,8 +386,19 @@ export const api = {
       { method: "POST", body: JSON.stringify(body) },
     ),
 
-  getDriverProfile: () =>
-    req<DriverProfile>("/driver/profile"),
+  getDriverProfile: async () => {
+    const cached = await getCached<DriverProfile>("driver_profile");
+    try {
+      const p = await req<DriverProfile>("/driver/profile");
+      await setCache("driver_profile", p);
+      return p;
+    } catch (e: any) {
+      if (cached) return cached;
+      // 404 = driver simply hasn't created a profile yet (not an error)
+      if (String(e?.message).includes("404")) return null;
+      throw e;
+    }
+  },
 
   uploadDocument: async (docType: string, file: { uri: string; type: string; name: string }) => {
     const token = await getToken();
@@ -410,8 +421,16 @@ export const api = {
     return res.json() as Promise<DriverDocument>;
   },
 
-  listDocuments: () =>
-    req<DriverDocument[]>("/driver/documents", undefined, []),
+  listDocuments: async () => {
+    const cached = await getCached<DriverDocument[]>("driver_documents");
+    try {
+      const d = await req<DriverDocument[]>("/driver/documents", undefined, cached ?? []);
+      await setCache("driver_documents", d);
+      return d;
+    } catch {
+      return cached ?? [];
+    }
+  },
 
   createVehicle: (body: {
     vehicle_type: string;
@@ -426,8 +445,16 @@ export const api = {
       { method: "POST", body: JSON.stringify(body) },
     ),
 
-  listVehiclesDriver: () =>
-    req<DriverVehicle[]>("/driver/vehicles", undefined, []),
+  listVehiclesDriver: async () => {
+    const cached = await getCached<DriverVehicle[]>("driver_vehicles");
+    try {
+      const v = await req<DriverVehicle[]>("/driver/vehicles", undefined, cached ?? []);
+      await setCache("driver_vehicles", v);
+      return v;
+    } catch {
+      return cached ?? [];
+    }
+  },
 
   // Driver Online Status
   updateOnlineStatus: (online: boolean) =>

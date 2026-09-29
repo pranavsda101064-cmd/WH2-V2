@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 import {
   Alert,
@@ -43,12 +43,20 @@ export default function DriverProfileScreen() {
   const [editAddress, setEditAddress] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  const [loadError, setLoadError] = useState(false);
+
+  const loadData = useCallback(() => {
+    setLoading(true);
+    setLoadError(false);
     Promise.all([api.getDriverProfile(), api.listDocuments(), api.listVehiclesDriver()])
       .then(([p, d, v]) => { setProfile(p); setDocuments(d); setVehicles(v); })
-      .catch(() => Alert.alert("Error", "Failed to load profile data"))
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const startEditing = () => {
     if (!profile) return;
@@ -82,6 +90,28 @@ export default function DriverProfileScreen() {
   if (loading) return <LoadingScreen message="Loading profile..." />;
 
   if (!profile) {
+    // Load failed (offline/server) — offer retry instead of the onboarding empty state
+    if (loadError) {
+      return (
+        <View style={styles.root}>
+          <StatusBar style="light" />
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32 }}>
+            <Ionicons name="cloud-offline-outline" size={48} color={colors.textMuted} />
+            <Text style={{ color: colors.text, fontSize: 20, fontWeight: "800", marginTop: 16 }}>Couldn&apos;t load profile</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 14, marginTop: 8, textAlign: "center" }}>
+              Check your connection and try again.
+            </Text>
+            <TouchableOpacity
+              style={{ marginTop: 24, backgroundColor: colors.accent, paddingHorizontal: 32, height: 52, borderRadius: radius.md, flexDirection: "row", alignItems: "center", gap: 8 }}
+              onPress={loadData}
+            >
+              <Ionicons name="refresh-outline" size={18} color="#fff" />
+              <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={styles.root}>
         <StatusBar style="light" />

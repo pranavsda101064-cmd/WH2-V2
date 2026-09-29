@@ -356,10 +356,10 @@ export default function DriverDashboard() {
               testID="qa-expenses"
             />
             <QuickAction
-              icon="eye-outline"
-              label="Demo request"
-              onPress={previewRequest}
-              testID="qa-preview"
+              icon="wallet-outline"
+              label="Wallet"
+              onPress={() => router.push("/wallet")}
+              testID="qa-wallet"
             />
           </View>
         </FadeIn>

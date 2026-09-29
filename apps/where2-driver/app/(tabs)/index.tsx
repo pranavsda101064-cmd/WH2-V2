@@ -18,14 +18,27 @@ try { Haptics = require("expo-haptics"); } catch {}
 import { LinearGradient } from "expo-linear-gradient";
 
 import { colors, radius } from "@/src/theme";
-import { api, DriverRequest, DriverStats } from "@/src/api";
+import { api, DriverRequest, DriverStats, getUserName } from "@/src/api";
 import { storage } from "@/src/utils/storage";
 import { DashboardSkeleton } from "@/src/components/loading";
 import { useLocationTracker } from "@/src/hooks/use-location-tracker";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
 import { RequestSheet } from "@/src/components/request-sheet";
+import { StatCard, SectionHeader, QuickAction } from "@/src/components/ui";
 import { playNotificationSound } from "@/src/utils/notification-sound";
+
+const PREVIEW_REQUEST: DriverRequest = {
+  id: "preview-request",
+  pickup: "Sakleshpura Bus Stand",
+  drop: "Bisle Ghat Viewpoint",
+  distance: "46 km",
+  duration: "1h 40m",
+  fare: 2199,
+  rider: "Aditi S.",
+  rating: 4.9,
+  tag: "3 stops",
+};
 
 const POLL_INTERVAL = 10000;
 const REQUEST_TIMEOUT = 30;
@@ -45,7 +58,21 @@ export default function DriverDashboard() {
   const prevCountRef = useRef(0);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [busy, setBusy] = useState<{ id: string; kind: "accept" | "decline" } | null>(null);
+  const [driverName, setDriverName] = useState("");
   const seenRef = useRef<Set<string>>(new Set());
+
+  // Dev preview: insert a mock request so the sheet can be reviewed offline
+  const previewRequest = useCallback(() => {
+    const id = `preview-${Date.now()}`;
+    const mock = { ...PREVIEW_REQUEST, id };
+    seenRef.current.add(id);
+    setRequests((prev) => (prev.some((r) => r.id === id) ? prev : [mock, ...prev]));
+    startTimer(id);
+    setSheetId(id);
+    setSelected(id);
+    playNotificationSound();
+    if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [startTimer]);
 
   useLocationTracker();
 
@@ -133,6 +160,9 @@ export default function DriverDashboard() {
 
   useEffect(() => {
     fetchRequests().finally(() => setLoading(false));
+    getUserName().then((n) => {
+      if (n) setDriverName(n.split(" ")[0]);
+    });
   }, [fetchRequests]);
 
   useEffect(() => {
@@ -243,22 +273,42 @@ export default function DriverDashboard() {
           paddingBottom: insets.bottom + 80,
         }}
       >
-        {/* Header */}
+        {/* Header with driver profile snippet */}
         <FadeIn delay={0}>
           <View style={styles.header}>
+            <View style={styles.avatarSm}>
+              <Text style={styles.avatarSmText}>
+                {(driverName || "D").charAt(0).toUpperCase()}
+              </Text>
+            </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.headKicker}>SAKLESHPURA</Text>
-              <Text style={styles.headTitle}>Driver Dashboard</Text>
+              <Text style={styles.headKicker}>SAKLESHPURA DRIVER</Text>
+              <Text style={styles.headTitle}>
+                {driverName ? `Namaste, ${driverName}` : "Driver Dashboard"}
+              </Text>
+            </View>
+            <View style={[styles.statusPill, online ? styles.statusPillOn : styles.statusPillOff]}>
+              <View style={[styles.statusDot, online ? styles.statusDotOn : styles.statusDotOff]} />
+              <Text style={[styles.statusText, online ? styles.statusTextOn : styles.statusTextOff]}>
+                {online ? "Online" : "Offline"}
+              </Text>
             </View>
           </View>
         </FadeIn>
 
-        {/* Online toggle */}
+        {/* Duty toggle */}
         <FadeIn delay={100}>
           <View style={[styles.toggleCard, online && styles.toggleCardOn]}>
+            <View style={[styles.dutyIcon, online && styles.dutyIconOn]}>
+              <Ionicons
+                name={online ? "car-sport" : "car-sport-outline"}
+                size={24}
+                color={online ? "#fff" : colors.textMuted}
+              />
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.toggleLabel, online && { color: colors.accent }]}>
-                {online ? "YOU'RE ONLINE" : "YOU'RE OFFLINE"}
+                {online ? "YOU'RE ON DUTY" : "YOU'RE OFFLINE"}
               </Text>
               <Text style={styles.toggleSub}>
                 {online ? "Receiving ride requests" : "Go online to earn"}
@@ -277,24 +327,50 @@ export default function DriverDashboard() {
 
         {/* Today stats */}
         <FadeIn delay={200}>
-          <View style={styles.statsRow}>
-            <Stat label="Earnings" value={`₹${stats.earnings.toLocaleString("en-IN")}`} accent />
-            <View style={styles.statDivider} />
-            <Stat label="Trips" value={String(stats.trips)} />
-            <View style={styles.statDivider} />
-            <Stat label="Hours" value={stats.hours.toFixed(1)} />
+          <View style={styles.statsGrid}>
+            <StatCard label="Earnings" value={`₹${stats.earnings.toLocaleString("en-IN")}`} icon="wallet" />
+            <StatCard label="Trips" value={String(stats.trips)} icon="car" tint={colors.accentDim} />
+            <StatCard label="Hours" value={stats.hours.toFixed(1)} icon="time" tint={colors.pending} />
+          </View>
+        </FadeIn>
+
+        {/* Quick actions */}
+        <FadeIn delay={250}>
+          <View style={styles.qaGrid}>
+            <QuickAction
+              icon="wallet-outline"
+              label="My Earnings"
+              onPress={() => router.push("/(tabs)/earnings")}
+              testID="qa-earnings"
+            />
+            <QuickAction
+              icon="document-text-outline"
+              label="Documents"
+              onPress={() => router.push("/(tabs)/profile")}
+              testID="qa-documents"
+            />
+            <QuickAction
+              icon="person-outline"
+              label="Profile"
+              onPress={() => router.push("/(tabs)/profile")}
+              testID="qa-profile"
+            />
+            <QuickAction
+              icon="eye-outline"
+              label="Demo request"
+              onPress={previewRequest}
+              testID="qa-preview"
+            />
           </View>
         </FadeIn>
 
         {/* Incoming */}
         <FadeIn delay={300}>
-          <View style={styles.sectionHead}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <View style={styles.liveDot} />
-              <Text style={styles.sectionTitle}>Incoming requests</Text>
-            </View>
-            <Text style={styles.sectionCount}>{requests.length} live</Text>
-          </View>
+          <SectionHeader
+            title="Incoming requests"
+            right={`${requests.length} live`}
+            dot={online && requests.length > 0}
+          />
         </FadeIn>
 
         {!online && (
@@ -344,7 +420,7 @@ export default function DriverDashboard() {
                               progress > 0.5
                                 ? colors.accent
                                 : progress > 0.25
-                                  ? "#f59e0b"
+                                  ? colors.pending
                                   : colors.danger,
                           },
                         ]}
@@ -428,15 +504,6 @@ export default function DriverDashboard() {
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <View style={{ flex: 1, alignItems: "center" }}>
-      <Text style={[styles.statValue, accent && { color: colors.accent }]}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 function RouteRow({ color, label, sub, isFirst }: { color: string; label: string; sub: string; isFirst?: boolean }) {
   return (
     <View style={styles.routeRow}>
@@ -461,7 +528,55 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   headKicker: { color: colors.textMuted, fontSize: 11, fontWeight: "700", letterSpacing: 1.4 },
-  headTitle: { color: colors.text, fontSize: 16, fontWeight: "700", marginTop: 2 },
+  headTitle: { color: colors.text, fontSize: 18, fontWeight: "800", marginTop: 2 },
+  avatarSm: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  avatarSmText: { color: "#fff", fontSize: 20, fontWeight: "800" },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+  },
+  statusPillOn: { backgroundColor: colors.surfaceTint, borderColor: colors.accent },
+  statusPillOff: { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statusDotOn: { backgroundColor: colors.accent },
+  statusDotOff: { backgroundColor: colors.textDim },
+  statusText: { fontSize: 12, fontWeight: "800" },
+  statusTextOn: { color: colors.accentDim },
+  statusTextOff: { color: colors.textMuted },
+  dutyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dutyIconOn: { backgroundColor: colors.accent },
+  statsGrid: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    flexDirection: "row",
+    gap: 10,
+  },
+  qaGrid: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    flexDirection: "row",
+    gap: 10,
+  },
   toggleCard: {
     marginHorizontal: 16,
     padding: 18,

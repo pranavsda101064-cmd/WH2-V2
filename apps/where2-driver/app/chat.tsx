@@ -4,7 +4,6 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -132,7 +131,10 @@ export default function DriverChat() {
   };
 
   const handleCall = () => {
-    if (riderPhone) Linking.openURL(`tel:${riderPhone}`);
+    router.push({
+      pathname: "/call",
+      params: { name: riderName || "Rider", phone: riderPhone || "" },
+    });
   };
 
   const renderMessage = ({ item }: { item: Message }) => (
@@ -273,10 +275,10 @@ const styles = StyleSheet.create({
   },
   quickChip: {
     paddingHorizontal: 14, height: 36, borderRadius: 18,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surfaceTint, borderWidth: 1, borderColor: colors.accent,
     alignItems: "center", justifyContent: "center",
   },
-  quickChipText: { color: colors.text, fontSize: font.small, fontWeight: "500" },
+  quickChipText: { color: colors.accentDim, fontSize: font.small, fontWeight: "700" },
 
   msgBubble: {
     maxWidth: "78%",

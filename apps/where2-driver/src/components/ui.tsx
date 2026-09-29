@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, radius, font, spacing, shadows } from "@/src/theme";
 import { SpringPress } from "@/src/components/spring-press";
@@ -103,6 +104,77 @@ export function QuickAction({
     </SpringPress>
   );
 }
+
+// ---------- BottomSheet (custom, Expo-Go-safe) ----------
+export function BottomSheet({
+  visible,
+  title,
+  subtitle,
+  onClose,
+  children,
+  actionLabel,
+  onAction,
+  testID,
+}: {
+  visible: boolean;
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+  children?: React.ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
+  testID?: string;
+}) {
+  const insets = useSafeAreaInsets();
+  if (!visible) return null;
+  return (
+    <View style={bs.backdropWrap} pointerEvents="box-none">
+      <Pressable style={bs.backdrop} onPress={onClose} />
+      <View style={[bs.sheet, { paddingBottom: insets.bottom + spacing.md }]} testID={testID}>
+        <View style={bs.grabber} />
+        <Text style={bs.title}>{title}</Text>
+        {subtitle ? <Text style={bs.subtitle}>{subtitle}</Text> : null}
+        <ScrollView style={bs.body} showsVerticalScrollIndicator={false}>
+          {children}
+        </ScrollView>
+        {actionLabel ? (
+          <PrimaryButton title={actionLabel} onPress={onAction} />
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+const bs = StyleSheet.create({
+  backdropWrap: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    maxHeight: "80%",
+    ...shadows.lg,
+  },
+  grabber: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.border,
+    alignSelf: "center",
+    marginBottom: spacing.sm,
+  },
+  title: { fontSize: font.h3, fontWeight: "800", color: colors.text },
+  subtitle: { fontSize: font.small, color: colors.textMuted, marginTop: 2, marginBottom: spacing.sm },
+  body: { marginVertical: spacing.sm },
+});
 
 const s = StyleSheet.create({
   primary: {

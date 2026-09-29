@@ -19,11 +19,33 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
-import { colors, radius } from "@/src/theme";
+import { colors, radius, shadows } from "@/src/theme";
 import { api } from "@/src/api";
+import { storage } from "@/src/utils/storage";
 import { LoadingScreen } from "@/src/components/loading";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
+import { BottomSheet } from "@/src/components/ui";
+
+const LANGUAGES = ["English", "Hindi", "Telugu", "Kannada", "Bengali", "Marathi"];
+
+const TERMS_TEXT = `1. Eligibility
+You must hold a valid Indian driving license and vehicle documents to drive with Where2.
+
+2. Service Area
+Rides operate within the Sakleshpura region. Pickups outside the service area are disabled.
+
+3. Fares & Payouts
+Fares are calculated per trip as shown before acceptance. Payouts settle to your registered account.
+
+4. Conduct
+Maintain your vehicle, drive safely, and treat riders with respect. Violations may lead to review or suspension.
+
+5. Documents
+Keep your license, registration, insurance, and permits valid and up to date at all times.
+
+6. Privacy
+Your location is used only while you are online or on an active trip.`;
 
 type Step = "personal" | "documents" | "vehicle" | "review";
 
@@ -72,6 +94,18 @@ export default function DriverOnboarding() {
 
   // Documents
   const [docs, setDocs] = useState<Record<string, { uri: string; type: string; name: string }>>({});
+
+  // Terms + language
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [language, setLanguage] = useState("English");
+  const [langOpen, setLangOpen] = useState(false);
+
+  useEffect(() => {
+    storage.getItem<string>("app_language", "English").then((saved) => {
+      if (saved) setLanguage(saved);
+    });
+  }, []);
 
   // Vehicle
   const [vehicleType, setVehicleType] = useState("sedan");
@@ -172,6 +206,10 @@ export default function DriverOnboarding() {
   };
 
   const handleSubmit = async () => {
+    if (!termsAccepted) {
+      Alert.alert("Terms required", "Please accept the Terms & Privacy Policy to continue.");
+      return;
+    }
     setLoading(true);
     const profileOk = await submitProfile();
     if (!profileOk) { setLoading(false); return; }
@@ -256,28 +294,44 @@ export default function DriverOnboarding() {
             <Text style={styles.label}>Date of Birth</Text>
             <TextInput style={styles.input} value={dob} onChangeText={setDob} placeholder="DD/MM/YYYY" placeholderTextColor={colors.textDim} />
 
-            <Text style={styles.label}>Address</Text>
-            <SpringPress
-              style={styles.gpsBtn}
-              onPress={async () => {
-                const { status } = await Location.requestForegroundPermissionsAsync();
-                if (status !== "granted") { Alert.alert("Permission needed for GPS"); return; }
-                setLoading(true);
-                try {
-                  const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-                  const res = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?lat=${loc.coords.latitude}&lon=${loc.coords.longitude}&format=json`,
-                    { headers: { "User-Agent": "Where2App/1.0" } },
-                  );
-                  const data = await res.json();
-                  setAddress(data.display_name || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
-                } catch { Alert.alert("Error", "Could not get address"); }
-                setLoading(false);
-              }}
-            >
-              <Ionicons name="locate" size={16} color={colors.accent} />
-              <Text style={styles.gpsBtnText}>Use current location</Text>
+            <Text style={styles.label}>App Language</Text>
+            <SpringPress style={styles.langRow} onPress={() => setLangOpen(true)}>
+              <Ionicons name="language-outline" size={18} color={colors.accent} />
+              <Text style={styles.langText}>{language}</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textDim} />
             </SpringPress>
+
+            <Text style={styles.label}>Address</Text>
+            <View style={styles.permCard}>
+              <View style={styles.permIcon}>
+                <Ionicons name="location-outline" size={26} color={colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.permTitle}>Enable location</Text>
+                <Text style={styles.permSub}>We use GPS to find rides near you</Text>
+              </View>
+              <SpringPress
+                style={styles.permBtn}
+                onPress={async () => {
+                  const { status } = await Location.requestForegroundPermissionsAsync();
+                  if (status !== "granted") { Alert.alert("Permission needed for GPS"); return; }
+                  setLoading(true);
+                  try {
+                    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                    const res = await fetch(
+                      `https://nominatim.openstreetmap.org/reverse?lat=${loc.coords.latitude}&lon=${loc.coords.longitude}&format=json`,
+                      { headers: { "User-Agent": "Where2App/1.0" } },
+                    );
+                    const data = await res.json();
+                    setAddress(data.display_name || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
+                  } catch { Alert.alert("Error", "Could not get address"); }
+                  setLoading(false);
+                }}
+              >
+                <Ionicons name="locate" size={16} color="#fff" />
+                <Text style={styles.permBtnText}>Allow</Text>
+              </SpringPress>
+            </View>
             <TextInput style={[styles.input, { height: 80 }]} value={address} onChangeText={setAddress} multiline textAlignVertical="top" placeholder="Hassan Road, Sakleshpura" placeholderTextColor={colors.textDim} />
           </View>
         )}
@@ -291,23 +345,32 @@ export default function DriverOnboarding() {
             {DOC_TYPES.map((doc) => {
               const uploaded = docs[doc.key];
               return (
-                <SpringPress key={doc.key} style={styles.docCard} onPress={() => Alert.alert(doc.label, "Choose an option", [
-                  { text: "Camera", onPress: () => takePhoto(doc.key) },
-                  { text: "Gallery", onPress: () => pickPhoto(doc.key) },
-                  { text: "Cancel" },
-                ])}>
-                  <View style={styles.docIcon}>
-                    <Ionicons name={doc.icon as any} size={22} color={uploaded ? colors.success : colors.textMuted} />
-                  </View>
+                <View key={doc.key} style={[styles.docCard, uploaded && styles.docCardDone]}>
+                  {uploaded ? (
+                    <Image source={{ uri: uploaded.uri }} style={styles.docThumb} />
+                  ) : (
+                    <View style={styles.docIcon}>
+                      <Ionicons name={doc.icon as any} size={22} color={colors.textMuted} />
+                    </View>
+                  )}
                   <View style={{ flex: 1 }}>
                     <Text style={styles.docLabel}>{doc.label}</Text>
-                    <Text style={[styles.docStatus, uploaded && { color: colors.success }]}>
-                      {uploaded ? "Uploaded" : "Tap to upload"}
-                    </Text>
+                    <View style={[styles.statusChip, uploaded ? styles.statusChipDone : styles.statusChipTodo]}>
+                      <Text style={[styles.statusChipText, uploaded ? styles.statusChipTextDone : styles.statusChipTextTodo]}>
+                        {uploaded ? "Uploaded ✓" : "Tap below to upload"}
+                      </Text>
+                    </View>
                   </View>
-                  {uploaded && <Ionicons name="checkmark-circle" size={20} color={colors.success} />}
-                  {!uploaded && <Ionicons name="camera-outline" size={20} color={colors.textDim} />}
-                </SpringPress>
+                  {uploaded && <Ionicons name="checkmark-circle" size={22} color={colors.success} />}
+                  <View style={styles.docBtns}>
+                    <SpringPress style={styles.docBtn} onPress={() => takePhoto(doc.key)}>
+                      <Ionicons name="camera-outline" size={18} color={colors.accent} />
+                    </SpringPress>
+                    <SpringPress style={styles.docBtn} onPress={() => pickPhoto(doc.key)}>
+                      <Ionicons name="image-outline" size={18} color={colors.accent} />
+                    </SpringPress>
+                  </View>
+                </View>
               );
             })}
           </View>
@@ -385,10 +448,56 @@ export default function DriverOnboarding() {
                 Your documents will be verified by our admin team. You&apos;ll be notified once approved.
               </Text>
             </View>
+
+            <SpringPress style={styles.termsRow} onPress={() => setTermsAccepted((v) => !v)}>
+              <View style={[styles.checkbox, termsAccepted && styles.checkboxOn]}>
+                {termsAccepted && <Ionicons name="checkmark" size={16} color="#fff" />}
+              </View>
+              <Text style={styles.termsText}>
+                I accept the <Text style={styles.termsLink} onPress={() => setTermsOpen(true)}>Terms & Privacy Policy</Text>
+              </Text>
+            </SpringPress>
           </View>
         )}
         </Animated.View>
       </KeyboardAwareScrollView>
+
+      <BottomSheet
+        visible={termsOpen}
+        title="Terms & Privacy Policy"
+        subtitle="Please read before submitting"
+        onClose={() => setTermsOpen(false)}
+        actionLabel={termsAccepted ? "Accepted ✓" : "Accept & Continue"}
+        onAction={() => { setTermsAccepted(true); setTermsOpen(false); }}
+        testID="terms-sheet"
+      >
+        <Text style={styles.termsBody}>{TERMS_TEXT}</Text>
+      </BottomSheet>
+
+      <BottomSheet
+        visible={langOpen}
+        title="App Language"
+        subtitle="Choose your preferred language"
+        onClose={() => setLangOpen(false)}
+        testID="language-sheet"
+      >
+        {LANGUAGES.map((lng) => (
+          <SpringPress
+            key={lng}
+            style={[styles.langOption, language === lng && styles.langOptionActive]}
+            onPress={async () => {
+              setLanguage(lng);
+              await storage.setItem("app_language", lng);
+              setLangOpen(false);
+            }}
+          >
+            <Text style={[styles.langOptionText, language === lng && { color: colors.accent }]}>
+              {lng}
+            </Text>
+            {language === lng && <Ionicons name="checkmark-circle" size={20} color={colors.accent} />}
+          </SpringPress>
+        ))}
+      </BottomSheet>
 
       {/* Bottom bar */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
@@ -472,12 +581,120 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     padding: 14,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderStyle: "dashed",
+    marginBottom: 10,
+  },
+  docCardDone: {
+    borderStyle: "solid",
+    borderColor: colors.success,
+  },
+  docThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+  },
+  statusChip: {
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 4,
+    alignSelf: "flex-start",
+  },
+  statusChipDone: { backgroundColor: "rgba(34,197,94,0.12)" },
+  statusChipTodo: { backgroundColor: "rgba(245,158,11,0.12)" },
+  statusChipText: { fontSize: 11, fontWeight: "700" },
+  statusChipTextDone: { color: colors.success },
+  statusChipTextTodo: { color: colors.pending },
+  docBtns: { flexDirection: "row", gap: 8 },
+  docBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.surfaceTint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  langRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    height: 50,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    marginBottom: 10,
+    paddingHorizontal: 14,
+    marginBottom: 4,
   },
+  langText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: "600" },
+  langOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  langOptionActive: { borderBottomColor: colors.accent },
+  langOptionText: { color: colors.text, fontSize: 15, fontWeight: "600" },
+  permCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 8,
+    ...shadows.sm,
+  },
+  permIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.surfaceTint,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  permTitle: { color: colors.text, fontSize: 14, fontWeight: "700" },
+  permSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  permBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  permBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 14,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+  termsText: { flex: 1, color: colors.textMuted, fontSize: 13 },
+  termsLink: { color: colors.accent, fontWeight: "700" },
+  termsBody: { color: colors.text, fontSize: 14, lineHeight: 22 },
   docIcon: {
     width: 40,
     height: 40,

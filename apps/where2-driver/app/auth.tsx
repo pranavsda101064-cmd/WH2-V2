@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { BlurView } from "expo-blur";
+import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   Alert,
@@ -61,16 +62,25 @@ export default function Auth() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const isExpoGo = Constants.appOwnership === "expo";
+
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-      scopes: ["profile", "email"],
-      offlineAccess: false,
-    });
+    if (isExpoGo) return;
+    try {
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+        scopes: ["profile", "email"],
+        offlineAccess: false,
+      });
+    } catch {}
   }, []);
 
   const handleGoogleLogin = async () => {
+    if (isExpoGo) {
+      setError("Google sign-in needs the release build (Expo Go has no native module)");
+      return;
+    }
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();

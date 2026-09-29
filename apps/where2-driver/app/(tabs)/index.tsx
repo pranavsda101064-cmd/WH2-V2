@@ -24,6 +24,7 @@ import { DashboardSkeleton } from "@/src/components/loading";
 import { useLocationTracker } from "@/src/hooks/use-location-tracker";
 import { SpringPress } from "@/src/components/spring-press";
 import { FadeIn } from "@/src/components/fade-in";
+import { RequestSheet } from "@/src/components/request-sheet";
 import { playNotificationSound } from "@/src/utils/notification-sound";
 
 const POLL_INTERVAL = 10000;
@@ -42,6 +43,9 @@ export default function DriverDashboard() {
   const countdownsRef = useRef<Map<string, number>>(new Map());
   const [countdowns, setCountdowns] = useState<Map<string, number>>(new Map());
   const prevCountRef = useRef(0);
+  const [sheetId, setSheetId] = useState<string | null>(null);
+  const [busy, setBusy] = useState<{ id: string; kind: "accept" | "decline" } | null>(null);
+  const seenRef = useRef<Set<string>>(new Set());
 
   useLocationTracker();
 
@@ -135,6 +139,20 @@ export default function DriverDashboard() {
     if (requests.length > 0 && !selected) setSelected(requests[0].id);
   }, [requests, selected]);
 
+  // Auto-open the bottom sheet for brand-new incoming requests
+  useEffect(() => {
+    if (!online) return;
+    const fresh = requests.find((r) => !seenRef.current.has(r.id));
+    if (fresh) {
+      seenRef.current.add(fresh.id);
+      setSheetId(fresh.id);
+      setSelected(fresh.id);
+    }
+    if (sheetId && !requests.some((r) => r.id === sheetId)) {
+      setSheetId(null);
+    }
+  }, [requests, online, sheetId]);
+
   useEffect(() => {
     if (online) {
       pollRef.current = setInterval(fetchRequests, POLL_INTERVAL);
@@ -158,7 +176,9 @@ export default function DriverDashboard() {
       countdownsRef.current.delete(id);
     }
     if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setBusy({ id, kind: "accept" });
     const ride = await api.acceptRequest(id).catch(() => null);
+    setBusy(null);
     if (ride?.id) {
       await storage.setItem("active_ride_id", ride.id);
       setRequests((prev) => prev.filter((x) => x.id !== id));
@@ -168,6 +188,7 @@ export default function DriverDashboard() {
         return next;
       });
       setSelected(null);
+      setSheetId((prev) => (prev === id ? null : prev));
       router.push("/ride");
     } else {
       // Accept failed — keep request visible so driver can retry
@@ -185,7 +206,9 @@ export default function DriverDashboard() {
       countdownsRef.current.delete(id);
     }
     if (Haptics) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setBusy({ id, kind: "decline" });
     const result = await api.declineRequest(id).catch(() => null);
+    setBusy(null);
     if (!result) {
       // Decline failed — keep request visible
       if (Haptics) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -200,6 +223,7 @@ export default function DriverDashboard() {
       return next;
     });
     setSelected((prev) => (prev === id ? null : prev));
+    setSheetId((prev) => (prev === id ? null : prev));
   };
 
   if (loading) return <DashboardSkeleton />;
@@ -294,7 +318,9 @@ export default function DriverDashboard() {
         )}
 
         {online &&
-          requests.map((r, i) => {
+          requests
+            .filter((r) => r.id !== sheetId)
+            .map((r, i) => {
             const isActive = selected === r.id;
             const remaining = countdowns.get(r.id) ?? REQUEST_TIMEOUT;
             const progress = remaining / REQUEST_TIMEOUT;
@@ -387,6 +413,17 @@ export default function DriverDashboard() {
             );
           })}
       </ScrollView>
+
+      <RequestSheet
+        request={requests.find((r) => r.id === sheetId) ?? null}
+        remaining={sheetId ? (countdowns.get(sheetId) ?? REQUEST_TIMEOUT) : REQUEST_TIMEOUT}
+        total={REQUEST_TIMEOUT}
+        accepting={busy?.id === sheetId && busy?.kind === "accept"}
+        declining={busy?.id === sheetId && busy?.kind === "decline"}
+        onAccept={accept}
+        onDecline={decline}
+        onClose={() => setSheetId(null)}
+      />
     </View>
   );
 }

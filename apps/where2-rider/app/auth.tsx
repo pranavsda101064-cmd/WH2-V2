@@ -15,6 +15,7 @@ import {
   Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Constants from "expo-constants";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Ionicons } from "@expo/vector-icons";
 import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
@@ -62,14 +63,19 @@ export default function Auth() {
   const emailBorder = useRef(new Animated.Value(0)).current;
   const passwordBorder = useRef(new Animated.Value(0)).current;
 
-  // Configure Google Sign-In after mount
+  const isExpoGo = Constants.appOwnership === "expo";
+
+  // Configure Google Sign-In after mount (skipped in Expo Go — no native module)
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-      scopes: ["profile", "email"],
-      offlineAccess: false,
-    });
+    if (isExpoGo) return;
+    try {
+      GoogleSignin.configure({
+        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+        scopes: ["profile", "email"],
+        offlineAccess: false,
+      });
+    } catch {}
   }, []);
 
   const animateBorder = (anim: Animated.Value, to: number) => {
@@ -77,6 +83,10 @@ export default function Auth() {
   };
 
   const handleGoogleLogin = async () => {
+    if (isExpoGo) {
+      setError("Google sign-in needs the release build (Expo Go has no native module)");
+      return;
+    }
     try {
       const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
       if (!webClientId) {

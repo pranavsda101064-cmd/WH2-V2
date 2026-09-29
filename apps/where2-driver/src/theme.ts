@@ -14,6 +14,10 @@ export const colors = {
   accentGlow: "rgba(0,137,123,0.35)",
   danger: "#E4483C",
   success: "#22C55E",
+  successDeep: "#1E9E52", // Active/completed states
+  pending: "#F59E0B", // Pending/warning states (amber)
+  textInverse: "#FFFFFF",
+  card: "#F8F9FA", // Light grey card background
 };
 
 export const spacing = {

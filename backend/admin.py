@@ -219,6 +219,25 @@ async def toggle_ban(
     return {"id": str(user.id), "is_banned": user.is_banned}
 
 
+class RoleUpdate(BaseModel):
+    role: str = Field(..., pattern="^(customer|driver)$")
+
+
+@router.patch("/users/{user_id}/role")
+async def update_role(
+    user_id: str,
+    body: RoleUpdate,
+    db: AsyncSession = Depends(get_db),
+    _admin: Admin = Depends(get_admin_user),
+):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(404, detail="User not found")
+    user.role = body.role
+    return {"id": str(user.id), "email": user.email, "role": user.role}
+
+
 # ---------- Rides ----------
 @router.get("/rides")
 async def list_rides(

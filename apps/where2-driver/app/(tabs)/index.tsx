@@ -350,10 +350,10 @@ export default function DriverDashboard() {
               testID="qa-documents"
             />
             <QuickAction
-              icon="person-outline"
-              label="Profile"
-              onPress={() => router.push("/(tabs)/profile")}
-              testID="qa-profile"
+              icon="receipt-outline"
+              label="Expenses"
+              onPress={() => router.push("/expenses")}
+              testID="qa-expenses"
             />
             <QuickAction
               icon="eye-outline"

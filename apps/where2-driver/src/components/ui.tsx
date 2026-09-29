@@ -105,6 +105,47 @@ export function QuickAction({
   );
 }
 
+// ---------- TransactionItem ----------
+export function TransactionItem({
+  icon,
+  title,
+  subtitle,
+  amount,
+  credit,
+  tint,
+  onPress,
+  testID,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  subtitle?: string;
+  amount: string;
+  credit?: boolean;
+  tint?: string;
+  onPress?: () => void;
+  testID?: string;
+}) {
+  const t = tint || (credit ? colors.success : colors.accent);
+  return (
+    <SpringPress style={s.tx} onPress={onPress} testID={testID} disabled={!onPress}>
+      <View style={[s.txIcon, { backgroundColor: `${t}1A` }]}>
+        <Ionicons name={icon} size={18} color={t} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.txTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={s.txSub} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      <Text style={[s.txAmount, credit ? s.txCredit : s.txDebit]}>{amount}</Text>
+    </SpringPress>
+  );
+}
+
 // ---------- BottomSheet (custom, Expo-Go-safe) ----------
 export function BottomSheet({
   visible,
@@ -277,4 +318,28 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   qaLabel: { fontSize: font.micro, fontWeight: "700", color: colors.text, textAlign: "center" },
+  tx: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+    ...shadows.sm,
+  },
+  txIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  txTitle: { fontSize: font.label, fontWeight: "700", color: colors.text },
+  txSub: { fontSize: font.caption, color: colors.textMuted, marginTop: 2 },
+  txAmount: { fontSize: font.body, fontWeight: "800" },
+  txCredit: { color: colors.success },
+  txDebit: { color: colors.text },
 });
